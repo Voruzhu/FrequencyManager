@@ -9,6 +9,7 @@ import { useModuleStore } from '../stores/moduleStore';
 import { useHealthStore } from '../stores/healthStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUIStore } from '../stores/uiStore';
+import { GamePackageInstaller } from '../components/GamePackageInstaller';
 
 type Tone = 'success' | 'warning' | 'destructive';
 
@@ -38,6 +39,19 @@ export function DashboardScreen() {
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
             <PageHeader title="Dashboard" description="Overview of your build workspace." />
+
+            {games.length === 0 && (
+                <Card>
+                    <CardContent className="p-6">
+                        <EmptyState
+                            icon={Gamepad2}
+                            title="No game installed yet"
+                            description="Paste the game-packages repo below to download and install one."
+                            action={<div className="w-full max-w-md text-left"><GamePackageInstaller /></div>}
+                        />
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatTile label="Active Game" value={activeGame?.label ?? '—'} hint={activeGame ? `v${activeGame.version}` : undefined} icon={Gamepad2} tone="primary" />
