@@ -1,0 +1,596 @@
+{
+    "$schema": "https://schema.frequency-manager.dev/variables/v1",
+    "app": "FrequencyManager",
+    "version": "1.0.0",
+    "modules": {
+        "damage-calculator": {
+            "variables": [
+                {
+                    "id": "damage_calc_character_id",
+                    "type": "select",
+                    "source": "user-input",
+                    "default": "rover-spectro",
+                    "options": [
+                        {
+                            "value": "rover-spectro",
+                            "label": "Rover (Spectro)"
+                        },
+                        {
+                            "value": "jinhsi",
+                            "label": "Jinhsi"
+                        },
+                        {
+                            "value": "yinlin",
+                            "label": "Yinlin"
+                        }
+                    ],
+                    "description": "Character to calculate DPS for"
+                },
+                {
+                    "id": "damage_calc_rotation_length",
+                    "type": "number",
+                    "source": "user-input",
+                    "min": 5,
+                    "max": 60,
+                    "step": 1,
+                    "default": 20,
+                    "description": "Rotation length in seconds"
+                },
+                {
+                    "id": "damage_calc_include_resonance",
+                    "type": "boolean",
+                    "source": "user-input",
+                    "default": true,
+                    "description": "Include resonance skills"
+                },
+                {
+                    "id": "damage_calc_include_concerto",
+                    "type": "boolean",
+                    "source": "user-input",
+                    "default": true,
+                    "description": "Include concerto energy effects"
+                },
+                {
+                    "id": "damage_calc_crit_rate",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.critRate",
+                    "gameRule": "character-stats.critRate",
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                    "default": 5,
+                    "description": "CRIT Rate percentage"
+                },
+                {
+                    "id": "damage_calc_crit_dmg",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.critDmg",
+                    "gameRule": "character-stats.critDmg",
+                    "min": 0,
+                    "max": 800,
+                    "step": 0.1,
+                    "default": 50,
+                    "description": "CRIT DMG percentage"
+                },
+                {
+                    "id": "damage_calc_atk",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.atk",
+                    "gameRule": "character-stats.atk",
+                    "min": 0,
+                    "max": 9999,
+                    "step": 1,
+                    "default": 800,
+                    "description": "ATK stat"
+                },
+                {
+                    "id": "damage_calc_hp",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.hp",
+                    "gameRule": "character-stats.hp",
+                    "min": 0,
+                    "max": 99999,
+                    "step": 1,
+                    "default": 12000,
+                    "description": "HP stat"
+                },
+                {
+                    "id": "damage_calc_def",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.def",
+                    "gameRule": "character-stats.def",
+                    "min": 0,
+                    "max": 9999,
+                    "step": 1,
+                    "default": 600,
+                    "description": "DEF stat"
+                },
+                {
+                    "id": "damage_calc_energy_regen",
+                    "type": "number",
+                    "source": "state",
+                    "path": "characters.{charId}.stats.energyRegen",
+                    "gameRule": "character-stats.energyRegen",
+                    "min": 0,
+                    "max": 500,
+                    "step": 1,
+                    "default": 100,
+                    "description": "Energy Regen percentage"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "calculate",
+                    "params": [
+                        "damage_calc_character_id",
+                        "damage_calc_rotation_length",
+                        "damage_calc_include_resonance",
+                        "damage_calc_include_concerto",
+                        "damage_calc_crit_rate",
+                        "damage_calc_crit_dmg",
+                        "damage_calc_atk",
+                        "damage_calc_hp",
+                        "damage_calc_def",
+                        "damage_calc_energy_regen"
+                    ],
+                    "returns": {
+                        "summary": {
+                            "totalDamage": "number",
+                            "dps": "number",
+                            "characterId": "string"
+                        },
+                        "breakdown": {
+                            "basicAttack": "number",
+                            "heavyAttack": "number",
+                            "resonanceSkill": "number",
+                            "resonanceLiberation": "number",
+                            "forteCircuit": "number",
+                            "outroSkill": "number",
+                            "introSkill": "number",
+                            "elementalReactions": "number",
+                            "total": "number"
+                        },
+                        "rotation": "array",
+                        "stats": {
+                            "atk": "number",
+                            "critRate": "number",
+                            "critDmg": "number",
+                            "energyRegen": "number",
+                            "totalDmgBonus": "number"
+                        }
+                    },
+                    "description": "Run DPS calculation"
+                },
+                {
+                    "id": "optimize-echoes",
+                    "params": [
+                        "damage_calc_character_id"
+                    ],
+                    "returns": {
+                        "summary": {
+                            "recommendedEchoes": "number",
+                            "estimatedDps": "number",
+                            "message": "string"
+                        }
+                    },
+                    "description": "Suggest best 5 echoes"
+                }
+            ]
+        },
+        "ocr-scanner": {
+            "variables": [
+                {
+                    "id": "ocr_image_path",
+                    "type": "text",
+                    "source": "user-input",
+                    "default": "",
+                    "description": "Path to screenshot"
+                },
+                {
+                    "id": "ocr_auto_add",
+                    "type": "boolean",
+                    "source": "user-input",
+                    "default": true,
+                    "description": "Auto-add to shared state"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "scan",
+                    "params": [
+                        "ocr_image_path"
+                    ],
+                    "returns": {
+                        "outputs": {
+                            "echoes": [
+                                {
+                                    "id": "string",
+                                    "name": "string",
+                                    "cost": "number",
+                                    "mainStat": "string",
+                                    "level": "number"
+                                }
+                            ],
+                            "raw": {
+                                "confidence": "number",
+                                "processedAt": "number"
+                            }
+                        }
+                    },
+                    "description": "Scan screenshot"
+                }
+            ]
+        },
+        "json-importer": {
+            "variables": [
+                {
+                    "id": "json_import_source",
+                    "type": "select",
+                    "source": "user-input",
+                    "default": "file",
+                    "options": [
+                        {
+                            "value": "file",
+                            "label": "From File"
+                        },
+                        {
+                            "value": "clipboard",
+                            "label": "From Clipboard"
+                        }
+                    ],
+                    "description": "Import source"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "import",
+                    "params": [
+                        "json_import_source"
+                    ],
+                    "returns": {
+                        "outputs": {
+                            "imported": "array",
+                            "errors": "array"
+                        }
+                    },
+                    "description": "Import JSON data"
+                },
+                {
+                    "id": "export",
+                    "params": [],
+                    "returns": {
+                        "outputs": {
+                            "imported": [
+                                {
+                                    "ok": "boolean",
+                                    "message": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "description": "Export current data"
+                }
+            ]
+        },
+        "game-loader": {
+            "variables": [
+                {
+                    "id": "game_loader_game_id",
+                    "type": "select",
+                    "source": "user-input",
+                    "default": "wuthering-waves",
+                    "options": [
+                        {
+                            "value": "wuthering-waves",
+                            "label": "Wuthering Waves"
+                        },
+                        {
+                            "value": "genshin-impact",
+                            "label": "Genshin Impact"
+                        }
+                    ],
+                    "description": "Active game definition"
+                }
+            ],
+            "actions": [
+                {
+                    "id": "load",
+                    "params": [
+                        "game_loader_game_id"
+                    ],
+                    "returns": {
+                        "outputs": {
+                            "game": {
+                                "id": "string",
+                                "displayName": "string",
+                                "version": "string",
+                                "loaded": "boolean"
+                            }
+                        }
+                    },
+                    "description": "Load a game definition"
+                },
+                {
+                    "id": "get-options",
+                    "params": [],
+                    "returns": {
+                        "outputs": {
+                            "characters": "array",
+                            "setNames": "array",
+                            "weaponTypes": "array",
+                            "elements": "array"
+                        }
+                    },
+                    "description": "Get UI option lists for the active game"
+                }
+            ]
+        },
+        "update-checker": {
+            "variables": [],
+            "actions": [
+                {
+                    "id": "check-now",
+                    "params": [],
+                    "returns": {
+                        "outputs": {
+                            "app": [
+                                {
+                                    "kind": "string",
+                                    "version": "string"
+                                }
+                            ],
+                            "games": "array"
+                        }
+                    },
+                    "description": "Force check for updates"
+                }
+            ]
+        }
+    },
+    "sharedState": {
+        "paths": [
+            {
+                "path": "currentGame.id",
+                "type": "string",
+                "description": "Active game id",
+                "owner": "game-loader"
+            },
+            {
+                "path": "currentGame.displayName",
+                "type": "string",
+                "description": "User-facing game name",
+                "owner": "game-loader"
+            },
+            {
+                "path": "currentGame.version",
+                "type": "string",
+                "description": "Game definition version",
+                "owner": "game-loader"
+            },
+            {
+                "path": "currentGame.loaded",
+                "type": "boolean",
+                "description": "Whether a game is active",
+                "owner": "game-loader"
+            },
+            {
+                "path": "characters.{charId}.name",
+                "type": "string",
+                "description": "Character display name",
+                "owner": "game DB"
+            },
+            {
+                "path": "characters.{charId}.baseStats.atk",
+                "type": "number",
+                "description": "Base ATK (zero buffs)",
+                "owner": "game DB",
+                "gameRule": "character-stats.atk"
+            },
+            {
+                "path": "characters.{charId}.baseStats.hp",
+                "type": "number",
+                "description": "Base HP",
+                "owner": "game DB",
+                "gameRule": "character-stats.hp"
+            },
+            {
+                "path": "characters.{charId}.baseStats.def",
+                "type": "number",
+                "description": "Base DEF",
+                "owner": "game DB",
+                "gameRule": "character-stats.def"
+            },
+            {
+                "path": "characters.{charId}.baseStats.critRate",
+                "type": "number",
+                "description": "Base CRIT Rate %",
+                "owner": "game DB",
+                "gameRule": "character-stats.critRate"
+            },
+            {
+                "path": "characters.{charId}.baseStats.critDmg",
+                "type": "number",
+                "description": "Base CRIT DMG %",
+                "owner": "game DB",
+                "gameRule": "character-stats.critDmg"
+            },
+            {
+                "path": "characters.{charId}.baseStats.energyRegen",
+                "type": "number",
+                "description": "Base Energy Regen %",
+                "owner": "game DB",
+                "gameRule": "character-stats.energyRegen"
+            },
+            {
+                "path": "characters.{charId}.stats.atk",
+                "type": "number",
+                "description": "Current ATK (buffed)",
+                "owner": "state",
+                "gameRule": "character-stats.atk"
+            },
+            {
+                "path": "characters.{charId}.stats.hp",
+                "type": "number",
+                "description": "Current HP",
+                "owner": "state",
+                "gameRule": "character-stats.hp"
+            },
+            {
+                "path": "characters.{charId}.stats.def",
+                "type": "number",
+                "description": "Current DEF",
+                "owner": "state",
+                "gameRule": "character-stats.def"
+            },
+            {
+                "path": "characters.{charId}.stats.critRate",
+                "type": "number",
+                "description": "Current CRIT Rate %",
+                "owner": "state",
+                "gameRule": "character-stats.critRate"
+            },
+            {
+                "path": "characters.{charId}.stats.critDmg",
+                "type": "number",
+                "description": "Current CRIT DMG %",
+                "owner": "state",
+                "gameRule": "character-stats.critDmg"
+            },
+            {
+                "path": "characters.{charId}.stats.energyRegen",
+                "type": "number",
+                "description": "Current Energy Regen %",
+                "owner": "state",
+                "gameRule": "character-stats.energyRegen"
+            },
+            {
+                "path": "echoes.{echoId}.name",
+                "type": "string",
+                "description": "Echo set name",
+                "owner": "ocr-scanner / json-importer"
+            },
+            {
+                "path": "echoes.{echoId}.cost",
+                "type": "number",
+                "description": "Echo cost (1-4)",
+                "owner": "ocr-scanner / json-importer"
+            },
+            {
+                "path": "echoes.{echoId}.level",
+                "type": "number",
+                "description": "Echo level",
+                "owner": "ocr-scanner / json-importer"
+            },
+            {
+                "path": "echoes.{echoId}.mainStat",
+                "type": "string",
+                "description": "Main stat type (e.g. ATK%)",
+                "owner": "ocr-scanner / json-importer"
+            },
+            {
+                "path": "echoes.{echoId}.mainStatValue",
+                "type": "number",
+                "description": "Main stat value",
+                "owner": "ocr-scanner / json-importer",
+                "gameRule": "echo.mainStat"
+            },
+            {
+                "path": "echoes.{echoId}.subStats",
+                "type": "array",
+                "description": "Sub-stat rolls",
+                "owner": "ocr-scanner / json-importer"
+            },
+            {
+                "path": "calculations.{calcId}.totalDps",
+                "type": "number",
+                "description": "Total DPS result",
+                "owner": "damage-calculator"
+            },
+            {
+                "path": "calculations.{calcId}.totalDamage",
+                "type": "number",
+                "description": "Total damage (rotation-based)",
+                "owner": "damage-calculator"
+            },
+            {
+                "path": "calculations.latest",
+                "type": "object",
+                "description": "Alias to the most recent calculation",
+                "owner": "damage-calculator"
+            }
+        ]
+    },
+    "validationRules": {
+        "character-stats.atk": {
+            "min": 0,
+            "max": 9999
+        },
+        "character-stats.hp": {
+            "min": 0,
+            "max": 99999
+        },
+        "character-stats.def": {
+            "min": 0,
+            "max": 9999
+        },
+        "character-stats.critRate": {
+            "min": 0,
+            "max": 100
+        },
+        "character-stats.critDmg": {
+            "min": 0,
+            "max": 800
+        },
+        "character-stats.energyRegen": {
+            "min": 0,
+            "max": 500
+        },
+        "character-stats.elementalMastery": {
+            "min": 0,
+            "max": 2000
+        },
+        "character-stats.healingBonus": {
+            "min": 0,
+            "max": 200
+        },
+        "character-stats.effectHitRate": {
+            "min": 0,
+            "max": 200
+        },
+        "character-stats.effectRes": {
+            "min": 0,
+            "max": 200
+        }
+    },
+    "bridgeMethods": {
+        "getSharedState": {
+            "signature": "getSharedState(path: string): Promise<unknown>",
+            "description": "Read a value from shared state"
+        },
+        "setSharedState": {
+            "signature": "setSharedState(path: string, value: unknown, gameRule?: string): Promise<unknown>",
+            "description": "Write a value to shared state with optional validation"
+        },
+        "onSharedStateChanged": {
+            "signature": "onSharedStateChanged(path: string, handler: (value: unknown) => void): () => void",
+            "description": "Subscribe to changes at a path"
+        },
+        "executeModuleAction": {
+            "signature": "executeModuleAction(moduleId: string, actionId: string, values: Record<string, unknown>): Promise<unknown>",
+            "description": "Run a module action"
+        },
+        "getModuleOutput": {
+            "signature": "getModuleOutput(moduleId: string, outputId: string): Promise<unknown>",
+            "description": "Fetch cached output from a module"
+        },
+        "getModules": {
+            "signature": "getModules(): Promise<ModuleInfo[]>",
+            "description": "List all modules"
+        }
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "game-loader",
+    "displayName": "Game Loader",
+    "version": "1.0.0",
+    "description": "Resolves the active GameDefinition (Wuthering Waves, Genshin Impact, etc.) and injects it into every other module's configuration at boot. Switching games is a config change, not a code change.",
+    "author": "FrequencyManager Team",
+    "entryPoint": "./src/index.js",
+    "dependencies": {
+        "core": "^1.0.0"
+    },
+    "permissions": [
+        "data:game-definitions:read",
+        "config:read"
+    ],
+    "tags": [
+        "game",
+        "loader",
+        "adapter",
+        "core"
+    ],
+    "minCoreVersion": "1.0.0",
+    "enabledByDefault": true,
+    "icon": "game"
+}

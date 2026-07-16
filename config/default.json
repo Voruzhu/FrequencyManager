@@ -1,0 +1,51 @@
+{
+    "appName": "FrequencyManager",
+    "version": "1.0.0",
+    "modulePaths": [
+        "./modules"
+    ],
+    "hotReload": false,
+    "moduleTimeout": 30000,
+    "logLevel": "info",
+    "featureFlags": {
+        "ocr-enabled": true,
+        "damage-calculation": true,
+        "hot-reload": false,
+        "experimental-ui": false,
+        "telemetry": false
+    },
+    "circuitBreaker": {
+        "failureThreshold": 5,
+        "resetTimeout": 30000,
+        "successThreshold": 2,
+        "timeout": 10000
+    },
+    "cache": {
+        "defaultTTL": 300000,
+        "maxSize": 1000
+    },
+    "game": {
+        "activeGame": "wuthering-waves"
+    },
+    "ocrScanner": {
+        "language": "eng",
+        "confidenceThreshold": 60,
+        "preprocessing": true
+    },
+    "damageCalculator": {
+        "defaultEnemyLevel": 90,
+        "defaultEnemyResistance": 10,
+        "includeResonanceBonus": true,
+        "includeConcertoEffects": true,
+        "precision": 2
+    },
+    "updates": {
+        "appCheckOnBoot": true,
+        "gameModuleCheckOnBoot": true,
+        "gameDefinitionsManifestUrl": "https://raw.githubusercontent.com/frequency-manager/game-definitions/main/manifest.json",
+        "notifyOnUpdate": true,
+        "allowPrerelease": false,
+        "checkIntervalHours": 24,
+        "requestTimeoutMs": 10000
+    }
+}

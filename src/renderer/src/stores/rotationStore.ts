@@ -1,0 +1,42 @@
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { userStorage } from '../lib/userStorage';
+import type { RotationStepSpec } from '../types';
+
+/** A named, saved rotation — the active character's steps plus which conditional self-buffs were toggled on per party member. */
+export interface SavedRotation {
+    id: string;
+    name: string;
+    /** Whose party this rotation was built against — informational, the steps carry their own characterId. */
+    anchorCharacterId: string;
+    steps: RotationStepSpec[];
+    /** characterId -> enabled conditional self-buff ids for that member. */
+    enabledSelfBuffIds: Record<string, string[]>;
+}
+
+/** Saved rotations, keyed by game then rotation id — same shape convention as `loadoutStore`. */
+interface RotationState {
+    /** byGame[gameId][rotationId] = SavedRotation */
+    byGame: Record<string, Record<string, SavedRotation>>;
+    save: (gameId: string, rotation: SavedRotation) => void;
+    remove: (gameId: string, rotationId: string) => void;
+    list: (gameId: string) => SavedRotation[];
+}
+
+export const useRotationStore = create<RotationState>()(
+    persist(
+        (set, get) => ({
+            byGame: {},
+            save: (gameId, rotation) => set((s) => ({
+                byGame: { ...s.byGame, [gameId]: { ...s.byGame[gameId], [rotation.id]: rotation } },
+            })),
+            remove: (gameId, rotationId) => set((s) => {
+                const forGame = { ...s.byGame[gameId] };
+                delete forGame[rotationId];
+                return { byGame: { ...s.byGame, [gameId]: forGame } };
+            }),
+            list: (gameId) => Object.values(get().byGame[gameId] ?? {}),
+        }),
+        { name: 'fm-rotations', storage: createJSONStorage(() => userStorage) }
+    )
+);

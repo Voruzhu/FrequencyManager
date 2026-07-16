@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!--
+  FrequencyManager - Renderer Entry Point
+  ──────────────────────────────────────────────────────────────────────────
+  This page is loaded by Electron in the renderer process. The renderer has
+  NO Node access. All privileged operations go through `window.frequencyManager`,
+  which is exposed by `src/preload/preload.ts`.
+
+  Keep this page minimal; it acts as a host shell. The UI is hydrated by
+  Vite + React once the DOM is ready.
+-->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <!--
+          WHY a strict CSP: Defence in depth. Even if the renderer is somehow
+          compromised, this CSP prevents loading remote scripts and inline
+          JavaScript. Only scripts bundled by us (via the preload bridge) can
+          execute.
+        -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: fm-icon:; connect-src 'self' fm-icon:;" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrequencyManager</title>
+</head>
+
+<body>
+    <div id="root"></div>
+    <!--
+          The preload bridge (preload.ts) is loaded automatically via the
+          BrowserWindow's `preload` option in electron-main.ts. We only need
+          to load our Vite-built renderer script here.
+        -->
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

@@ -1,0 +1,56 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrequencyManager-Windows
+          path: dist/installer/*.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/installer/*.exe
+          body: |
+            ## FrequencyManager Release
+
+            Download the `.exe` below to run FrequencyManager on your Windows PC.
+            
+            **What's included:**
+            - **Portable Executable** — runs directly without installing.
+            - **NSIS Installer** — traditional setup wizard with desktop shortcut.
+
+            **How to use:**
+            1. **Portable:** Download the `Portable` .exe, double-click, and go.
+            2. **Installer:** Download the `Setup` .exe, run it, and follow the wizard.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

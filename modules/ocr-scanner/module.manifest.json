@@ -1,0 +1,50 @@
+{
+    "name": "ocr-scanner",
+    "displayName": "OCR Scanner",
+    "version": "1.0.0",
+    "description": "Scans Wuthering Waves echo screenshots using OCR to extract echo stats and properties",
+    "author": "FrequencyManager Team",
+    "entryPoint": "./src/index.js",
+    "dependencies": {
+        "core": "^1.0.0"
+    },
+    "permissions": [
+        "ocr:scan",
+        "fs:read",
+        "system:clipboard",
+        "data:echoes:write"
+    ],
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "tesseractPath": {
+                "type": "string",
+                "description": "Path to Tesseract executable"
+            },
+            "language": {
+                "type": "string",
+                "default": "eng",
+                "description": "OCR language"
+            },
+            "confidenceThreshold": {
+                "type": "number",
+                "default": 35,
+                "description": "Minimum OCR confidence (%) to accept a scan. Full-screen captures carry non-text visual noise that lowers overall confidence even on accurate reads; the confirm-and-add flow already requires reviewing every field before saving, so this only needs to catch true garbage."
+            },
+            "preprocessing": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable image preprocessing"
+            }
+        }
+    },
+    "tags": [
+        "ocr",
+        "scanner",
+        "echoes",
+        "data-input"
+    ],
+    "minCoreVersion": "1.0.0",
+    "enabledByDefault": true,
+    "icon": "scanner"
+}

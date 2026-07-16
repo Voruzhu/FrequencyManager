@@ -1,0 +1,26 @@
+{
+    "name": "json-importer",
+    "displayName": "JSON Import / Export",
+    "version": "1.0.0",
+    "description": "Generic JSON export/import for game data. Works with any game via the active GameDefinition. Lets players back up and share data before the OCR pipeline is ready.",
+    "author": "FrequencyManager Team",
+    "entryPoint": "./src/index.js",
+    "dependencies": {
+        "core": "^1.0.0",
+        "game-loader": "^1.0.0"
+    },
+    "permissions": [
+        "fs:read",
+        "fs:write"
+    ],
+    "tags": [
+        "data",
+        "import",
+        "export",
+        "json",
+        "portable"
+    ],
+    "minCoreVersion": "1.0.0",
+    "enabledByDefault": true,
+    "icon": "data"
+}

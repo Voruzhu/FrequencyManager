@@ -1,0 +1,70 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "commonjs",
+        "lib": [
+            "ES2022",
+            "DOM"
+        ],
+        "outDir": "./dist",
+        "rootDir": ".",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "baseUrl": ".",
+        "paths": {
+            "@core/*": [
+                "core/*"
+            ],
+            "@modules/*": [
+                "modules/*"
+            ],
+            "@shared/*": [
+                "shared/*"
+            ],
+            "@adapters/*": [
+                "adapters/*"
+            ],
+            "@config/*": [
+                "config/*"
+            ],
+            "@scripts/*": [
+                "scripts/*"
+            ]
+        },
+        "typeRoots": [
+            "./node_modules/@types",
+            "./types"
+        ],
+        "types": [
+            "node",
+            "jest"
+        ]
+    },
+    "include": [
+        "src/**/*",
+        "core/**/*",
+        "modules/**/*",
+        "shared/**/*",
+        "adapters/**/*",
+        "config/**/*",
+        "scripts/**/*",
+        "tests/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "src/renderer",
+        "**/*.test.ts",
+        "**/*.spec.ts"
+    ]
+}

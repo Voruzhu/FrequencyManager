@@ -1,0 +1,63 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: frequency-manager:production
+    container_name: frequency-manager-dashboard
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "-O-", "http://localhost:3000/api/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: frequency-manager:development
+    container_name: frequency-manager-dev
+    environment:
+      - NODE_ENV=development
+      - DISPLAY=${DISPLAY:-:99}
+      - ELECTRON_ENABLE_LOGGING=true
+      - ELECTRON_ENABLE_STACK_DUMPING=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    ports:
+      - "3000:3000"
+      - "5858:5858"
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: frequency-manager:test
+    container_name: frequency-manager-test
+    environment:
+      - NODE_ENV=test
+      - CI=true
+
+  ui-preview:
+    image: nginx:alpine
+    container_name: frequency-manager-ui
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dist/renderer:/usr/share/nginx/html:ro
+      - ./scripts/nginx-ui.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    profiles:
+      - ui
