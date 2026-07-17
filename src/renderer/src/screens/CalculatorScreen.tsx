@@ -24,6 +24,7 @@ import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
+import { getWeaponScaling, refineMul, hasRefinement } from '../data/weaponScaling';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
 const REACTIONS: ReactionType[] = ['none', 'vape-1.5', 'vape-2', 'melt-1.5', 'melt-2', 'aggravate', 'spread'];
@@ -31,10 +32,11 @@ const REACTIONS: ReactionType[] = ['none', 'vape-1.5', 'vape-2', 'melt-1.5', 'me
 let tseq = 0;
 const nextId = () => `t${++tseq}`;
 
-/** Resolves a conditional self-buff's magnitude: `stacksMax` (per-stack rate × user-chosen stack count, default max) takes priority over `scaleOff`. */
-function resolveConditionalValue(sb: { value: number; scaleOff?: unknown; stacksMax?: number }, id: string, buffStacks: Record<string, number>, scaleOffValue: number): number {
-    if (sb.stacksMax != null) return sb.value * (buffStacks[id] ?? sb.stacksMax);
-    return sb.scaleOff ? scaleOffValue : sb.value;
+/** Resolves a conditional self-buff's magnitude: `stacksMax` (per-stack rate × user-chosen stack count, default max) takes priority over `scaleOff`.
+ * `refineMultiplier` scales a weapon passive for its actual refinement rank (1 for character/gear self-buffs, which have no refinement). */
+function resolveConditionalValue(sb: { value: number; scaleOff?: unknown; stacksMax?: number }, id: string, buffStacks: Record<string, number>, scaleOffValue: number, refineMultiplier = 1): number {
+    if (sb.stacksMax != null) return sb.value * refineMultiplier * (buffStacks[id] ?? sb.stacksMax);
+    return (sb.scaleOff ? scaleOffValue : sb.value) * refineMultiplier;
 }
 
 /** Searchable dropdown for picking an optimization target key (skill or stat) — a closed list, but long enough on some characters' full skill roster to need a filter. Mirrors `InventoryWindows.tsx`'s `SetCombobox` pattern. */
@@ -177,6 +179,7 @@ export function CalculatorScreen() {
     // exactly the same assumptions the optimizer would have used.
     const buildConfig = (character: CharacterData) => {
         const weapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
+        const refineMultiplier = weapon ? refineMul(getWeaponScaling(activeGameId, weapon.id), calc.equipped.weaponRefine ?? 1) : 1;
         // Reactions are a Genshin-only mechanic — never apply one for a game
         // that doesn't support them, even if calc.reaction is stale.
         const reaction = data.supportsReactions ? calc.reaction : 'none';
@@ -201,7 +204,7 @@ export function CalculatorScreen() {
         // threshold on its own. `requiredSets` still restricts the search
         // POOL below (only search gear from these sets) — it just no longer
         // fakes the resulting bonus.
-        const config = { targets: calc.targets, buffs: [...calc.buffs, ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
+        const config = { targets: calc.targets, buffs: [...calc.buffs, ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
         return { config, equippedGear };
     };
 
@@ -449,6 +452,8 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     const openWindow = useWindowStore((s) => s.openWindow);
     const weapon = data.weapons.find((w) => w.id === equipped.weaponId);
     const gear = equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
+    const weaponRefine = equipped.weaponRefine ?? 1;
+    const refineMultiplier = weapon ? refineMul(getWeaponScaling(activeGameId, weapon.id), weaponRefine) : 1;
     // Team/kit effects (incl. Outro buffs) — same toggle-on/off model as Party
     // Setup's "Deployed effects" list, surfaced here too so you don't have to
     // open a separate window to see or flip them.
@@ -463,7 +468,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     // actual damage calc — see `setBonusBuffEntries`), so this preview never
     // silently disagrees with the real "calculate current" numbers below.
     const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
-    const allStatBuffs = [...buffs, ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog), ...gearAutoBuffs(gear)];
+    const allStatBuffs = [...buffs, ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog), ...gearAutoBuffs(gear)];
     const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
     // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
     // same reasoning as the set-bonus buffs above, keeps this preview honest.
@@ -549,15 +554,25 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                     {gear.length === 0 && <span className="text-xs text-muted-foreground">Equip gear</span>}
                                 </button>
                             </div>
+                            {weapon && hasRefinement(getWeaponScaling(activeGameId, weapon.id)) && (
+                                <div className="mt-2 flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((r) => (
+                                        <button key={r} onClick={() => useCalcStore.getState().setWeaponRefine(r)}
+                                            className={cn('flex-1 rounded-md border py-1 text-xs font-medium transition-colors', weaponRefine === r ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-surface text-muted-foreground hover:bg-surface-2')}>
+                                            R{r}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         {weapon?.selfBuffs && weapon.selfBuffs.length > 0 && (
                             <div>
-                                <SummaryLabel>Weapon passive <span className="ml-1 font-normal normal-case text-muted-foreground/70">(R1)</span></SummaryLabel>
+                                <SummaryLabel>Weapon passive <span className="ml-1 font-normal normal-case text-muted-foreground/70">(R{weaponRefine})</span></SummaryLabel>
                                 <div className="mt-1 flex flex-wrap gap-1">
                                     {/* Unconditional passives (from the game's addProps) — always applied. */}
                                     {weapon.selfBuffs.map((sb, i) => ({ sb, i })).filter(({ sb }) => sb.conditional === false).map(({ sb, i }) => (
                                         <span key={`auto-${i}`} className="rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs text-foreground" title="Always active (unconditional passive)">
-                                            {sb.label} +{sb.value}
+                                            {sb.label} +{Math.round(sb.value * refineMultiplier * 10) / 10}
                                         </span>
                                     ))}
                                     {/* Conditional passives — opt-in toggles. `appliesTo` scopes the buff to specific attack types. */}
@@ -565,7 +580,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                         const id = selfBuffId(weapon.id, sb, i);
                                         const on = hasBuff(id);
                                         const scaleOffValue = sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, data.statCatalog) : 0;
-                                        const value = resolveConditionalValue(sb, id, buffStacks, scaleOffValue);
+                                        const value = resolveConditionalValue(sb, id, buffStacks, scaleOffValue, refineMultiplier);
                                         return (
                                             <span key={id} className="inline-flex items-center gap-1">
                                                 <button
@@ -576,7 +591,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                                     {on ? '✓ ' : '+ '}{sb.label} +{value}
                                                 </button>
                                                 {sb.stacksMax != null && (
-                                                    <BuffStackStepper id={id} max={sb.stacksMax} buffStacks={buffStacks} setBuffStacks={setBuffStacks} perStack={sb.value} on={on} updateBuffValue={updateBuffValue} />
+                                                    <BuffStackStepper id={id} max={sb.stacksMax} buffStacks={buffStacks} setBuffStacks={setBuffStacks} perStack={sb.value * refineMultiplier} on={on} updateBuffValue={updateBuffValue} />
                                                 )}
                                             </span>
                                         );

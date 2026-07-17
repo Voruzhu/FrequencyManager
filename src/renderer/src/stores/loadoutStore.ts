@@ -5,6 +5,10 @@ import { userStorage } from '../lib/userStorage';
 /** What a character has equipped: a weapon + up to maxGear pieces of gear. */
 export interface CharacterLoadout {
     weaponId?: string;
+    /** The equipped weapon's refinement rank (R1-R5). Undefined means R1 — the
+     * shipped catalog `selfBuffs` values ARE the R1 baseline, so absent is a
+     * safe default, not a missing-data marker. */
+    weaponRefine?: number;
     gearIds: string[];
 }
 

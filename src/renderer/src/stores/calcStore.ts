@@ -21,7 +21,7 @@ export const MAX_SKILL_LEVEL = 10;
  */
 interface CalcState {
     characterId: string;
-    equipped: { weaponId?: string; gearIds: string[] };
+    equipped: { weaponId?: string; weaponRefine?: number; gearIds: string[] };
     buffs: Buff[];
     targets: Target[];
     critMode: CritMode;
@@ -80,6 +80,7 @@ interface CalcState {
     equipGear: (id: string) => void;
     unequipGear: (id: string) => void;
     equipWeapon: (id: string) => void;
+    setWeaponRefine: (refine: number) => void;
     equipLoadout: (gearIds: string[]) => void;
     isEquipped: (id: string) => boolean;
     addBuff: (b: Buff) => void;
@@ -139,7 +140,7 @@ export const useCalcStore = create<CalcState>()(
         const loadout = useLoadoutStore.getState().getLoadout(gameId, c.id);
         set({
             characterId: c.id,
-            equipped: { weaponId: loadout.weaponId, gearIds: [...loadout.gearIds] },
+            equipped: { weaponId: loadout.weaponId, weaponRefine: loadout.weaponRefine, gearIds: [...loadout.gearIds] },
             buffs: [],
             targets: [],
             critMode: 'average',
@@ -181,7 +182,15 @@ export const useCalcStore = create<CalcState>()(
         }),
     equipWeapon: (id) =>
         set((s) => {
-            const equipped = { ...s.equipped, weaponId: id };
+            // A newly-equipped weapon starts at R1 — it must not inherit
+            // whatever refine the PREVIOUSLY equipped weapon was set to.
+            const equipped = { ...s.equipped, weaponId: id, weaponRefine: 1 };
+            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
+            return { equipped };
+        }),
+    setWeaponRefine: (refine) =>
+        set((s) => {
+            const equipped = { ...s.equipped, weaponRefine: Math.min(Math.max(Math.round(refine), 1), 5) };
             useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
             return { equipped };
         }),

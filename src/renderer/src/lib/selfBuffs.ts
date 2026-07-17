@@ -43,13 +43,15 @@ export function resolveSelfScaleOff(c: CharacterData, gear: GearData[], weapon: 
 export const selfBuffId = (weaponId: string, sb: { stat: string; appliesTo?: string[] }, i: number) =>
     `wpn-${weaponId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
-/** Unconditional weapon-passive self-buffs (from the game's addProps) — always applied. `appliesTo` scopes a DMG% buff to specific attack types. */
-export function weaponAutoBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}) {
+/** Unconditional weapon-passive self-buffs (from the game's addProps) — always applied. `appliesTo` scopes a DMG% buff to specific attack types.
+ * `refineMultiplier` scales the passive's magnitude for the weapon's actual refinement rank (R1 = 1, see `weaponScaling.ts`'s `refineMul`) — the
+ * shipped `sb.value`/`scaleOff` result is always the R1 baseline. */
+export function weaponAutoBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}, refineMultiplier = 1) {
     if (!weapon || !c) return [];
     return (weapon.selfBuffs ?? [])
         .map((sb, i) => ({ sb, i }))
         .filter(({ sb }) => sb.conditional === false)
-        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, value: resolveStackedValue(id, { value: sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
+        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, value: resolveStackedValue(id, { value: (sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value) * refineMultiplier, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
 }
 
 /** Stable per-character-passive-selfBuff id. */
@@ -83,13 +85,13 @@ export function constellationAutoBuffs(character: CharacterData | null, sequence
     return out;
 }
 
-/** Conditional (opt-in) weapon-passive self-buffs — mirrors `weaponAutoBuffs` but for the toggle-chip candidates instead of the always-on ones. */
-export function conditionalWeaponBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; label?: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}) {
+/** Conditional (opt-in) weapon-passive self-buffs — mirrors `weaponAutoBuffs` but for the toggle-chip candidates instead of the always-on ones. `refineMultiplier` — see `weaponAutoBuffs`. */
+export function conditionalWeaponBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; label?: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}, refineMultiplier = 1) {
     if (!weapon || !c) return [];
     return (weapon.selfBuffs ?? [])
         .map((sb, i) => ({ sb, i }))
         .filter(({ sb }) => sb.conditional !== false)
-        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
+        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: (sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value) * refineMultiplier, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
 }
 
 /** Conditional (opt-in) character passive-talent self-buffs — mirrors `characterAutoBuffs`. */

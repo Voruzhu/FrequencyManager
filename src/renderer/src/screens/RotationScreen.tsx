@@ -14,8 +14,14 @@ import { useGameData } from '../data/gameData';
 import { resolveParty, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
+import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import type { FieldSpec, RotationStepSpec } from '../types';
 import type { BuffEntry, SkillDef } from '@shared/types/game-bundle';
+
+/** This member's own weapon-passive refine multiplier (R1 = 1) — see `weaponAutoBuffs`. */
+function memberRefineMultiplier(member: PartyMemberResolved, gameId: string): number {
+    return member.weapon ? refineMul(getWeaponScaling(gameId, member.weapon.id), member.weaponRefine ?? 1) : 1;
+}
 
 /** Coarse action-type bucket for the timeline card's colored badge only — the
  * actual damage calculation always looks up the real SkillDef by `skill.id`
@@ -28,9 +34,9 @@ function coarseSkillType(rawType: string): 'basic' | 'skill' | 'ultimate' {
 }
 
 /** All conditional (opt-in) self-buffs a party member could toggle on — weapon passive, character passive-talent, and unlocked Constellation/Sequence. */
-function conditionalBuffCandidates(member: PartyMemberResolved, catalog: Parameters<typeof computeBuildStats>[4]) {
+function conditionalBuffCandidates(member: PartyMemberResolved, catalog: Parameters<typeof computeBuildStats>[4], gameId: string) {
     return [
-        ...conditionalWeaponBuffs(member.weapon, member.character, member.gear, catalog),
+        ...conditionalWeaponBuffs(member.weapon, member.character, member.gear, catalog, {}, memberRefineMultiplier(member, gameId)),
         ...conditionalCharacterBuffs(member.character, member.gear, member.weapon, catalog),
         ...conditionalConstellationBuffs(member.character, member.sequence ?? 0, member.gear, member.weapon, catalog),
         ...conditionalGearBuffs(member.gear),
@@ -55,6 +61,7 @@ function computeStepDamage(
     enemy: SkillContext['enemy'],
     reaction: SkillContext['reaction'],
     catalog: Parameters<typeof computeBuildStats>[4],
+    gameId: string,
 ): { skill?: SkillDef; damage: number } {
     if (!member || !step.skillId) return { damage: 0 };
     const skill = member.character.skills.find((s) => s.id === step.skillId);
@@ -62,7 +69,7 @@ function computeStepDamage(
 
     const buffs = [
         ...teamBuffs,
-        ...weaponAutoBuffs(member.weapon, member.character, member.gear, catalog),
+        ...weaponAutoBuffs(member.weapon, member.character, member.gear, catalog, {}, memberRefineMultiplier(member, gameId)),
         ...constellationAutoBuffs(member.character, member.sequence ?? 0, member.gear, member.weapon, catalog),
         ...characterAutoBuffs(member.character, member.gear, member.weapon, catalog),
         ...gearAutoBuffs(member.gear),
@@ -126,7 +133,7 @@ export function RotationScreen() {
             const gear = loadout.gearIds.map((gid) => owned.gear.find((g) => g.id === gid)).filter(Boolean) as typeof owned.gear;
             const weapon = loadout.weaponId ? data.weapons.find((w) => w.id === loadout.weaponId) : undefined;
             const sequence = useSequenceStore.getState().getSequence(activeGameId, id);
-            return { id, character, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, character.name), weapon, sequence };
+            return { id, character, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, character.name), weapon, weaponRefine: loadout.weaponRefine, sequence };
         }).filter((m): m is PartyMemberResolved => m != null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [steps, partyMembers, data, activeGameId, owned.gear]);
@@ -204,11 +211,11 @@ export function RotationScreen() {
     const results: StepResult[] = useMemo(() => steps.map((step, index) => {
         const member = members.find((m) => m.character.id === step.characterId);
         const enabledIds = new Set(enabledSelfBuffIds[step.characterId] ?? []);
-        const enabledSelfBuffs = member && enabledIds.size > 0 ? conditionalBuffCandidates(member, data.statCatalog).filter((b) => enabledIds.has(b.id)) : [];
-        const { skill, damage } = computeStepDamage(step, member, enabledBuffs, enabledSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog);
+        const enabledSelfBuffs = member && enabledIds.size > 0 ? conditionalBuffCandidates(member, data.statCatalog, activeGameId).filter((b) => enabledIds.has(b.id)) : [];
+        const { skill, damage } = computeStepDamage(step, member, enabledBuffs, enabledSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
         return { step, index, member, skill, damage };
          
-    }), [steps, members, enabledBuffs, enabledSelfBuffIds, calc.critMode, calc.enemy, reaction, data.statCatalog]);
+    }), [steps, members, enabledBuffs, enabledSelfBuffIds, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
 
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);
     const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -271,7 +278,7 @@ export function RotationScreen() {
                         <CardContent className="space-y-4">
                             <p className="text-xs text-muted-foreground">Off by default, same convention as the Calculator — toggle on any that are realistically active for this rotation. Applies to every step for that character.</p>
                             {members.map((m) => {
-                                const candidates = conditionalBuffCandidates(m, data.statCatalog);
+                                const candidates = conditionalBuffCandidates(m, data.statCatalog, activeGameId);
                                 if (candidates.length === 0) return null;
                                 const enabled = new Set(enabledSelfBuffIds[m.character.id] ?? []);
                                 return (

@@ -7,6 +7,7 @@
  */
 import type { BuffEntry, CharacterEntry, GameBundle, GearEntry, StatDef, WeaponEntry } from '@shared/types/game-bundle';
 import { computeBuildStats, activeSetBonuses, type ActiveSetBonus } from '@shared/calc/optimizer';
+import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 
 export type EffectCategory = 'kit' | 'set' | 'weapon';
 
@@ -45,6 +46,8 @@ export interface PartyMemberResolved {
     setBonuses?: ActiveSetBonus[];
     /** Weapon the member wields (drives the weapon team-buff effect + own stats). */
     weapon?: WeaponEntry;
+    /** The wielded weapon's refinement rank (R1-R5) — undefined/1 means R1, the baseline `weapon.buffs`/`selfBuffs` values already reflect. */
+    weaponRefine?: number;
     /**
      * Constellation/Sequence level (0-6) — persisted per-character via
      * `sequenceStore` for BOTH the active character (`calcStore.sequence`,
@@ -102,7 +105,7 @@ function resolveBuffValue<T extends { value: number; scaleOff?: BuffEntry['scale
 }
 
 /** All available party effects from the given members (kit + set). */
-export function partyEffects(data: Pick<GameBundle, 'buffs' | 'setBonuses' | 'statCatalog'>, members: PartyMemberResolved[]): PartyEffect[] {
+export function partyEffects(data: Pick<GameBundle, 'id' | 'buffs' | 'setBonuses' | 'statCatalog'>, members: PartyMemberResolved[]): PartyEffect[] {
     const effects: PartyEffect[] = [];
     for (const m of members) {
         // Kit buffs: matched to the character by display name (that's how the
@@ -132,13 +135,16 @@ export function partyEffects(data: Pick<GameBundle, 'buffs' | 'setBonuses' | 'st
             });
         }
         // Team buff from the member's weapon passive (support weapons only).
+        // `buffs` values are the R1 baseline (same convention as `selfBuffs` —
+        // see `weaponAutoBuffs`), so scale by this wielder's own refine rank.
         if (m.weapon?.buffs && m.weapon.buffs.length > 0) {
+            const refineMultiplier = refineMul(getWeaponScaling(data.id, m.weapon.id), m.weaponRefine ?? 1);
             effects.push({
                 id: `weapon-${m.id}-${m.weapon.id}`,
                 name: m.weapon.name,
                 source: m.character.name,
                 category: 'weapon',
-                buffs: m.weapon.buffs.map((b) => ({ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) })),
+                buffs: m.weapon.buffs.map((b) => ({ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) * refineMultiplier })),
                 description: m.weapon.passive,
             });
         }
@@ -190,6 +196,7 @@ export function enabledPartyBuffs(effects: PartyEffect[], disabled: string[], ta
 /** A character's equipped weapon + gear, as looked up from wherever loadouts live. */
 export interface ResolvedLoadout {
     weaponId?: string;
+    weaponRefine?: number;
     gearIds: string[];
 }
 
@@ -203,7 +210,7 @@ export interface ResolvedLoadout {
  * inspecting them directly would show), via `ownedGear` for the gear pieces.
  */
 export function resolveParty(
-    data: Pick<GameBundle, 'characters' | 'weapons' | 'buffs' | 'setBonuses' | 'statCatalog'>,
+    data: Pick<GameBundle, 'id' | 'characters' | 'weapons' | 'buffs' | 'setBonuses' | 'statCatalog'>,
     party: { teammates: Array<{ id: string; characterId: string }>; disabled: string[] },
     activeChar: CharacterEntry,
     equippedGear: GearEntry[],
@@ -218,15 +225,19 @@ export function resolveParty(
     targetStatuses?: Record<string, boolean>,
 ): { members: PartyMemberResolved[]; effects: PartyEffect[]; enabledBuffs: BuffEntry[] } {
     const weaponOf = (id?: string) => (id ? data.weapons.find((w) => w.id === id) : undefined);
+    // The active character's own weaponRefine also lives in loadoutStore
+    // (calcStore mirrors every equip mutation into it) — reuse `getLoadout`
+    // instead of adding a parallel param that could drift out of sync.
+    const activeWeaponRefine = getLoadout(activeChar.id).weaponRefine;
     const members: PartyMemberResolved[] = [
-        { id: 'active', character: activeChar, gear: equippedGear, setBonuses: activeSetBonuses(equippedGear, data.setBonuses, activeChar.name), weapon: weaponOf(activeWeaponId), sequence: activeSequence, isActive: true },
+        { id: 'active', character: activeChar, gear: equippedGear, setBonuses: activeSetBonuses(equippedGear, data.setBonuses, activeChar.name), weapon: weaponOf(activeWeaponId), weaponRefine: activeWeaponRefine, sequence: activeSequence, isActive: true },
     ];
     for (const t of party.teammates) {
         const c = data.characters.find((x) => x.id === t.characterId);
         if (!c) continue;
         const loadout = getLoadout(t.characterId);
         const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
-        members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), sequence: getSequence?.(t.characterId) });
+        members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, sequence: getSequence?.(t.characterId) });
     }
     const effects = partyEffects(data, members);
     return { members, effects, enabledBuffs: enabledPartyBuffs(effects, party.disabled, targetStatuses) };

@@ -82,7 +82,7 @@ export function InspectorPanel() {
 
 function ItemView({ item }: { item: SelectedItem }) {
     if (item.kind === 'character') return <CharacterView c={item} />;
-    if (item.kind === 'weapon') return <WeaponView w={item} />;
+    if (item.kind === 'weapon') return <WeaponView key={item.id} w={item} />;
     return <GearView g={item} />;
 }
 
@@ -202,7 +202,18 @@ function WeaponView({ w }: { w: WeaponData }) {
     const showItem = useSelectionStore((s) => s.showItem);
     const [query, setQuery] = useState('');
     const [level, setLevel] = useState(90);
-    const [refine, setRefine] = useState(1);
+    // This weapon's refinement is a REAL, persisted setting only when it's the
+    // one actually equipped on the active calc character (via calcStore, mirrored
+    // into loadoutStore) — that's the only case where a rank has anywhere to live.
+    // Inspecting any other weapon (e.g. browsing Inventory) is preview-only: local
+    // state, always starting at R1 (the component remounts per-weapon via `key`
+    // in `ItemView`, so this never leaks the last-inspected weapon's rank).
+    const calcCharId = useCalcStore((s) => s.characterId);
+    const calcEquipped = useCalcStore((s) => s.equipped);
+    const isEquippedOnCalcChar = !!calcCharId && calcEquipped.weaponId === w.id;
+    const [localRefine, setLocalRefine] = useState(1);
+    const refine = isEquippedOnCalcChar ? (calcEquipped.weaponRefine ?? 1) : localRefine;
+    const setRefine = isEquippedOnCalcChar ? (r: number) => useCalcStore.getState().setWeaponRefine(r) : setLocalRefine;
 
     const sc = getWeaponScaling(activeGameId, w.id);
     const baseAtk = atkAtLevel(sc, w.baseAtk, level);
