@@ -12,7 +12,7 @@ Game data (skills, multiplier tables, kit buffs, weapons, sets) is
 hand-curated and cross-checked against multiple community sources — not
 scraped automatically — so accuracy is a per-game, ongoing effort.
 
-### Wuthering Waves — 55/55 characters, ~95% accurate
+### Wuthering Waves — 56/56 characters, ~95% accurate
 
 Full roster present with real 10-level multiplier tables, kit/weapon/Sequence
 buffs, and Sonata Set bonuses. Went through a full-roster re-audit
@@ -24,9 +24,14 @@ buffs/moves, wrong Sonata Set values — and added engine support for
 mechanics that had no home before (DEF-ignore/RES-shred, per-attack-type
 scoped buffs, ER-scaling buffs).
 
-Known remaining gap: a small number of effects need engine primitives that
+Known remaining gaps: a small number of effects need engine primitives that
 don't exist yet (shields, element-restricted enemy RES tracking beyond the
 generic single value — see [Upcoming features](#-upcoming-features) below).
+Yangyang: Xuanling (added 2026-07-17, the v3.5 Phase 1 banner character) is
+missing her Forte Circuit and 2nd Inherent Skill specifically — both fell
+back to generic combat-action defaults because their raw source data didn't
+separate cleanly into named moves; everything else about her kit is real,
+sourced data.
 
 ### Genshin Impact — 121/121 characters, base data complete, full re-audit still ahead
 
