@@ -2479,4 +2479,61 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'introThunderousFury', name: 'Intro Skill: Thunderous Fury', type: 'Intro Skill', scaling: 'atk', element: 'Electro',
             multipliers: [0.84, 0.909, 0.9779, 1.0744, 1.1433, 1.2224, 1.3325, 1.4429, 1.553, 1.6703] },
 ],
+    // Added 2026-07-17 from api.encore.moe/en/character/1610 (v3.5 Phase 1
+    // banner character). Her kit's damage-instance IDs were reconstructed
+    // from the API's internal `1610-XXX-YYY` DamageList id scheme (XXX = move
+    // group, YYY = sub-hit within that move) cross-checked against
+    // SkillDescribe's stage names — each named stage/move here is the SUM of
+    // its sub-hits, matching the "one entry per named stage" convention used
+    // elsewhere in this file. NOT yet included: her Forte Circuit ("The Way
+    // of Ten Thousand Voices", 22 raw damage entries whose SkillDescribe text
+    // didn't cleanly separate into distinct named moves) and her 2nd Inherent
+    // Skill's Windbound/"Feather Release: Xuanling" summon mechanic — both
+    // are real but too structurally ambiguous from the raw API payload alone
+    // to author accurately; flagged for a follow-up pass once community
+    // guides solidify. Until then she uses the generic game-wide fallback
+    // for Forte damage specifically (her Basic/Skill/Liberation/Intro/Outro
+    // below are real, sourced values).
+    'yangyang-xuanling': [
+        { id: 'basicAzure1', name: "Basic Attack - Azure Sword Stance (Stage 1)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.24, 0.2597, 0.2794, 0.307, 0.3266, 0.3493, 0.3808, 0.4122, 0.4437, 0.4772] },
+        { id: 'basicAzure2', name: "Basic Attack - Azure Sword Stance (Stage 2)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.5065, 0.548, 0.5895, 0.6478, 0.6893, 0.737, 0.8034, 0.8699, 0.9364, 1.0069] },
+        { id: 'basicAzure3', name: "Basic Attack - Azure Sword Stance (Stage 3)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.5065, 0.548, 0.5896, 0.6477, 0.6892, 0.737, 0.8034, 0.8699, 0.9363, 1.0069] },
+        { id: 'basicAzure4', name: "Basic Attack - Azure Sword Stance (Stage 4)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.9337, 1.0104, 1.0868, 1.194, 1.2706, 1.3586, 1.481, 1.6036, 1.726, 1.8563] },
+        { id: 'midairAzure', name: "Mid-air Attack - Azure Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.496, 0.5367, 0.5774, 0.6343, 0.675, 0.7218, 0.7869, 0.8519, 0.917, 0.9861] },
+        { id: 'basicFeather1', name: "Basic Attack - Feather Sword Stance (Stage 1)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.4, 0.4328, 0.4656, 0.5116, 0.5444, 0.5822, 0.6346, 0.687, 0.7396, 0.7954] },
+        { id: 'basicFeather2', name: "Basic Attack - Feather Sword Stance (Stage 2)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.1688, 0.1827, 0.1965, 0.2159, 0.2298, 0.2457, 0.2678, 0.29, 0.3121, 0.3356] },
+        { id: 'basicFeather3', name: "Basic Attack - Feather Sword Stance (Stage 3)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.299, 0.3236, 0.348, 0.3823, 0.4068, 0.4351, 0.4743, 0.5135, 0.5527, 0.5943] },
+        { id: 'basicFeather4', name: "Basic Attack - Feather Sword Stance (Stage 4)", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [1.2, 1.2986, 1.397, 1.5347, 1.633, 1.7463, 1.9037, 2.061, 2.2186, 2.3859] },
+        { id: 'midairFeather', name: "Mid-air Attack - Feather Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.496, 0.5367, 0.5774, 0.6343, 0.675, 0.7218, 0.7869, 0.8519, 0.917, 0.9861] },
+        { id: 'dodgeCounterAzure', name: "Dodge Counter - Azure Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.9865, 1.0674, 1.1484, 1.2615, 1.3424, 1.4354, 1.5649, 1.6943, 1.8238, 1.9613] },
+        { id: 'dodgeCounterFeather', name: "Dodge Counter - Feather Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.3288, 0.3558, 0.3828, 0.4205, 0.4475, 0.4785, 0.5216, 0.5648, 0.6079, 0.6537] },
+        { id: 'skillAzureFlow', name: "Resonance Skill - Sword Stance Flow: Azure", type: 'Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.1688, 0.1827, 0.1965, 0.2159, 0.2298, 0.2457, 0.2678, 0.29, 0.3121, 0.3356] },
+        { id: 'skillFeatherFlow', name: "Resonance Skill - Sword Stance Flow: Feather", type: 'Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.3519, 0.3807, 0.4096, 0.45, 0.4788, 0.512, 0.5582, 0.6043, 0.6505, 0.6995] },
+        { id: 'skillBonus', name: "Resonance Skill - Wraith of Sound", type: 'Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.0782, 0.0846, 0.0911, 0.1, 0.1064, 0.1138, 0.1241, 0.1343, 0.1446, 0.1555] },
+        { id: 'ult', name: "Resonance Liberation - Hush of a Thousand Voices", type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+            multipliers: [10, 10.82, 11.64, 12.788, 13.608, 14.551, 15.863, 17.175, 18.487, 19.881] },
+        { id: 'ultBonus', name: "Resonance Liberation - Shadow Copy", type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+            multipliers: [1.7, 1.8394, 1.9788, 2.174, 2.3134, 2.4737, 2.6968, 2.9198, 3.1428, 3.3798] },
+        { id: 'introAzure', name: "Intro Skill: Skybound Feather (Azure)", type: 'Intro Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.5864, 0.6345, 0.6826, 0.7499, 0.798, 0.8533, 0.9303, 1.0072, 1.0841, 1.1659] },
+        { id: 'introFeather', name: "Intro Skill: Skybound Feather (Feather)", type: 'Intro Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [0.5864, 0.6345, 0.6826, 0.7499, 0.798, 0.8533, 0.9303, 1.0072, 1.0841, 1.1659] },
+        { id: 'outro', name: 'Outro Skill: As the Wind Wills', type: 'Outro Skill', scaling: 'atk', element: 'Havoc',
+            multipliers: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0] },
+],
 };

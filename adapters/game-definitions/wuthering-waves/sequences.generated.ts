@@ -539,6 +539,20 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         { level: 5, name: "Principle of Change", description: "Crit. DMG is increased by 20% while in Apex Resonance.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":20,"conditional":true}] },
         { level: 6, name: "Mind's Depths in a Casket", description: "The DMG Multiplier of Resonance Skill Thrum of All Sounds and Thunder Bane is increased by 20%." },
     ],
+    // yangyang-xuanling ADDED 2026-07-17 — a wholly-new resonator this
+    // datamine predates; sourced from api.encore.moe/en/character/1610's
+    // ResonantChain instead (same fallback already used for rover-spectro
+    // above). Levels 1/5/6 involve summon/revival mechanics too complex to
+    // reduce to a flat stat buff — left description-only, same convention
+    // used throughout this file for non-parseable effects.
+    "yangyang-xuanling": [
+        { level: 1, name: "At the Wind's Breath, the Blossoms Wake", description: "Casting Resonance Skill - Sword Stance Flow: Azure or Feather summons a Shadow of Xuanling: Unfaltering to attack the target, dealing Havoc DMG equal to 337.98% of Yangyang: Xuanling's ATK (considered Heavy Attack DMG) and Stagnates nearby enemies." },
+        { level: 2, name: "River Carries Her Song Away", description: "The DMG dealt by Heavy Attack - Azure/Feather Sword Stance, Mid-air Attack - Feather Fall, Basic Attack - Havoc in Bloom, and Dodge Counter - Havoc in Bloom is increased by 100%.", selfBuffs: [{"stat":"dmgBonus","label":"Heavy Attack DMG","value":100,"conditional":false,"appliesTo":["heavy"]}] },
+        { level: 3, name: "My Grief Follows You into the Clouds", description: "The DMG dealt via Resonance Liberation Hush of a Thousand Voices is Amplified by 175%. Casting Intro Skill/Resonance Skill also raises the max Havoc Bane stacks on nearby targets by 3.", selfBuffs: [{"stat":"dmgBonus","label":"Liberation DMG","value":175,"conditional":false,"appliesTo":["ult"]}] },
+        { level: 4, name: "Across the Miles, a Letter and My Longing", description: "When casting Intro Skill or Resonance Skill, the ATK of Resonators in the team is increased by 20% for 20s.", buffs: [{"stat":"atkPct","label":"ATK%","value":20}] },
+        { level: 5, name: "Take Wing. Take Wing.", description: "When Yangyang: Xuanling takes a fatal blow, she will not be downed, but instead recover 50% Max HP and become immune to DMG/interruption for 3s. Triggers once every 10 min." },
+        { level: 6, name: "Let the Azure Keep Its Light", description: "After inflicting Havoc Bane, gain Voice Flux for 30s, increasing Heavy Attack DMG by 40%. Casting Resonance Skill grants Still as Withered Wood: while active, nearby team Coordinated Attacks (Chafe/Burst/Flare/Erosion/Frazzle/Bane) summon a guaranteed-crit Shadow of Xuanling dealing 337.98% ATK Havoc DMG (Heavy Attack DMG), up to 5 times." },
+    ],
 };
 
 export default SEQUENCE_OVERRIDES;

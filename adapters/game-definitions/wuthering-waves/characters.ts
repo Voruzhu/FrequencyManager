@@ -91,6 +91,9 @@ export const CHARACTERS: WUCharacter[] = [
     { id: 'rover-aero', name: "Rover (Aero)", element: 'Aero', weapon: 'Sword', baseAtk: 438, baseHp: 10775, baseDef: 1137, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/rover-aero.webp' },
     { id: 'rover-havoc', name: "Rover (Havoc)", element: 'Havoc', weapon: 'Sword', baseAtk: 413, baseHp: 10825, baseDef: 1259, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/rover-havoc.webp' },
     { id: 'rover-electro', name: "Rover (Electro)", element: 'Electro', weapon: 'Sword', baseAtk: 438, baseHp: 10775, baseDef: 1137, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/rover-electro.webp' },
+    // Added 2026-07-17, sourced from api.encore.moe/en/character/1610 — the
+    // current v3.5 Phase 1 banner character (rate-ups end 2026-07-30).
+    { id: 'yangyang-xuanling', name: "Yangyang: Xuanling", element: 'Havoc', weapon: 'Sword', baseAtk: 425, baseHp: 11025, baseDef: 1149, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/yangyang-xuanling.webp' },
 ];
 
 export function getCharacter(id: string): WUCharacter | undefined {

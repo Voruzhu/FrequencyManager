@@ -67,6 +67,13 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "buling": [{"stat":"healingBonus","label":"Healing Bonus +25% vs targets <50% HP (Inherent I)","value":25,"conditional":true}],
     "galbrena": [{"stat":"elemDmg","label":"DMG Amplified +20% (max 4 stacks) (Inherent I)","value":20,"conditional":true}],
     "chisa": [{"stat":"elemDmg","label":"Havoc DMG Bonus +20%, 12s after Intro Skill/Liberation (Inherent II)","value":20,"conditional":true},{"stat":"healingBonus","label":"Healing Bonus +20%, 12s after Intro Skill/Liberation (Inherent II)","value":20,"conditional":true}],
+    // ADDED 2026-07-17 — a wholly-new resonator this generator predates
+    // (v3.5 Phase 1). Inherent I "Unbroken Vow": each Havoc Bane stack on the
+    // target Amplifies DMG by 10% (stacks 1-3) then 12% (stacks 4-6), max
+    // +66% at 6 stacks — api.encore.moe/en/character/1610. Modeled as a flat
+    // assume-max-stacks toggle, same convention as Cartethyia's similar
+    // stacked-DMG-Amp Inherent above.
+    "yangyang-xuanling": [{"stat":"elemDmg","label":"DMG Amplified +66% at 6 Havoc Bane stacks on target (Inherent I)","value":66,"conditional":true}],
     "qiuyuan": [{"stat":"dmgBonus","label":"Heavy Atk DMG +50%, after entering Inksplash of Mind (Inherent I)","value":50,"conditional":true,"appliesTo":["heavy"]},{"stat":"atkPct","label":"ATK +10%, 20s on Flowing Panacea consume (Inherent II)","value":10,"conditional":true}],
     "lynae": [{"stat":"elemDmg","label":"Spectro DMG Bonus +25%, 9s after Intro Skill (Inherent II)","value":25,"conditional":true}],
     // Base-kit self-scaling on her own Resonance Liberation "Critical

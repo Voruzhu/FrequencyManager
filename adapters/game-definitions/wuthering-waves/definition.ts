@@ -381,6 +381,7 @@ export const wutheringWaves: GameDefinition = {
             { value: 'rover-aero', label: "Rover (Aero)" },
             { value: 'rover-havoc', label: "Rover (Havoc)" },
             { value: 'rover-electro', label: "Rover (Electro)" },
+            { value: 'yangyang-xuanling', label: "Yangyang: Xuanling" },
         ],
         setNames: [
             'Freezing Frost',

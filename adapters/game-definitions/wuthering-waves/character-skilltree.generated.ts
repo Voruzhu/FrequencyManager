@@ -73,4 +73,8 @@ export const CHARACTER_SKILL_TREE_BUFFS: Record<string, Array<{ stat: string; la
     "rover-aero": [{"stat":"healingBonus","label":"Skill Tree: Healing Bonus+12% (fully invested)","value":12,"conditional":true}, {"stat":"atkPct","label":"Skill Tree: ATK+12% (fully invested)","value":12,"conditional":true}],
     "rover-havoc": [{"stat":"atkPct","label":"Skill Tree: ATK+12% (fully invested)","value":12,"conditional":true}, {"stat":"elemDmg","label":"Skill Tree: Elemental DMG+12% (fully invested)","value":12,"conditional":true}],
     "rover-electro": [{"stat":"critRate","label":"Skill Tree: Crit Rate+8% (fully invested)","value":8,"conditional":true}, {"stat":"atkPct","label":"Skill Tree: ATK+12% (fully invested)","value":12,"conditional":true}],
+    // ADDED 2026-07-17 from api.encore.moe/en/character/1610's SkillTree
+    // nodes (8 nodes summing to Crit Rate +8% / ATK% +12%, matching this
+    // file's regeneration methodology).
+    "yangyang-xuanling": [{"stat":"critRate","label":"Skill Tree: Crit Rate+8% (fully invested)","value":8,"conditional":true}, {"stat":"atkPct","label":"Skill Tree: ATK+12% (fully invested)","value":12,"conditional":true}],
 };
