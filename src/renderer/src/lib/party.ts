@@ -6,7 +6,7 @@
  * optimizer/rotation buff pipeline unchanged.
  */
 import type { BuffEntry, CharacterEntry, GameBundle, GearEntry, StatDef, WeaponEntry } from '@shared/types/game-bundle';
-import { computeBuildStats } from '@shared/calc/optimizer';
+import { computeBuildStats, activeSetBonuses, type ActiveSetBonus } from '@shared/calc/optimizer';
 
 export type EffectCategory = 'kit' | 'set' | 'weapon';
 
@@ -39,8 +39,10 @@ export interface PartyMemberResolved {
     character: CharacterEntry;
     /** Equipped gear pieces (this member's own loadout) — usable with computeBuildStats. */
     gear: GearEntry[];
-    /** Set name the member is running (drives the set-bonus effect). */
-    setName?: string;
+    /** Every set-bonus tier this member's REAL equipped gear activates — a
+     * build can run 2 different sets at their 2pc tier simultaneously (5
+     * slots split 2+2+1), not just one, see `activeSetBonuses`. */
+    setBonuses?: ActiveSetBonus[];
     /** Weapon the member wields (drives the weapon team-buff effect + own stats). */
     weapon?: WeaponEntry;
     /**
@@ -57,42 +59,17 @@ export interface PartyMemberResolved {
 }
 
 /**
- * Which set (if any) the active character's equipped gear qualifies for —
- * a set whose piece count is met by the equipped gear.
- *
- * Real WuWa mechanic (confirmed 2026-07): two equipped echoes with the SAME
- * specific identity (e.g. two "Thundering Mephis") only count ONCE toward
- * that set's piece threshold — each still contributes its own individually
- * rolled stats (`computeBuildStats` reads `equippedGear` directly, unaffected
- * by this function), just not a double count toward 2pc/5pc. A "Nightmare"
- * variant counts as a genuinely separate echo (different identity, doesn't
- * dedupe against its base form); an equipped skin ("Phantom: ") is the SAME
- * underlying echo and already collapses to the same `name` upstream. Only
- * applies when the specific identity is actually known (`g.name` distinct
- * from `g.setName` — see `WW_ECHO_CATALOG`); gear with no specific identity
- * resolved (`g.name === g.setName`, the common case for hand-added/legacy
- * entries) each count individually as before, since two such pieces aren't
- * confirmed to be the same real echo.
+ * The single "best" active set-bonus name for simple display purposes (a
+ * full-tier set if one is active, else the first 2pc-tier set found) — most
+ * callers just want one label. For anything that needs to know about EVERY
+ * active tier (a build can run 2 different sets at 2pc simultaneously — 5
+ * slots split 2+2+1 — a real, common WuWa build pattern), use
+ * `activeSetBonuses` directly instead; this is a thin convenience wrapper
+ * over it, kept for callers that only ever showed one set name.
  */
 export function activeSetName(equippedGear: GearEntry[], data: Pick<GameBundle, 'setBonuses'>, characterName?: string): string | undefined {
-    const seenIdentity = new Set<string>();
-    const counts = new Map<string, number>();
-    for (const g of equippedGear) {
-        if (g.name !== g.setName) {
-            const identityKey = `${g.setName}::${g.name}`;
-            if (seenIdentity.has(identityKey)) continue;
-            seenIdentity.add(identityKey);
-        }
-        counts.set(g.setName, (counts.get(g.setName) ?? 0) + 1);
-    }
-    for (const sb of data.setBonuses) {
-        // Character-exclusive collab sets (e.g. Shadow of Shattered Dreams)
-        // never activate for anyone outside their real in-game roster, no
-        // matter how many pieces are equipped.
-        if (sb.restrictedToCharacters && !sb.restrictedToCharacters.includes(characterName ?? '')) continue;
-        if ((counts.get(sb.name) ?? 0) >= sb.pieces) return sb.name;
-    }
-    return undefined;
+    const bonuses = activeSetBonuses(equippedGear, data.setBonuses, characterName);
+    return (bonuses.find((b) => b.tier === 'full') ?? bonuses[0])?.name;
 }
 
 /**
@@ -142,18 +119,17 @@ export function partyEffects(data: Pick<GameBundle, 'buffs' | 'setBonuses' | 'st
                 description: b.description,
             });
         }
-        // Set bonus of the set this member runs.
-        if (m.setName) {
-            const sb = data.setBonuses.find((s) => s.name === m.setName);
-            if (sb && sb.buffs.length > 0) {
-                effects.push({
-                    id: `set-${m.id}-${sb.name}`,
-                    name: `${sb.name} (${sb.pieces}pc)`,
-                    source: m.character.name,
-                    category: 'set',
-                    buffs: sb.buffs,
-                });
-            }
+        // Set bonus(es) this member's REAL equipped gear activates — every
+        // tier, not just one (see `PartyMemberResolved.setBonuses`).
+        for (const sb of m.setBonuses ?? []) {
+            if (sb.buffs.length === 0) continue;
+            effects.push({
+                id: `set-${m.id}-${sb.name}-${sb.tier}`,
+                name: `${sb.name} (${sb.tier === 'full' ? 'full' : '2pc'})`,
+                source: m.character.name,
+                category: 'set',
+                buffs: sb.buffs,
+            });
         }
         // Team buff from the member's weapon passive (support weapons only).
         if (m.weapon?.buffs && m.weapon.buffs.length > 0) {
@@ -243,14 +219,14 @@ export function resolveParty(
 ): { members: PartyMemberResolved[]; effects: PartyEffect[]; enabledBuffs: BuffEntry[] } {
     const weaponOf = (id?: string) => (id ? data.weapons.find((w) => w.id === id) : undefined);
     const members: PartyMemberResolved[] = [
-        { id: 'active', character: activeChar, gear: equippedGear, setName: activeSetName(equippedGear, data, activeChar.name), weapon: weaponOf(activeWeaponId), sequence: activeSequence, isActive: true },
+        { id: 'active', character: activeChar, gear: equippedGear, setBonuses: activeSetBonuses(equippedGear, data.setBonuses, activeChar.name), weapon: weaponOf(activeWeaponId), sequence: activeSequence, isActive: true },
     ];
     for (const t of party.teammates) {
         const c = data.characters.find((x) => x.id === t.characterId);
         if (!c) continue;
         const loadout = getLoadout(t.characterId);
         const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
-        members.push({ id: t.id, character: c, gear, setName: activeSetName(gear, data, c.name), weapon: weaponOf(loadout.weaponId), sequence: getSequence?.(t.characterId) });
+        members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), sequence: getSequence?.(t.characterId) });
     }
     const effects = partyEffects(data, members);
     return { members, effects, enabledBuffs: enabledPartyBuffs(effects, party.disabled, targetStatuses) };

@@ -7,7 +7,7 @@ import {
 import { cn } from '@/lib/utils';
 import { iconSrc } from '@/lib/icons';
 import { useGearFilters } from '@/lib/gearFilters';
-import { resolveParty, activeSetName, scopeLabel } from '@/lib/party';
+import { resolveParty, scopeLabel } from '@/lib/party';
 import { useSelectionStore, type SelectedItem } from '../../stores/selectionStore';
 import { useCalcStore } from '../../stores/calcStore';
 import { useGameStore } from '../../stores/gameStore';
@@ -19,7 +19,7 @@ import { useSequenceStore } from '../../stores/sequenceStore';
 import type { getGameData} from '../../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
 import { getBuffs } from '../../data/buffs';
-import { computeBuildStats, elemKey } from '../../data/optimizer';
+import { computeBuildStats, elemKey, activeSetBonuses } from '../../data/optimizer';
 import { getEnemies, DUMMY } from '../../data/enemies';
 import { getWeaponScaling, atkAtLevel, secAtLevel, refineMul, hasRefinement } from '../../data/weaponScaling';
 import { TalentsWindow } from '../CharacterWindows';
@@ -801,7 +801,13 @@ function PartySetup({ data, character }: { data: ReturnType<typeof getGameData>;
     const disabledSet = new Set(party.disabled);
     const usedIds = new Set([character.id, ...party.teammates.map((t) => t.characterId)]);
     const addable = owned.characters.filter((c) => !usedIds.has(c.id));
-    const activeSet = activeSetName(equippedGear, data, character.name);
+    // Every set tier this equipped gear activates (not just one — a
+    // 2pc+2pc split activates two simultaneously), joined for display.
+    const activeSetLabel = (gear: GearData[], name: string | undefined) => {
+        const bonuses = activeSetBonuses(gear, data.setBonuses, name);
+        return bonuses.length > 0 ? bonuses.map((b) => `${b.name}${b.tier === 'twoPiece' ? ' (2pc)' : ''}`).join(' + ') : undefined;
+    };
+    const activeSet = activeSetLabel(equippedGear, character.name);
     const catLabel: Record<PartyEffectCat, string> = { kit: 'Kit', set: 'Set', weapon: 'Weapon' };
 
     const doAdd = () => { if (addable[0]) addTeammate(activeGameId, character.id, addable[0].id, data.partyTeammates); };
@@ -823,7 +829,7 @@ function PartySetup({ data, character }: { data: ReturnType<typeof getGameData>;
                         <ItemIcon kind="character" size="sm" rarity={character.rarity} src={iconSrc(activeGameId, character.icon)} />
                         <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-foreground">{character.name}</div>
-                            <div className="truncate text-xs text-muted-foreground">Active · {activeSet ? `${activeSet} set` : 'no set bonus'}</div>
+                            <div className="truncate text-xs text-muted-foreground">Active · {activeSet ?? 'no set bonus'}</div>
                         </div>
                         <span className="flex-shrink-0 text-xs font-medium tabular-nums text-foreground">{Math.round(computeBuildStats(character, equippedGear, [], data.weapons.find((w) => w.id === equipped.weaponId), data.statCatalog).atk ?? 0)} ATK</span>
                         <Badge variant="secondary">You</Badge>
@@ -835,7 +841,7 @@ function PartySetup({ data, character }: { data: ReturnType<typeof getGameData>;
                         const loadout = gameLoadouts[t.characterId] ?? { gearIds: [] };
                         const tGear = loadout.gearIds.map((gid) => owned.gear.find((g) => g.id === gid)).filter(Boolean) as GearData[];
                         const tWeapon = loadout.weaponId ? data.weapons.find((w) => w.id === loadout.weaponId) : undefined;
-                        const tSetName = activeSetName(tGear, data, tc?.name);
+                        const tSetName = activeSetLabel(tGear, tc?.name);
                         const tStats = tc ? computeBuildStats(tc, tGear, [], tWeapon, data.statCatalog) : null;
                         return (
                             <div key={t.id} className="space-y-2 rounded-md border border-border bg-surface p-2">
@@ -864,7 +870,7 @@ function PartySetup({ data, character }: { data: ReturnType<typeof getGameData>;
                                         title={`Inspect ${tc.name} to equip their own weapon/gear`}
                                     >
                                         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                                            {tWeapon ? tWeapon.name : 'No weapon'} · {tSetName ? `${tSetName} set` : 'no set bonus'}
+                                            {tWeapon ? tWeapon.name : 'No weapon'} · {tSetName ?? 'no set bonus'}
                                         </span>
                                         {tStats && <span className="flex-shrink-0 text-xs font-medium tabular-nums text-foreground">{Math.round(tStats.atk ?? 0)} ATK</span>}
                                     </button>

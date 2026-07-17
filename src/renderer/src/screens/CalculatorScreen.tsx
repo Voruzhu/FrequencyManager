@@ -17,12 +17,12 @@ import { useOwnedInventory } from '../stores/inventoryStore';
 import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
-import { resolveParty, activeSetName } from '@/lib/party';
+import { resolveParty } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
-import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
+import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
@@ -176,30 +176,6 @@ export function CalculatorScreen() {
     // self buffs) — built identically either way, so "calculate current" sees
     // exactly the same assumptions the optimizer would have used.
     const buildConfig = (character: CharacterData) => {
-        // 1 set selected: all 5 slots can realistically go toward it, so
-        // assume the FULL threshold (2pc merged with the 4pc/5pc set
-        // effect — `SetBonusEntry.buffs`). 2 sets selected: 5 total
-        // slots split two ways can never reach the full threshold on
-        // BOTH sets at once, so only each set's `twoPieceBuffs` (the 2pc
-        // tier alone) is realistic to assume active.
-        const splittingTwoSets = calc.requiredSets.length >= 2;
-        const setBonusBuffs = calc.requiredSets.flatMap((name) => {
-            const sb = data.setBonuses.find((s) => s.name === name);
-            if (!sb) return [];
-            // A character-exclusive collab set (e.g. Shadow of Shattered
-            // Dreams) never grants its bonus outside its real in-game
-            // roster — even if `requiredSets` still has it selected from
-            // before switching to this character (the picker disables
-            // re-selecting it, but doesn't retroactively clear a stale pick).
-            if (sb.restrictedToCharacters && !sb.restrictedToCharacters.includes(character.name)) return [];
-            const tierBuffs = splittingTwoSets ? sb.twoPieceBuffs : sb.buffs;
-            return tierBuffs.map((b, i) => ({
-                id: `setbonus-${name}-${i}`,
-                name: `${name} (${splittingTwoSets ? '2pc' : `${sb.pieces}pc`})`,
-                source: name, stat: b.stat, value: b.value, ...(b.appliesTo ? { appliesTo: b.appliesTo } : {}),
-            }));
-        });
-
         const weapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
         // Reactions are a Genshin-only mechanic — never apply one for a game
         // that doesn't support them, even if calc.reaction is stale.
@@ -213,7 +189,19 @@ export function CalculatorScreen() {
         // GI Constellation 3/5's "+3 to a skill's level, max 15" — a no-op for WW /
         // characters with no identified boost target.
         const talentLevels = applyConstellationLevelBoosts(character, calc.skillLevels, calc.sequence);
-        const config = { targets: calc.targets, buffs: [...calc.buffs, ...partyBuffs, ...setBonusBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost };
+        // Set-bonus buffs are NOT computed here — `computeBaseLoadouts` derives
+        // them PER CANDIDATE COMBO from that combo's own REAL gear (via
+        // `setBonuses` below), same as it already does for per-attack-type
+        // gear sub-stats. This used to assume `calc.requiredSets` (the Set
+        // Bonus picker's "search for these sets" hint) was fully active any
+        // time it was set — which could silently mismatch what a build's
+        // gear ACTUALLY qualifies for (e.g. a 1pc/1pc/3pc split reported as if
+        // it were 2pc/2pc), or silently count NOTHING when the picker was
+        // left empty even though the real equipped gear clears a 2pc/5pc
+        // threshold on its own. `requiredSets` still restricts the search
+        // POOL below (only search gear from these sets) — it just no longer
+        // fakes the resulting bonus.
+        const config = { targets: calc.targets, buffs: [...calc.buffs, ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
         return { config, equippedGear };
     };
 
@@ -244,11 +232,11 @@ export function CalculatorScreen() {
             // recommend 5 great individually-rolled pieces from 5 different
             // sets, activating NO set bonus whatsoever, even though a real
             // 5pc/4pc effect is frequently a build's single biggest damage
-            // source. Their set bonus buffs are ALSO added to scoring below,
-            // since a candidate combo's own set bonus isn't otherwise
-            // visible to the optimizer (it doesn't re-derive `activeSetName`
-            // per candidate — see `requiredSets`'s doc comment in
-            // `calcStore.ts`).
+            // source. Scoring itself doesn't need this requirement repeated
+            // anywhere else — `computeBaseLoadouts` derives each candidate
+            // combo's OWN real set-bonus buffs directly from its gear (see
+            // `config.setBonuses` in `buildConfig`), same as it does for
+            // per-attack-type gear sub-stats.
             let optimizePool = owned.gear;
             if (calc.requiredSets.length > 0) {
                 optimizePool = owned.gear.filter((g) => calc.requiredSets.includes(g.setName));
@@ -730,14 +718,15 @@ function LoadoutRow({ rank, loadout, targets, character, data }: { rank: number;
 
     const targetStatKeys = new Set(targets.filter((t) => t.kind === 'stat').map((t) => t.key));
     const skillTargets = targets.filter((t) => t.kind === 'skill');
-    // Whichever set (if any) THIS combo's own pieces actually activate — not
+    // EVERY set tier (not just one — a 2pc+2pc split activates two
+    // simultaneously) THIS combo's own real pieces actually activate — not
     // necessarily one of `calc.requiredSets` even when a set-bonus
     // requirement was declared (the pool was narrowed to those sets, but a
     // combo can still land short of any single set's own piece threshold,
     // e.g. a 3+2 split with neither side reaching 5pc/4pc). Showing it
     // directly, per result, is more honest than assuming the requirement
     // was actually satisfied.
-    const active = activeSetName(loadout.gear, data, character.name);
+    const active = activeSetBonuses(loadout.gear, data.setBonuses, character.name);
     const totalCost = loadout.gear.reduce((sum, g) => sum + (g.cost ?? 0), 0);
 
     const equip = () => {
@@ -753,7 +742,9 @@ function LoadoutRow({ rank, loadout, targets, character, data }: { rank: number;
                     {loadout.meets ? <CheckCircle2 className="h-4 w-4 text-success" /> : <XCircle className="h-4 w-4 text-warning" />}
                     <span className="text-xs text-muted-foreground">{loadout.meets ? 'Meets minimums' : `Misses: ${loadout.failed.join(', ')}`}</span>
                 </div>
-                {active ? <Badge variant="secondary">{active} active</Badge> : <Badge variant="outline">No set active</Badge>}
+                {active.length > 0
+                    ? active.map((sb) => <Badge key={sb.name} variant="secondary">{sb.name} ({sb.tier === 'full' ? 'full' : '2pc'})</Badge>)
+                    : <Badge variant="outline">No set active</Badge>}
                 {data.gearCatalog.maxTotalCost != null && <Badge variant="outline">Cost {totalCost}/{data.gearCatalog.maxTotalCost}</Badge>}
                 <Button size="sm" className="ml-auto" onClick={equip}>Equip to character</Button>
             </div>

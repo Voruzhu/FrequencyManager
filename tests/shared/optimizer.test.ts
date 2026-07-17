@@ -1,10 +1,10 @@
 import {
     combinations, subtreeSize, totalCombinations, gearSlotsFor,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
-    enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs,
+    enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs, activeSetBonuses, setBonusBuffEntries,
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
-import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry } from '../../shared/types/game-bundle';
+import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry, SetBonusEntry } from '../../shared/types/game-bundle';
 
 describe('combinations — firstIndices partitioning', () => {
     it('with no filter, generates every k-combination in lexicographic order', () => {
@@ -408,5 +408,121 @@ describe('computeBaseLoadouts — echo per-attack-type DMG sub-stats reach the a
         const results = computeBaseLoadouts(c, combos, config);
         // Combo 0 (basic sub-stat) should NOT have its basic-boost leak into combo 1.
         expect(results[1].skillDamage.basic).toBeLessThan(results[0].skillDamage.basic);
+    });
+});
+
+describe('activeSetBonuses — real set-bonus tiers from ACTUAL gear (not an assumed selection)', () => {
+    const SETS: SetBonusEntry[] = [
+        { name: 'Celestial Light', pieces: 5, buffs: [{ stat: 'critRate', label: 'Crit Rate', value: 22 }], twoPieceBuffs: [{ stat: 'spectroDmg', label: 'Spectro DMG', value: 10 }], fullSetOnlyBuffs: [] },
+        { name: 'Eternal Radiance', pieces: 5, buffs: [{ stat: 'critRate', label: 'Crit Rate', value: 20 }], twoPieceBuffs: [{ stat: 'critRate', label: 'Crit Rate', value: 20 }], fullSetOnlyBuffs: [] },
+        { name: 'Shadow of Shattered Dreams', pieces: 1, buffs: [{ stat: 'atkPct', label: 'ATK%', value: 15 }], twoPieceBuffs: [], fullSetOnlyBuffs: [], restrictedToCharacters: ['Lucy', 'Rebecca'] },
+    ];
+    let seq = 0;
+    function echo(setName: string, name = setName): GearEntry {
+        return { kind: 'echo', id: `e${++seq}`, name, setName, rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [] };
+    }
+
+    it('1pc Celestial Light + 1pc Adam Smasher + 3pc Eternal Radiance: only Eternal Radiance (2pc) and the 1pc collab set are active — matches the real-world report this was written for', () => {
+        const gear = [
+            echo('Celestial Light'),
+            echo('Shadow of Shattered Dreams', 'Reminiscence - Nightmare: Adam Smasher'),
+            echo('Eternal Radiance', 'A'), echo('Eternal Radiance', 'B'), echo('Eternal Radiance', 'C'),
+        ];
+        const active = activeSetBonuses(gear, SETS, 'Lucy');
+        const names = active.map((b) => `${b.name}:${b.tier}`).sort();
+        expect(names).toEqual(['Eternal Radiance:twoPiece', 'Shadow of Shattered Dreams:full'].sort());
+        // Celestial Light (1pc) must NOT appear at all.
+        expect(active.find((b) => b.name === 'Celestial Light')).toBeUndefined();
+    });
+
+    it('a real 2pc + 2pc split across two DIFFERENT sets activates BOTH simultaneously', () => {
+        const gear = [
+            echo('Celestial Light', 'A'), echo('Celestial Light', 'B'),
+            echo('Eternal Radiance', 'C'), echo('Eternal Radiance', 'D'),
+            echo('Celestial Light', 'E'), // 3rd Celestial Light piece — still only 2pc-tier-worth of buffs (pieces:5 not met)
+        ];
+        const active = activeSetBonuses(gear, SETS, 'Encore');
+        expect(active).toHaveLength(2);
+        expect(active.every((b) => b.tier === 'twoPiece')).toBe(true);
+        expect(active.map((b) => b.name).sort()).toEqual(['Celestial Light', 'Eternal Radiance']);
+    });
+
+    it('5 identical-set pieces reach the full tier, using `buffs` not `twoPieceBuffs`', () => {
+        const gear = Array.from({ length: 5 }, (_, i) => echo('Eternal Radiance', `piece-${i}`));
+        const active = activeSetBonuses(gear, SETS, 'Encore');
+        expect(active).toEqual([{ name: 'Eternal Radiance', tier: 'full', buffs: SETS[1].buffs }]);
+    });
+
+    it('a restricted collab set never activates for a character outside its roster, even at full count', () => {
+        const gear = [echo('Shadow of Shattered Dreams', 'Reminiscence - Nightmare: Adam Smasher')];
+        expect(activeSetBonuses(gear, SETS, 'Encore')).toEqual([]);
+        expect(activeSetBonuses(gear, SETS, 'Lucy')).toHaveLength(1);
+    });
+
+    it('two echoes of the SAME specific identity only count once toward a set\'s threshold (real WuWa mechanic)', () => {
+        const gear = [echo('Eternal Radiance', 'Impermanence Heron'), echo('Eternal Radiance', 'Impermanence Heron')];
+        expect(activeSetBonuses(gear, SETS, 'Encore')).toEqual([]);
+    });
+});
+
+describe('setBonusBuffEntries — flattens active tiers into BuffEntry rows the engine already consumes', () => {
+    const SETS: SetBonusEntry[] = [
+        { name: 'Void Thunder', pieces: 5, buffs: [{ stat: 'electroDmg', label: 'Electro DMG', value: 30 }], twoPieceBuffs: [{ stat: 'electroDmg', label: 'Electro DMG', value: 10 }], fullSetOnlyBuffs: [] },
+    ];
+    function echo(id: string): GearEntry {
+        return { kind: 'echo', id, name: 'Void Thunder', setName: 'Void Thunder', rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [] };
+    }
+
+    it('produces a real BuffEntry for a 2pc-only tier', () => {
+        const entries = setBonusBuffEntries([echo('a'), echo('b')], SETS);
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({ stat: 'electroDmg', value: 10 });
+    });
+
+    it('produces nothing when no set reaches even the 2pc threshold', () => {
+        expect(setBonusBuffEntries([echo('a')], SETS)).toEqual([]);
+    });
+});
+
+describe('computeBaseLoadouts — set bonuses are derived PER COMBO from real gear, not assumed upfront', () => {
+    function charFor(): CharacterEntry {
+        return {
+            kind: 'character', id: 'c1', name: 'Test', element: 'Spectro', weaponType: 'Sword', rarity: 5,
+            stats: { atk: 1000, critRate: 0, critDmg: 0 },
+            skills: [{ id: 'basic', name: 'Basic Attack', type: 'Basic', description: '', multiplier: 1, scaling: 'atk' }],
+            equipped: { gearIds: [] },
+        };
+    }
+    const SETS: SetBonusEntry[] = [
+        { name: 'Void Thunder', pieces: 5, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 30 }], twoPieceBuffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 10 }], fullSetOnlyBuffs: [] },
+    ];
+    const CATALOG: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }, { key: 'elemDmg', label: 'Elemental DMG', percent: true }];
+    function echo(setName: string, id: string): GearEntry {
+        return { kind: 'echo', id, name: setName, setName, rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [] };
+    }
+
+    it('a combo with 2pc of a set gets that set\'s buff; a combo with only 1pc does not — same optimize() pass, same config.setBonuses', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG, topN: 5, setBonuses: SETS,
+        };
+        const combos = [
+            [echo('Void Thunder', 'a'), echo('Void Thunder', 'b')], // 2pc -> +10% elemDmg
+            [echo('Void Thunder', 'c')], // 1pc -> nothing
+        ];
+        const results = computeBaseLoadouts(c, combos, config);
+        expect(results[0].skillDamage.basic).toBeGreaterThan(results[1].skillDamage.basic);
+    });
+
+    it('omitting config.setBonuses entirely is a safe no-op (no crash, no bonus applied)', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG, topN: 5,
+        };
+        expect(() => computeBaseLoadouts(c, [[echo('Void Thunder', 'a'), echo('Void Thunder', 'b')]], config)).not.toThrow();
     });
 });

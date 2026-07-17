@@ -35,12 +35,14 @@ interface CalcState {
     /** Set name(s) the user has declared they want active for the NEXT
      * optimize() run (0-2 — a build realistically runs at most one 5pc, or
      * two 2pc, Sonata sets across 5 slots). When non-empty, `run()` narrows
-     * the candidate gear pool to just these sets' pieces and adds their set
-     * bonus buffs to scoring — the optimizer otherwise has no way to know a
-     * candidate combo would activate a set bonus at all (it doesn't
-     * currently re-derive `activeSetName` per candidate), so a real 5pc
-     * effect (often a build's single biggest damage source) was invisible
-     * to its scoring entirely. */
+     * the candidate gear pool to just these sets' pieces — a search-space
+     * hint only. The resulting bonus itself is derived by
+     * `computeBaseLoadouts` directly from each candidate combo's own real
+     * gear (`activeSetBonuses`/`setBonusBuffEntries` in the shared engine),
+     * not assumed from this selection — a combo drawn from the narrowed pool
+     * can still land short of a set's real piece threshold (e.g. an uneven
+     * 1pc/4pc split), so scoring always reflects what that specific combo
+     * actually activates. */
     requiredSets: string[];
     /** When true, `run()` excludes gear currently equipped on any OTHER
      * character from the candidate pool before searching — gear equipped on

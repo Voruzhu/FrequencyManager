@@ -22,6 +22,7 @@ import type {
     SkillDef,
     BuffEntry,
     EnemyEntry,
+    SetBonusEntry,
 } from '../types/game-bundle';
 
 const GEAR_SLOTS = 5;
@@ -97,6 +98,11 @@ export interface OptimizeConfig {
      * across 5 echoes costing 1/3/4 each — see `GearCatalog.maxTotalCost`).
      * Undefined for games with no cost concept (GI) — no constraint applied. */
     maxTotalCost?: number;
+    /** The game's full set-bonus roster — set-bonus buffs are derived PER
+     * COMBO from each candidate's own real gear (see `setBonusBuffEntries`),
+     * not assumed once upfront, since different combos activate different
+     * sets/tiers. Omit for a caller that resolves set bonuses itself. */
+    setBonuses?: SetBonusEntry[];
 }
 
 /** Amplifying-reaction EM bonus: 2.78·EM/(EM+1400). */
@@ -295,6 +301,69 @@ export function gearScopedBuffs(gear: GearEntry[]): BuffEntry[] {
         }
     }
     return out;
+}
+
+/** One Sonata Set / Artifact Set bonus tier a gear loadout's REAL piece
+ * counts actually activate — see `activeSetBonuses`. */
+export interface ActiveSetBonus {
+    name: string;
+    tier: 'full' | 'twoPiece';
+    buffs: SetBonusEntry['buffs'];
+}
+
+/**
+ * Every set-bonus tier a gear loadout's REAL equipped pieces activate — NOT
+ * a single "the" active set (real WuWa builds commonly split 5 slots as
+ * 2pc + 2pc across two DIFFERENT sets, each granting its own 2pc tier
+ * simultaneously — a legitimate, common build pattern), and NOT an
+ * assumption from a user-picked "search for these sets" hint (the
+ * Calculator's Set Bonus picker, `OptimizeConfig` doesn't carry it) — this
+ * reads the ACTUAL gear passed in, so it's correct for both a hypothetical
+ * combo the Optimizer is evaluating and a character's real currently-
+ * equipped gear.
+ *
+ * Two gear pieces of the same SPECIFIC IDENTITY (e.g. two "Thundering
+ * Mephis" echoes) only count ONCE toward a set's own piece threshold — a
+ * real WuWa mechanic (confirmed against wutheringwaves.gg/mobalytics.gg,
+ * 2026-07): each piece still contributes its own individually-rolled stats
+ * (`computeBuildStats` reads `gear` directly, unaffected by this), just not
+ * a double count toward 2pc/5pc. Only triggers when the specific identity is
+ * actually known (`g.name` distinct from `g.setName`); this never applies to
+ * Genshin artifacts (no such per-instance-identity concept in that data —
+ * `name` is always the generic set/piece name there, so `name === setName`
+ * always, and every artifact counts individually, matching the real game).
+ */
+export function activeSetBonuses(gear: GearEntry[], setBonuses: SetBonusEntry[], characterName?: string): ActiveSetBonus[] {
+    const seenIdentity = new Set<string>();
+    const counts = new Map<string, number>();
+    for (const g of gear) {
+        if (g.name !== g.setName) {
+            const identityKey = `${g.setName}::${g.name}`;
+            if (seenIdentity.has(identityKey)) continue;
+            seenIdentity.add(identityKey);
+        }
+        counts.set(g.setName, (counts.get(g.setName) ?? 0) + 1);
+    }
+    const out: ActiveSetBonus[] = [];
+    for (const sb of setBonuses) {
+        // Character-exclusive collab sets (e.g. WuWa's "Shadow of Shattered
+        // Dreams") never activate for anyone outside their real in-game
+        // roster, no matter how many pieces are equipped.
+        if (sb.restrictedToCharacters && !sb.restrictedToCharacters.includes(characterName ?? '')) continue;
+        const count = counts.get(sb.name) ?? 0;
+        if (count >= sb.pieces) out.push({ name: sb.name, tier: 'full', buffs: sb.buffs });
+        else if (count >= 2) out.push({ name: sb.name, tier: 'twoPiece', buffs: sb.twoPieceBuffs });
+    }
+    return out;
+}
+
+/** Flattens `activeSetBonuses`' real per-tier buffs into plain `BuffEntry`
+ * rows the rest of the engine already knows how to consume (global stats via
+ * `computeBuildStats`, per-attack-type ones via `isScopedBuff` →
+ * `SkillContext.scopedBuffs`) — same shape any kit/weapon buff already has. */
+export function setBonusBuffEntries(gear: GearEntry[], setBonuses: SetBonusEntry[], characterName?: string): BuffEntry[] {
+    return activeSetBonuses(gear, setBonuses, characterName).flatMap((sb) =>
+        sb.buffs.map((b, i) => ({ id: `setbonus-${sb.name}-${sb.tier}-${i}`, name: `${sb.name} (${sb.tier === 'full' ? 'full' : '2pc'})`, source: sb.name, stat: b.stat, value: b.value, ...(b.appliesTo ? { appliesTo: b.appliesTo } : {}) })));
 }
 
 /** Multiplier for a skill at a talent level (uses the table when present). */
@@ -646,11 +715,17 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         charLevel: config.charLevel,
     };
     return combos.map((gear, idx) => {
-        const stats = computeBuildStats(c, gear, config.buffs, config.weapon, config.catalog);
+        // Set-bonus buffs depend on THIS combo's own real piece counts (a
+        // different combo can activate different sets/tiers entirely) — must
+        // be derived per combo, same reason as `gearScopedBuffs` below, not
+        // assumed once upfront from a caller's "intended sets" hint.
+        const comboSetBuffs = config.setBonuses ? setBonusBuffEntries(gear, config.setBonuses, c.name) : [];
+        const allBuffs = [...config.buffs, ...comboSetBuffs];
+        const stats = computeBuildStats(c, gear, allBuffs, config.weapon, config.catalog);
         // Per-attack-type DMG% sub-stats (e.g. WW's "Basic Attack DMG Bonus")
         // vary per combo, unlike kit/weapon buffs — must be recomputed here,
         // not folded into `kitScopedBuffs` above (see `gearScopedBuffs`).
-        const ctx: SkillContext = { ...baseCtx, scopedBuffs: [...kitScopedBuffs, ...gearScopedBuffs(gear)] };
+        const ctx: SkillContext = { ...baseCtx, scopedBuffs: [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)] };
         const skillDmg: Record<string, number> = {};
         for (const skill of c.skills) skillDmg[skill.id] = skillDamage(stats, skill, ctx);
         const failed = minTargets.filter((t) => targetValue(t, stats, skillDmg) < (t.min ?? 0)).map((t) => t.label);

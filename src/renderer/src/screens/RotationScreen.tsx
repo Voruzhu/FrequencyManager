@@ -11,9 +11,9 @@ import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { useRotationStore, type SavedRotation } from '../stores/rotationStore';
 import { useGameData } from '../data/gameData';
-import { resolveParty, activeSetName, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
+import { resolveParty, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, type SkillContext } from '../data/optimizer';
+import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import type { FieldSpec, RotationStepSpec } from '../types';
 import type { BuffEntry, SkillDef } from '@shared/types/game-bundle';
 
@@ -126,7 +126,7 @@ export function RotationScreen() {
             const gear = loadout.gearIds.map((gid) => owned.gear.find((g) => g.id === gid)).filter(Boolean) as typeof owned.gear;
             const weapon = loadout.weaponId ? data.weapons.find((w) => w.id === loadout.weaponId) : undefined;
             const sequence = useSequenceStore.getState().getSequence(activeGameId, id);
-            return { id, character, gear, setName: activeSetName(gear, data, character.name), weapon, sequence };
+            return { id, character, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, character.name), weapon, sequence };
         }).filter((m): m is PartyMemberResolved => m != null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [steps, partyMembers, data, activeGameId, owned.gear]);

@@ -22,6 +22,8 @@ export {
     scoreAndRank,
     isScopedBuff,
     gearScopedBuffs,
+    activeSetBonuses,
+    setBonusBuffEntries,
 } from '@shared/calc/optimizer';
 
 export type {
@@ -32,4 +34,5 @@ export type {
     OptimizeConfig,
     BuildStats,
     Loadout,
+    ActiveSetBonus,
 } from '@shared/calc/optimizer';
