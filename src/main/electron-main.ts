@@ -473,10 +473,39 @@ function setupGamePackageInstaller(): void {
             const buf = Buffer.from(await res.arrayBuffer());
 
             const wasInstalled = hasGameDefinition(id);
-            const targetDir = path.join(app.getPath('userData'), 'game-modules', id);
+            const gameModulesDir = path.join(app.getPath('userData'), 'game-modules');
+            const targetDir = path.join(gameModulesDir, id);
             fs.rmSync(targetDir, { recursive: true, force: true });
-            fs.mkdirSync(targetDir, { recursive: true });
-            new AdmZip(buf).extractAllTo(targetDir, true);
+
+            // Official package zips (build-game-package.js) deliberately wrap
+            // their contents in a single "<id>/" top-level folder, so a user
+            // manually extracting one into game-modules/ with Explorer/7-Zip
+            // gets the correct game-modules/<id>/module.json shape with no
+            // extra steps (see that script's own doc comment). Extracting
+            // straight into targetDir (already named .../game-modules/<id>)
+            // would double-nest the wrapper to .../game-modules/<id>/<id>/...
+            // — detect that shape and extract to the PARENT dir instead, so
+            // the wrapper produces targetDir itself. A community package
+            // zipped WITHOUT a wrapping folder (module.json at the zip root)
+            // still extracts straight into targetDir, same as before.
+            const zip = new AdmZip(buf);
+            // build-game-package.js zips via PowerShell's Compress-Archive,
+            // which stores entry paths with BACKSLASH separators
+            // ("wuthering-waves\module.json", not the zip-spec-standard
+            // forward slash) — AdmZip's own extractAllTo already tolerates
+            // this (that's *why* the old code's naive extraction produced
+            // the double-nested folder bug in the first place: it WAS
+            // interpreting the backslash as a path separator), so detection
+            // has to handle both separators the same way, not just '/'.
+            const topLevelNames = new Set(zip.getEntries().map((e) => e.entryName.replace(/\\/g, '/').split('/')[0]));
+            const isWrapped = topLevelNames.size === 1 && topLevelNames.has(id);
+            if (isWrapped) {
+                fs.mkdirSync(gameModulesDir, { recursive: true });
+                zip.extractAllTo(gameModulesDir, true);
+            } else {
+                fs.mkdirSync(targetDir, { recursive: true });
+                zip.extractAllTo(targetDir, true);
+            }
 
             if (!wasInstalled) {
                 // Brand-new game — pick it up immediately, no restart needed.
