@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
     LayoutDashboard, Calculator, ScanLine, Boxes, Activity, Package, Gamepad2,
 } from 'lucide-react';
@@ -13,16 +13,28 @@ import { GamePackageInstaller } from '../components/GamePackageInstaller';
 
 type Tone = 'success' | 'warning' | 'destructive';
 
+const versionBridge = () => (window as unknown as {
+    frequencyManager?: { getAppVersion?: () => Promise<string> };
+}).frequencyManager;
+
 export function DashboardScreen() {
     const { modules, refreshModules, outputs } = useModuleStore();
     const healthChecks = useHealthStore((s) => s.healthChecks);
     const { games, activeGameId } = useGameStore();
     const setActiveScreen = useUIStore((s) => s.setActiveScreen);
     const activeGame = games.find((g) => g.id === activeGameId);
+    const [appVersion, setAppVersion] = useState('');
 
     useEffect(() => {
         if (modules.length === 0) void refreshModules();
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        void (async () => {
+            const v = await versionBridge()?.getAppVersion?.();
+            if (v) setAppVersion(v);
+        })();
     }, []);
 
     const enabled = modules.filter((m) => m.enabled).length;
@@ -57,7 +69,7 @@ export function DashboardScreen() {
                 <StatTile label="Active Game" value={activeGame?.label ?? '—'} hint={activeGame ? `v${activeGame.version}` : undefined} icon={Gamepad2} tone="primary" />
                 <StatTile label="Modules" value={`${enabled}/${modules.length}`} hint="enabled" icon={Package} />
                 <StatTile label="System" value={healthLabel} icon={Activity} tone={healthTone} />
-                <StatTile label="Version" value="1.0.0" hint="FrequencyManager" icon={LayoutDashboard} />
+                <StatTile label="Version" value={appVersion || '—'} hint="FrequencyManager" icon={LayoutDashboard} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
