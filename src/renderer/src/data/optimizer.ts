@@ -24,6 +24,7 @@ export {
     gearScopedBuffs,
     activeSetBonuses,
     setBonusBuffEntries,
+    withScopedDmgTotals,
 } from '@shared/calc/optimizer';
 
 export type {

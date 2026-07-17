@@ -75,6 +75,22 @@ const supplements: GameCatalogSupplements = {
         // exists in this calculator) — purely for visibility/support-build
         // theorycrafting.
         { key: 'healingBonus', label: 'Healing Bonus', percent: true },
+        // ADDED 2026-07-17 — these 4 are real echo sub-stats (see
+        // GEAR_SCOPED_DMG_KEYS in the shared engine) that only ever flowed
+        // through the SCOPED per-attack-type buff pipeline (correctly — a
+        // normal catalog entry would apply them to a character's whole kit,
+        // not just the one attack type the game restricts them to). That
+        // meant they had no stat-catalog entry and so were invisible in
+        // Build Stats and unselectable as an Optimizer target. The engine
+        // (`withScopedDmgTotals` in computeBaseLoadouts) now ALSO stamps the
+        // combined kit+weapon+gear total for each of these onto `stats`
+        // under these exact keys, purely for display/targeting — the real
+        // per-skill application already happens correctly and independently
+        // via the scoped-buff mechanism regardless of catalog membership.
+        { key: 'basicAttackDmgBonus', label: 'Basic Attack DMG Bonus', percent: true },
+        { key: 'heavyAttackDmgBonus', label: 'Heavy Attack DMG Bonus', percent: true },
+        { key: 'resonanceSkillDmgBonus', label: 'Resonance Skill DMG Bonus', percent: true },
+        { key: 'resonanceLiberationDmgBonus', label: 'Resonance Liberation DMG Bonus', percent: true },
     ],
     enemies: [
         { id: 'ww-crownless', name: 'Crownless', level: 90, def: 900, res: 10 },

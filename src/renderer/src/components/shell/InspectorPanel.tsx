@@ -606,20 +606,34 @@ function EnemyPicker({ gameId }: { gameId: string }) {
 }
 
 /**
- * Lets the user declare up to 2 Sonata/Artifact sets they want the optimizer
- * to build toward. `run()` (`CalculatorScreen.tsx`) narrows the candidate
- * gear pool to just these sets' pieces and adds their set-bonus buffs to
- * scoring — the optimizer has no other way to know a candidate combo would
- * activate a set bonus (it doesn't re-derive `activeSetName` per candidate),
- * so a real 5pc/4pc effect was previously invisible to it. Empty selection
- * (the default) keeps the old, unconstrained free-search behavior.
+ * Lets the user declare which Sonata/Artifact sets they want the optimizer
+ * to build toward — narrows the search POOL to just these sets' pieces (see
+ * `run()` in `CalculatorScreen.tsx`); the resulting bonus itself is derived
+ * from each candidate combo's own real gear (`activeSetBonuses` in the
+ * shared engine), not assumed from this selection. Empty selection (the
+ * default) keeps the old, unconstrained free-search behavior.
+ *
+ * How many sets can be selected at once depends on each set's OWN piece
+ * threshold, not a flat count: a normal set needs at least 2 pieces for any
+ * bonus, so two of those already use up 4 of the 5 slots. But a real
+ * 1pc-threshold set (WW's Shadow of Shattered Dreams, Lucy/Rebecca-only)
+ * only costs 1 slot, leaving room for two more 2pc sets — 1+2+2 = 5, a
+ * genuinely valid and often-optimal split for those two characters. Tracked
+ * via `minPiecesFor`/`usedBudget` below rather than a hardcoded "2 sets max".
  */
 function SetBonusPicker({ data, character }: { data: ReturnType<typeof getGameData>; character: CharacterData | null }) {
     const { requiredSets, setRequiredSets } = useCalcStore();
     const [query, setQuery] = useState('');
     const q = query.trim().toLowerCase();
     const filtered = q ? data.setBonuses.filter((s) => s.name.toLowerCase().includes(q)) : data.setBonuses;
-    const atLimit = requiredSets.length >= 2;
+    // The real minimum piece cost to get ANY bonus from a set — 1 for a real
+    // 1pc-threshold set, 2 for any normal 2pc/5pc-tier set (a single piece of
+    // those grants nothing).
+    const minPiecesFor = (sb: { pieces: number }) => Math.min(sb.pieces, 2);
+    const usedBudget = requiredSets.reduce((sum, name) => {
+        const sb = data.setBonuses.find((s) => s.name === name);
+        return sum + (sb ? minPiecesFor(sb) : 2);
+    }, 0);
     const ownElemKey = character ? elemKey(character.element) : null;
 
     // A set's per-attack-element DMG buff (e.g. Sierra Gale's Aero DMG) only
@@ -647,7 +661,7 @@ function SetBonusPicker({ data, character }: { data: ReturnType<typeof getGameDa
     return (
         <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-                Tell the optimizer which set(s) you want active — it narrows the search to gear from these sets and counts their bonus toward your targets. Pick just 1 to assume the FULL set (2pc + {data.setBonuses[0]?.pieces ?? 5}pc together, all slots from this set). Pick 2 to assume 2pc from EACH instead — 5 slots split two ways can't reach the full bonus on both, so only the 2pc tier of each is counted. Leave empty to search freely, with no set assumed.
+                Tell the optimizer which set(s) you want active — it narrows the search to gear from these sets; the bonus actually counted always matches what your build's real piece counts earn. Pick 1 normal set to search toward its full 5pc, or 2 to split 2pc + 2pc. A 1pc-threshold set (like Shadow of Shattered Dreams) only costs 1 slot, so it can join alongside two 2pc sets. Leave empty to search freely, with no set assumed.
             </p>
             {requiredSets.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -669,7 +683,7 @@ function SetBonusPicker({ data, character }: { data: ReturnType<typeof getGameDa
                 {filtered.map((sb) => {
                     const active = requiredSets.includes(sb.name);
                     const restricted = restrictedOut(sb);
-                    const disabled = !active && (atLimit || restricted);
+                    const disabled = !active && (restricted || usedBudget + minPiecesFor(sb) > 5);
                     return (
                         <button
                             key={sb.name}

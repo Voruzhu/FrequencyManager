@@ -33,8 +33,12 @@ interface CalcState {
      * bar visibility). */
     optimizeProgress: { done: number; total: number } | null;
     /** Set name(s) the user has declared they want active for the NEXT
-     * optimize() run (0-2 — a build realistically runs at most one 5pc, or
-     * two 2pc, Sonata sets across 5 slots). When non-empty, `run()` narrows
+     * optimize() run — normally 0-2 (one 5pc, or two 2pc, sets across 5
+     * slots), but can be 3 for a character with access to a real
+     * 1pc-threshold set (WW's Shadow of Shattered Dreams, Lucy/Rebecca-only:
+     * 1pc + 2pc + 2pc = 5). The picker UI enforces the real per-set piece
+     * budget; this field itself has no fixed cap beyond `setRequiredSets`'
+     * defensive slice. When non-empty, `run()` narrows
      * the candidate gear pool to just these sets' pieces — a search-space
      * hint only. The resulting bonus itself is derived by
      * `computeBaseLoadouts` directly from each candidate combo's own real
@@ -202,7 +206,12 @@ export const useCalcStore = create<CalcState>()(
 
     setResults: (r) => set({ results: r }),
     setOptimizeProgress: (p) => set({ optimizeProgress: p }),
-    setRequiredSets: (sets) => set({ requiredSets: sets.slice(0, 2) }),
+    // No fixed "2 sets max" here — the real limit depends on each set's own
+    // piece threshold (a 1pc-threshold set like WW's Shadow of Shattered
+    // Dreams leaves room for two more 2pc sets: 1+2+2 = 5), which only the
+    // picker UI (it has the real set data) can validate. `slice(0, 5)` is
+    // just a sane defensive cap — never more sets than there are gear slots.
+    setRequiredSets: (sets) => set({ requiredSets: sets.slice(0, 5) }),
     setOnlyUnequipped: (v) => set({ onlyUnequipped: v }),
         }),
         {

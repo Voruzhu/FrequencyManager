@@ -303,6 +303,38 @@ export function gearScopedBuffs(gear: GearEntry[]): BuffEntry[] {
     return out;
 }
 
+/**
+ * TOTAL scoped `dmgBonus` (kit + weapon + gear — every source already
+ * resolved into a combo's `scopedBuffs`) for one canonical attack-type scope,
+ * with no specific skill in mind — a read/aggregate view so a real stat like
+ * "Basic Attack DMG Bonus" can be shown in Build Stats and picked as an
+ * Optimizer min/max target, same as any other stat. Does NOT feed back into
+ * damage: the correct PER-SKILL amount is already applied independently
+ * inside `skillDamage` via `scopedDmgFor`/`skillMatchesScope` — this just
+ * mirrors that same total for display/targeting.
+ */
+function totalScopedDmgBonus(scope: string, scopedBuffs: BuffEntry[]): number {
+    let sum = 0;
+    for (const b of scopedBuffs) {
+        if (b.stat !== 'dmgBonus' || !b.appliesTo) continue;
+        if (b.appliesTo.some((a) => canonScope(a) === scope)) sum += b.value;
+    }
+    return sum;
+}
+
+/**
+ * Stamps `stats` with the TOTAL scoped DMG% for each of `GEAR_SCOPED_DMG_KEYS`
+ * (Basic/Heavy Attack DMG Bonus, Resonance Skill/Liberation DMG Bonus) so
+ * they're visible/targetable the same way any other stat is — see
+ * `totalScopedDmgBonus`. Mutates and returns the same object for convenience.
+ */
+export function withScopedDmgTotals(stats: BuildStats, scopedBuffs: BuffEntry[]): BuildStats {
+    for (const [statKey, scope] of Object.entries(GEAR_SCOPED_DMG_KEYS)) {
+        stats[statKey] = totalScopedDmgBonus(scope, scopedBuffs);
+    }
+    return stats;
+}
+
 /** One Sonata Set / Artifact Set bonus tier a gear loadout's REAL piece
  * counts actually activate — see `activeSetBonuses`. */
 export interface ActiveSetBonus {
@@ -725,7 +757,13 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         // Per-attack-type DMG% sub-stats (e.g. WW's "Basic Attack DMG Bonus")
         // vary per combo, unlike kit/weapon buffs — must be recomputed here,
         // not folded into `kitScopedBuffs` above (see `gearScopedBuffs`).
-        const ctx: SkillContext = { ...baseCtx, scopedBuffs: [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)] };
+        const comboScopedBuffs = [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)];
+        const ctx: SkillContext = { ...baseCtx, scopedBuffs: comboScopedBuffs };
+        // Surface the TOTAL Basic/Heavy/Skill/Liberation DMG Bonus (kit +
+        // weapon + gear) as plain stats too — display + Optimizer targets,
+        // see `withScopedDmgTotals`. Purely additive to `stats`; doesn't
+        // change how `skillDamage` above already applies these correctly.
+        withScopedDmgTotals(stats, comboScopedBuffs);
         const skillDmg: Record<string, number> = {};
         for (const skill of c.skills) skillDmg[skill.id] = skillDamage(stats, skill, ctx);
         const failed = minTargets.filter((t) => targetValue(t, stats, skillDmg) < (t.min ?? 0)).map((t) => t.label);

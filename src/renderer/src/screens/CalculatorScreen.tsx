@@ -22,7 +22,7 @@ import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBu
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
-import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
+import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
@@ -457,8 +457,17 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     const getSequence = (charId: string) => useSequenceStore.getState().getSequence(activeGameId, charId);
     const { effects: partyEffectsList, enabledBuffs: partyBuffs } = resolveParty(data, party, c, gear, equipped.weaponId, owned.gear, getLoadout, sequence, getSequence, targetStatuses);
     // Live final stats — recomputed whenever gear / buffs / weapon change,
-    // covering exactly the stats the active game module declares.
-    const stats = computeBuildStats(c, gear, [...buffs, ...partyBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog), ...gearAutoBuffs(gear)], weapon, data.statCatalog);
+    // covering exactly the stats the active game module declares. Includes
+    // set-bonus buffs derived from THIS character's real equipped gear (same
+    // `activeSetBonuses`-based mechanism `computeBaseLoadouts` uses for the
+    // actual damage calc — see `setBonusBuffEntries`), so this preview never
+    // silently disagrees with the real "calculate current" numbers below.
+    const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
+    const allStatBuffs = [...buffs, ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog), ...gearAutoBuffs(gear)];
+    const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
+    // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
+    // same reasoning as the set-bonus buffs above, keeps this preview honest.
+    withScopedDmgTotals(stats, [...allStatBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)]);
 
     return (
         <Card>

@@ -409,6 +409,24 @@ describe('computeBaseLoadouts — echo per-attack-type DMG sub-stats reach the a
         // Combo 0 (basic sub-stat) should NOT have its basic-boost leak into combo 1.
         expect(results[1].skillDamage.basic).toBeLessThan(results[0].skillDamage.basic);
     });
+
+    it('stamps the scoped DMG% totals onto .stats so they are visible/targetable like any other stat', () => {
+        const c = charWithSkills();
+        const catalog: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }];
+        const kitBuff: BuffEntry = { id: 'kit1', name: 'Kit Basic Buff', source: 'Test', stat: 'dmgBonus', value: 15, appliesTo: ['basic'] };
+        const config: OptimizeConfig = {
+            targets: [], buffs: [kitBuff], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog, topN: 5,
+        };
+        const result = computeBaseLoadouts(c, [[echoWithSub('basicAttackDmgBonus', 20)]], config)[0];
+        // Kit buff (15) + gear sub-stat (20) both feed the same 'basic' scope.
+        expect(result.stats.basicAttackDmgBonus).toBe(35);
+        // Untouched scopes report 0, not undefined — so the stat is always displayable.
+        expect(result.stats.heavyAttackDmgBonus).toBe(0);
+        expect(result.stats.resonanceSkillDmgBonus).toBe(0);
+        expect(result.stats.resonanceLiberationDmgBonus).toBe(0);
+    });
 });
 
 describe('activeSetBonuses — real set-bonus tiers from ACTUAL gear (not an assumed selection)', () => {
