@@ -1,8 +1,8 @@
 # FrequencyManager — Architecture
 
 This document describes the high-level system design of FrequencyManager. For
-contributor guidance see [CONTRIBUTING.md](./CONTRIBUTING.md); for changelog
-history see [CHANGELOG.md](./CHANGELOG.md); for the project overview see
+contributor guidance see [CONTRIBUTING.md](./CONTRIBUTING.md); for what's
+planned next see [ROADMAP.md](./ROADMAP.md); for the project overview see
 [README.md](./README.md).
 
 ---

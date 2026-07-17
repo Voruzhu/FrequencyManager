@@ -140,15 +140,11 @@ You can also trigger a manual check any time from **Settings → Updates**.
 
 ## 🗺️ Roadmap
 
-- **Rotation Builder** — currently for testing rotations: build a sequence
-  of skills/attacks against your actual party and see total damage over a
-  fight, separate from a single-hit Calculator check. Expect refinement as
-  real-world rotations get tried against it.
-- **Polishing Genshin Impact** — Wuthering Waves data has had several
-  full-roster accuracy passes; Genshin is getting the same treatment next
-  (see [Data accuracy](#-data-accuracy) above).
-- **Keeping up with new content** — new characters, weapons, and gear as
-  both games release them.
+Per-game character/roster data progress and what's planned next now live in
+[ROADMAP.md](./ROADMAP.md) — short version: Wuthering Waves' full roster just
+went through a fresh accuracy re-audit (~95%), Genshin Impact is getting the
+same treatment next, and Rotation Builder is still being refined as a
+rotation-testing tool.
 
 ---
 
