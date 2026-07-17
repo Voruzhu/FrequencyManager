@@ -381,6 +381,30 @@ export function getPassives(gameId: string): Passive[] {
     return getGameData(gameId).passives;
 }
 
+/**
+ * `data.passives` is a generic, game-wide 2-3 slot label list ("Inherent
+ * Skill I" / "1st Ascension Passive" etc.) with boilerplate descriptions —
+ * there's no per-character version of that catalog. The REAL per-character
+ * text already exists as tagged labels inside `character.selfBuffs` (e.g.
+ * WW's "Havoc DMG Bonus +15% (Inherent I)", GI's "... (P1)") — this pulls
+ * whichever of those match the Nth passive slot for use as its real
+ * description, falling back to the generic placeholder (return undefined)
+ * when the character has no self-buff tagged for that slot (a real passive
+ * that doesn't affect a modeled stat, or simply not yet authored).
+ */
+const PASSIVE_SLOT_TAGS: Record<string, RegExp[]> = {
+    'wuthering-waves': [/\(Inherent I\b/, /\(Inherent II\b/],
+    'genshin-impact': [/\(P1\)/, /\(P2\)/],
+};
+
+export function describePassiveSlot(gameId: string, character: CharacterData, slotIndex: number): string | undefined {
+    const tag = PASSIVE_SLOT_TAGS[gameId]?.[slotIndex];
+    if (!tag) return undefined;
+    const matches = (character.selfBuffs ?? []).filter((sb) => tag.test(sb.label));
+    if (matches.length === 0) return undefined;
+    return matches.map((sb) => sb.label.replace(/\s*\([^()]*\)\s*$/, '')).join('; ');
+}
+
 /** WuWa calls them Sequences (Resonance Chains); Genshin calls them Constellations. */
 export function getSequenceLabel(gameId: string): string {
     return getGameData(gameId).sequenceLabel;
