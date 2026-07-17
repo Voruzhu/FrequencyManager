@@ -169,3 +169,8 @@ FrequencyManager is free and built in spare time. If it's saved you a
 spreadsheet or two:
 
 [![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/voruzhu)
+
+This is my first public project as a junior developer, built and maintained
+in my spare time. If you run into bugs, rough edges, or have suggestions,
+please open an issue — feedback is genuinely welcome and helps me improve
+both the app and myself as a developer.
