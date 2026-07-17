@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
     LayoutDashboard, Calculator, ScanLine, Boxes, Activity, Package, Gamepad2,
 } from 'lucide-react';
@@ -10,12 +10,9 @@ import { useHealthStore } from '../stores/healthStore';
 import { useGameStore } from '../stores/gameStore';
 import { useUIStore } from '../stores/uiStore';
 import { GamePackageInstaller } from '../components/GamePackageInstaller';
+import { useAppVersion } from '../lib/useAppVersion';
 
 type Tone = 'success' | 'warning' | 'destructive';
-
-const versionBridge = () => (window as unknown as {
-    frequencyManager?: { getAppVersion?: () => Promise<string> };
-}).frequencyManager;
 
 export function DashboardScreen() {
     const { modules, refreshModules, outputs } = useModuleStore();
@@ -23,18 +20,11 @@ export function DashboardScreen() {
     const { games, activeGameId } = useGameStore();
     const setActiveScreen = useUIStore((s) => s.setActiveScreen);
     const activeGame = games.find((g) => g.id === activeGameId);
-    const [appVersion, setAppVersion] = useState('');
+    const appVersion = useAppVersion();
 
     useEffect(() => {
         if (modules.length === 0) void refreshModules();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        void (async () => {
-            const v = await versionBridge()?.getAppVersion?.();
-            if (v) setAppVersion(v);
-        })();
     }, []);
 
     const enabled = modules.filter((m) => m.enabled).length;

@@ -3,11 +3,13 @@ import { useDevStore } from '../../stores/devStore';
 import { useHealthStore } from '../../stores/healthStore';
 import type { HealthStatus } from '../../types';
 import { cn } from '@/lib/utils';
+import { useAppVersion } from '../../lib/useAppVersion';
 
 export function StatusBar() {
     const { modules } = useModuleStore();
     const { devMode } = useDevStore();
     const { healthChecks, lastUpdated } = useHealthStore();
+    const appVersion = useAppVersion();
 
     const enabledCount = modules.filter((m) => m.enabled).length;
     const totalCount = modules.length;
@@ -32,7 +34,7 @@ export function StatusBar() {
             <div className="flex items-center gap-3">
                 <span>Modules: <strong className="text-foreground">{enabledCount}</strong>/{totalCount} enabled</span>
                 <span className="h-3 w-px bg-border" />
-                <span>v1.0.0</span>
+                <span>v{appVersion || '—'}</span>
                 {lastUpdated > 0 && (
                     <>
                         <span className="h-3 w-px bg-border" />

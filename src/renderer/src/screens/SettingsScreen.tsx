@@ -14,6 +14,7 @@ import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore, LOGICAL_CORES } from '../stores/settingsStore';
 import { gameDataCounts, exportGameData, importGameData, clearGameData, type GameDataEnvelope } from '../lib/gameDataBackup';
 import { GamePackageInstaller } from '../components/GamePackageInstaller';
+import { useAppVersion } from '../lib/useAppVersion';
 
 interface AppUpdateInfo {
     repo: string;
@@ -67,7 +68,6 @@ const dataBridge = () => (window as unknown as {
         storageSet?: (key: string, value: unknown) => Promise<boolean>;
         saveJsonFile?: (name: string, content: string) => Promise<string | null>;
         openJsonFile?: () => Promise<{ path: string; content: string } | null>;
-        getAppVersion?: () => Promise<string>;
         openLogsFolder?: () => Promise<string>;
     };
 }).frequencyManager;
@@ -146,14 +146,7 @@ export function SettingsScreen() {
     // that backs settings, saved builds, active screen, active game).
     const [exportText, setExportText] = useState('');
     const [importText, setImportText] = useState('');
-    const [appVersion, setAppVersion] = useState('1.0.0');
-
-    useEffect(() => {
-        void (async () => {
-            const v = await dataBridge()?.getAppVersion?.();
-            if (v) setAppVersion(v);
-        })();
-    }, []);
+    const appVersion = useAppVersion('1.0.0');
 
     const doExport = async () => {
         const b = dataBridge();
