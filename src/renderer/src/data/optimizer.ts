@@ -20,6 +20,7 @@ export {
     computeBaseLoadouts,
     targetRanges,
     scoreAndRank,
+    isScopedBuff,
 } from '@shared/calc/optimizer';
 
 export type {

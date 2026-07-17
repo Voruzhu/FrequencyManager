@@ -1,9 +1,10 @@
 import {
     combinations, subtreeSize, totalCombinations, gearSlotsFor,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
+    enemyMultiplier, skillDamage, isScopedBuff,
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
-import type { CharacterEntry, GearEntry, StatDef } from '../../shared/types/game-bundle';
+import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry } from '../../shared/types/game-bundle';
 
 describe('combinations — firstIndices partitioning', () => {
     it('with no filter, generates every k-combination in lexicographic order', () => {
@@ -133,6 +134,97 @@ describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes
     it('gear with no cost field at all contributes 0, never blocking a combo', () => {
         const combo = [gear(1), gear(1), gear(1), gear(1), gear(1)];
         expect(withinCostBudget(combo, 12)).toBe(true);
+    });
+});
+
+describe('enemyMultiplier — defIgnore/resShred', () => {
+    const enemy: EnemyEntry = { id: 'e', name: 'Dummy', level: 90, def: 1000, res: 20 };
+
+    it('defaults (no 3rd/4th arg) match the old 2-arg behavior exactly', () => {
+        expect(enemyMultiplier(enemy, 90, 0, 0)).toBe(enemyMultiplier(enemy, 90));
+    });
+
+    it('defIgnorePct raises the multiplier (less effective DEF -> more damage through)', () => {
+        const base = enemyMultiplier(enemy, 90);
+        const ignored = enemyMultiplier(enemy, 90, 50, 0);
+        expect(ignored).toBeGreaterThan(base);
+        // Halving DEF: factor/(factor+def/2) — check the exact math, not just direction.
+        const factor = 5 * 90 + 500;
+        const expectedDefMult = factor / (factor + enemy.def * 0.5);
+        const resMult = enemyMultiplier(enemy, 90) / (factor / (factor + enemy.def)); // isolate resMult
+        expect(ignored).toBeCloseTo(expectedDefMult * resMult, 6);
+    });
+
+    it('defIgnorePct is clamped to [0, 100] — overshooting to 150 behaves the same as 100 (0 effective DEF)', () => {
+        expect(enemyMultiplier(enemy, 90, 150, 0)).toBeCloseTo(enemyMultiplier(enemy, 90, 100, 0), 10);
+    });
+
+    it('resShredPct raises the multiplier (less RES -> more damage through)', () => {
+        const base = enemyMultiplier(enemy, 90);
+        const shredded = enemyMultiplier(enemy, 90, 0, 10);
+        expect(shredded).toBeGreaterThan(base);
+    });
+
+    it('resShredPct can push RES negative — formula still produces a finite, higher-than-base multiplier (matches a real negative-RES enemy)', () => {
+        const lowResEnemy: EnemyEntry = { id: 'e2', name: 'LowRes', level: 90, def: 1000, res: 5 };
+        const shredded = enemyMultiplier(lowResEnemy, 90, 0, 20); // res goes to -15
+        expect(Number.isFinite(shredded)).toBe(true);
+        expect(shredded).toBeGreaterThan(enemyMultiplier(lowResEnemy, 90));
+    });
+
+    it('defIgnore and resShred combine (both reduce mitigation independently)', () => {
+        const both = enemyMultiplier(enemy, 90, 30, 10);
+        const defOnly = enemyMultiplier(enemy, 90, 30, 0);
+        const resOnly = enemyMultiplier(enemy, 90, 0, 10);
+        expect(both).toBeGreaterThan(defOnly);
+        expect(both).toBeGreaterThan(resOnly);
+    });
+});
+
+describe('isScopedBuff', () => {
+    it('a buff with appliesTo is scoped', () => {
+        expect(isScopedBuff({ id: 'b', name: 'B', source: 'S', stat: 'dmgBonus', value: 10, appliesTo: ['basic'] })).toBe(true);
+    });
+    it('an unscoped defIgnore/resShred buff is STILL scoped (routed to skillDamage, not global stats)', () => {
+        expect(isScopedBuff({ id: 'b', name: 'B', source: 'S', stat: 'defIgnore', value: 10 })).toBe(true);
+        expect(isScopedBuff({ id: 'b', name: 'B', source: 'S', stat: 'resShred', value: 10 })).toBe(true);
+    });
+    it('a plain unscoped stat buff (e.g. atkPct) is NOT scoped', () => {
+        expect(isScopedBuff({ id: 'b', name: 'B', source: 'S', stat: 'atkPct', value: 10 })).toBe(false);
+    });
+});
+
+describe('skillDamage — defIgnore/resShred end-to-end via scopedBuffs', () => {
+    const skill: SkillDef = { id: 's1', name: 'Skill', type: 'Skill', description: '', multiplier: 1, scaling: 'atk' };
+    const stats = { atk: 1000, critRate: 0, critDmg: 0 };
+    const enemy: EnemyEntry = { id: 'e', name: 'Dummy', level: 90, def: 2000, res: 20 };
+
+    it('an unscoped defIgnore buff increases computed damage', () => {
+        const withoutIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1 });
+        const defIgnoreBuff: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'defIgnore', value: 30 };
+        const withIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [defIgnoreBuff] });
+        expect(withIgnore).toBeGreaterThan(withoutIgnore);
+    });
+
+    it('a defIgnore buff scoped to a DIFFERENT attack type does not affect this skill', () => {
+        const withoutIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1 });
+        const wrongScope: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'defIgnore', value: 30, appliesTo: ['heavy'] };
+        const stillNoIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [wrongScope] });
+        expect(stillNoIgnore).toBe(withoutIgnore);
+    });
+
+    it('a defIgnore buff scoped to the MATCHING attack type does affect this skill', () => {
+        const withoutIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1 });
+        const rightScope: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'defIgnore', value: 30, appliesTo: ['skill'] };
+        const withIgnore = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [rightScope] });
+        expect(withIgnore).toBeGreaterThan(withoutIgnore);
+    });
+
+    it('an unscoped resShred buff increases computed damage', () => {
+        const withoutShred = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1 });
+        const resShredBuff: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'resShred', value: 15 };
+        const withShred = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [resShredBuff] });
+        expect(withShred).toBeGreaterThan(withoutShred);
     });
 });
 

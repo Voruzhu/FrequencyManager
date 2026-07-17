@@ -224,11 +224,15 @@ const supplements: GameCatalogSupplements = {
             // 'echo' appliesTo scope (see note near Sigrika/Qiuyuan above).
             { id: 'cb-ww-lucilla-outro-echo', name: 'Montage (Echo Skill DMG amp)', source: 'Lucilla', stat: 'dmgBonus', value: 50, appliesTo: ['echo'], description: 'Outro Skill, when Lucilla is in Resonance Mode - Echo, grants the incoming resonator 50% Echo Skill DMG Bonus for 14s (corrected 2026-07-16 from "nearby resonators in the team... 30s" — wuthering.gg + independent corroboration, value unchanged — Skill.json 1000909).' },
             // ADDED 2026-07-16 — Inherent Skill "Slow Motion" had no entry
-            // anywhere. Echo-mode half (team Echo Skill DMG) added below;
-            // the Glacio-Chafe-mode half (-8% target Glacio RES, 30s) is a
-            // RES-shred debuff with no matching stat in this schema (same
-            // gap as Chevreuse/Faruzan's DEF-shred), left unmodeled.
+            // anywhere. Echo-mode half (team Echo Skill DMG) added below.
+            // FIXED 2026-07-17 — the Glacio-Chafe-mode half (-8% target
+            // Glacio RES, 30s) now modeled via `resShred` (new engine
+            // primitive): this schema's `EnemyEntry` only tracks one flat
+            // `res` regardless of attacking element (no per-element enemy
+            // RES anywhere), so a generic team-wide `resShred` is the same
+            // level of approximation already used for every other stat here.
             { id: 'cb-ww-lucilla-inherent-echo', name: 'Slow Motion (Echo Skill DMG amp)', source: 'Lucilla', stat: 'dmgBonus', value: 25, appliesTo: ['echo'], description: 'In Resonance Mode - Echo, grants all nearby Resonators in the team 25% Echo Skill DMG Bonus for 30s (wuthering.gg, confirmed 2026-07-16).' },
+            { id: 'cb-ww-lucilla-inherent-chafe', name: 'Slow Motion (Target Glacio RES -8%)', source: 'Lucilla', stat: 'resShred', value: 8, description: 'In Resonance Mode - Glacio Chafe, reduces the target’s Glacio RES by 8% for 30s (wuthering.gg, confirmed 2026-07-16).' },
             { id: 'cb-ww-brant-outro', name: 'The Course is Set! (Fusion DMG amp)', source: 'Brant', stat: 'elemDmg', value: 20, description: 'Outro Skill amplifies the incoming resonator’s Fusion DMG by 20% for 14s (verified exact — Skill.json 1002909).' },
             { id: 'cb-ww-brant-outro-skill', name: 'The Course is Set! (Res.-Skill DMG amp)', source: 'Brant', stat: 'dmgBonus', value: 25, appliesTo: ['skill'], description: 'Same Outro also amplifies Resonance Skill DMG by 25% for 14s (verified exact — Skill.json 1002909).' },
             { id: 'cb-ww-zani-outro', name: 'Beacon For the Future (Spectro DMG amp)', source: 'Zani', stat: 'elemDmg', value: 20, description: 'Outro Skill: after clearing all Heliacal Ember stacks from the marked target, other team members’ Spectro DMG to that target is amplified by 20% for 20s (verified exact — Skill.json 1003309).' },

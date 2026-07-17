@@ -114,8 +114,17 @@ const supplements: GameCatalogSupplements = {
             // is increased BASED ON 32% of Faruzan's Base ATK" — added directly to the
             // affected attack's own damage. Previously mis-modeled as a flat elemDmg%.
             { id: 'cb-gi-faruzan', name: 'Hurricane Guard (flat DMG add)', source: 'Faruzan', stat: 'flatDmgAdd', value: 400, appliesTo: ['normal', 'charged', 'plunge', 'skill', 'ult'], description: 'While Prayerful Wind’s Benefit is active, the affected character’s Anemo-DMG attacks gain flat bonus DMG = 32% of Faruzan’s own Base ATK, once every 0.8s — corrected from a wrong flat elemDmg% (verified exact — genshin-db passive2).', scaleOff: { sourceStat: 'atk', basis: 'base', ratio: 0.32 } },
+            // ADDED 2026-07-17 — "Perfidious Wind's Bale" (part of her Elemental
+            // Burst's Whirlwind Pulse, via her 1st Ascension Passive) reduces
+            // target Anemo RES by 30% for 4s — had no entry anywhere (genuine
+            // RES-shred gap, no matching stat existed before `resShred`).
+            { id: 'cb-gi-faruzan-anemores', name: 'Perfidious Wind’s Bale (Target Anemo RES -30%)', source: 'Faruzan', stat: 'resShred', value: 30, description: 'Whirlwind Pulse from Elemental Burst applies Perfidious Wind’s Bale, reducing the target’s Anemo RES by 30% for 4s (KQM/Genshin Center, confirmed 2026-07-17).' },
             { id: 'cb-gi-mona', name: 'Omen (party DMG)', source: 'Mona', stat: 'elemDmg', value: 60, description: 'Burst’s Omen marks the target — attacks against it (from anyone) deal +60% DMG at talent lvl 10 — corrected from 42; verified exact — genshin-db combat3 param10.' },
-            { id: 'cb-gi-chevreuse', name: 'Coordinated Tactics (Pyro/Electro DMG)', source: 'Chevreuse', stat: 'elemDmg', value: 40, description: 'After an Overload, mono-Pyro/Electro parties’ opponent Pyro & Electro RES is decreased by 40% — modeled as effective DMG (verified exact, fixed value — genshin-db passive1).' },
+            // FIXED 2026-07-17 — was approximated as a flat elemDmg% ("modeled as
+            // effective DMG") before `resShred` existed as a primitive. The real
+            // mechanic reduces the TARGET's Pyro & Electro RES by 40% (a genuine
+            // RES-shred, not a DMG buff) — now modeled correctly.
+            { id: 'cb-gi-chevreuse', name: 'Coordinated Tactics (Target Pyro/Electro RES -40%)', source: 'Chevreuse', stat: 'resShred', value: 40, description: 'After an Overload, mono-Pyro/Electro parties’ opponent Pyro & Electro RES is decreased by 40% (verified exact, fixed value — genshin-db passive1).' },
             { id: 'cb-gi-chevreuse-atk', name: 'Vertical Force Coordination (ATK)', source: 'Chevreuse', stat: 'atkPct', value: 40, description: 'After firing an Overcharged Ball, nearby Pyro/Electro party members gain +1% ATK per 1,000 of Chevreuse’s own Max HP, capped at 40% (verified — genshin-db passive2; scales with her real HP via scaleOff).', scaleOff: { sourceStat: 'hp', basis: 'total', ratio: 0.001, cap: 40 } },
             // Shenhe's real kit was mis-modeled as a flat-ATK-scaled Cryo DMG add — her
             // actual passives are much simpler, both fixed %s with no stat-scaling:

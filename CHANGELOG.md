@@ -8,6 +8,35 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.0.0] - 2026-07-17
 
+### Added
+- **DEF-ignore / RES-shred engine primitive** — a real gap: several known
+  weapon/kit effects ("ignores 8% of the target's DEF", "-40% target RES")
+  had no matching mechanic anywhere in the damage formula and were either
+  left unmodeled or crudely approximated as a flat DMG buff. `enemyMultiplier`
+  now takes an optional DEF-ignore % and RES-shred (percentage points)
+  argument, reducing the enemy's effective DEF/RES before the standard
+  mitigation formula; `skillDamage` resolves these the same way as any other
+  per-attack-type-scoped buff (`BuffEntry.stat: 'defIgnore' | 'resShred'`),
+  except an UNSCOPED one (no `appliesTo`) now correctly still reaches the
+  calculation — previously only scoped buffs skipped the global-stats path.
+  Closed real gaps this unblocked: WW weapons Blazing Justice, Daybreaker's
+  Spine, Defier's Thorn, Spectral Trigger (all had DEF-ignore text in their
+  passive nobody had modeled); Lucilla's Inherent Skill "Slow Motion"
+  Glacio-Chafe-mode RES-shred; GI's Chevreuse (converted from a "modeled as
+  effective DMG" approximation to the real RES-shred mechanic) and Faruzan's
+  "Perfidious Wind's Bale" Anemo RES-shred (had no entry at all before).
+  15 new unit tests (`tests/shared/optimizer.test.ts`) cover the formula math
+  directly (clamping, negative RES, combining both) and the scoping behavior
+  end-to-end.
+- **Element-restricted team buffs now work** — turned out to need no engine
+  change at all: `computeBuildStats` already routes a buff whose `stat`
+  matches the TARGET character's own element key (e.g. `aeroDmg` for an Aero
+  character) into their `elemDmg`, silently no-oping it for every other
+  element — this had only ever been exercised for a character's own innate
+  elemental stat, never by a buff, so it looked like a schema gap that
+  wasn't one. Fixed Bloodpact's Pledge's "Rover:Aero ult → team Aero DMG amp"
+  (previously left undocumented as unmodeled) using this existing mechanism.
+
 ### Fixed
 - **Full roster-wide re-audit (2026-07-16)** — 7 parallel research passes
   cross-checked every WW character's kit/sequences, every weapon's

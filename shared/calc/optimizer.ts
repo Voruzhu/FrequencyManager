@@ -201,12 +201,57 @@ function scopedFlatAddFor(skill: SkillDef, scoped: BuffEntry[] | undefined): num
     return sum;
 }
 
-/** Sum of scoped-buff DMG% that applies to this specific skill (excludes `flatDmgAdd`, a different mechanic — see `scopedFlatAddFor`). */
+/** Sum of scoped-buff DMG% that applies to this specific skill (excludes `flatDmgAdd`, `defIgnore` and `resShred` — different mechanics, see their own functions). */
 function scopedDmgFor(skill: SkillDef, scoped: BuffEntry[] | undefined): number {
     if (!scoped || scoped.length === 0) return 0;
     let sum = 0;
-    for (const b of scoped) if (b.stat !== 'flatDmgAdd' && skillMatchesScope(skill, b.appliesTo)) sum += b.value;
+    for (const b of scoped) if (b.stat !== 'flatDmgAdd' && b.stat !== 'defIgnore' && b.stat !== 'resShred' && skillMatchesScope(skill, b.appliesTo)) sum += b.value;
     return sum;
+}
+
+/**
+ * `defIgnore`: percent of the enemy's DEF to ignore before the standard
+ * def-mitigation formula (e.g. Blazing Justice's "ignores 8% of the target's
+ * DEF"). Unlike `flatDmgAdd`, this one CAN be unscoped (no `appliesTo`) —
+ * many real effects ("dealing damage ignores X% DEF") apply to every attack,
+ * not just one type; `skillMatchesScope` already treats a missing/empty
+ * `appliesTo` as "matches everything", so this needs no special case beyond
+ * `isScopedBuff` including it regardless of `appliesTo` (see that function).
+ * Summed (not maxed) across multiple sources, then clamped in
+ * `enemyMultiplier` — matches how every other %-buff in this engine stacks.
+ */
+function scopedDefIgnoreFor(skill: SkillDef, scoped: BuffEntry[] | undefined): number {
+    if (!scoped || scoped.length === 0) return 0;
+    let sum = 0;
+    for (const b of scoped) if (b.stat === 'defIgnore' && skillMatchesScope(skill, b.appliesTo)) sum += b.value;
+    return sum;
+}
+
+/**
+ * `resShred`: percentage POINTS subtracted from the enemy's RES (e.g. "RES
+ * -10%" drops a 20% RES enemy to 10%, not "10% less than current RES") —
+ * same unscoped-allowed convention as `scopedDefIgnoreFor`.
+ */
+function scopedResShredFor(skill: SkillDef, scoped: BuffEntry[] | undefined): number {
+    if (!scoped || scoped.length === 0) return 0;
+    let sum = 0;
+    for (const b of scoped) if (b.stat === 'resShred' && skillMatchesScope(skill, b.appliesTo)) sum += b.value;
+    return sum;
+}
+
+/**
+ * Whether a buff belongs in `SkillContext.scopedBuffs` (resolved inside
+ * `skillDamage` against the specific skill being computed) rather than
+ * folded into global `BuildStats` by `computeBuildStats`. Normally that's
+ * exactly "has an `appliesTo`" — but `defIgnore`/`resShred` are never global
+ * stats (there's no "DEF ignore" stat catalog entry in any game module, by
+ * design — see `scopedDefIgnoreFor`'s doc comment), so an UNSCOPED one still
+ * needs to reach `skillDamage`, not silently vanish the way an unscoped
+ * `dmgBonus` would (that's a data-authoring mistake for `dmgBonus`; it's the
+ * NORMAL case for `defIgnore`/`resShred`).
+ */
+export function isScopedBuff(b: BuffEntry): boolean {
+    return !!(b.appliesTo && b.appliesTo.length) || b.stat === 'defIgnore' || b.stat === 'resShred';
 }
 
 /** Multiplier for a skill at a talent level (uses the table when present). */
@@ -298,11 +343,19 @@ export interface Loadout {
  * Combined defense + resistance multiplier applied to a skill's raw damage.
  * DEF scales with character level; RES uses the standard piecewise formula.
  * (Lives here so the engine is self-contained; the renderer re-exports it.)
+ *
+ * `defIgnorePct` (0-100, clamped) scales the enemy's effective DEF down
+ * before the mitigation formula — e.g. Blazing Justice's "ignores 8% of the
+ * target's DEF". `resShredPct` is subtracted from the enemy's RES in
+ * percentage POINTS before the same formula (can push RES negative — the
+ * piecewise formula below already handles that, same as a real negative-RES
+ * enemy would). Both default to 0 (no change from the old 2-arg behavior).
  */
-export function enemyMultiplier(e: EnemyEntry, charLevel = 90): number {
+export function enemyMultiplier(e: EnemyEntry, charLevel = 90, defIgnorePct = 0, resShredPct = 0): number {
     const factor = 5 * charLevel + 500;
-    const defMult = factor / (factor + e.def);
-    const r = e.res / 100;
+    const effectiveDef = e.def * (1 - Math.min(100, Math.max(0, defIgnorePct)) / 100);
+    const defMult = factor / (factor + effectiveDef);
+    const r = (e.res - resShredPct) / 100;
     const resMult = r < 0 ? 1 - r / 2 : r < 0.75 ? 1 - r : 1 / (4 * r + 1);
     return defMult * resMult;
 }
@@ -497,7 +550,10 @@ export function skillDamage(stats: BuildStats, skill: SkillDef, ctx: SkillContex
     const { mult: rMult, addFlat } = reactionEffect(ctx.reaction ?? 'none', stats.elementalMastery ?? 0);
     const withReaction = talentBase * rMult + addFlat;
 
-    const dmg = withReaction * critMultiplier(stats, ctx.mode) * (ctx.enemy ? enemyMultiplier(ctx.enemy, ctx.charLevel ?? 90) : 1);
+    const mit = ctx.enemy
+        ? enemyMultiplier(ctx.enemy, ctx.charLevel ?? 90, scopedDefIgnoreFor(skill, ctx.scopedBuffs), scopedResShredFor(skill, ctx.scopedBuffs))
+        : 1;
+    const dmg = withReaction * critMultiplier(stats, ctx.mode) * mit;
     return Math.round(dmg);
 }
 
@@ -544,7 +600,7 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         stacks: config.stacks,
         reaction: config.reaction,
         charLevel: config.charLevel,
-        scopedBuffs: config.buffs.filter((b) => b.appliesTo && b.appliesTo.length),
+        scopedBuffs: config.buffs.filter(isScopedBuff),
     };
     return combos.map((gear, idx) => {
         const stats = computeBuildStats(c, gear, config.buffs, config.weapon, config.catalog);
