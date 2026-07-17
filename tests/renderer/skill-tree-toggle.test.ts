@@ -1,5 +1,5 @@
 import { characterAutoBuffs, conditionalCharacterBuffs, isSkillTreeBuff, stripAutoSkillTreeBuffs, passiveBuffId } from '../../src/renderer/src/lib/selfBuffs';
-import { describePassiveSlot } from '../../src/renderer/src/data/gameData';
+import { describePassiveSlot, getPassiveSlotBuffs } from '../../src/renderer/src/data/gameData';
 import type { CharacterEntry } from '../../shared/types/game-bundle';
 
 function char(overrides: Partial<CharacterEntry> = {}): CharacterEntry {
@@ -118,5 +118,36 @@ describe('describePassiveSlot — real per-character Inherent Skill text instead
             ],
         });
         expect(describePassiveSlot('wuthering-waves', c, 0)).toBe('Crit Rate +10%; Crit DMG +20%');
+    });
+});
+
+describe('getPassiveSlotBuffs — the raw matches + their original index, for the Talents window\'s real toggle', () => {
+    it('returns the matching selfBuff paired with its index in the FULL (unfiltered) selfBuffs array', () => {
+        const c = char(); // index 0: Inherent I (elemDmg), 1&2: Skill Tree (not tagged Inherent)
+        const matches = getPassiveSlotBuffs('wuthering-waves', c, 0);
+        expect(matches).toHaveLength(1);
+        expect(matches[0].index).toBe(0);
+        expect(matches[0].sb.stat).toBe('elemDmg');
+    });
+
+    it('the returned index reconstructs the SAME id characterAutoBuffs/conditionalCharacterBuffs would generate — this is what keeps the Talents window switch and the Calculator chip in sync', () => {
+        const c = char({
+            selfBuffs: [
+                { stat: 'critRate', label: 'Skill Tree: Crit Rate+8% (fully invested)', value: 8, conditional: true }, // index 0 — NOT tagged Inherent
+                { stat: 'dmgBonus', label: 'Liberation DMG +10% (Inherent I)', value: 10, conditional: true, appliesTo: ['ult'] }, // index 1
+            ],
+        });
+        const matches = getPassiveSlotBuffs('wuthering-waves', c, 0);
+        expect(matches).toHaveLength(1);
+        expect(matches[0].index).toBe(1); // NOT 0 — must preserve the real position, not a re-numbered one
+        const id = passiveBuffId(c.id, matches[0].sb, matches[0].index);
+        // Exactly what conditionalCharacterBuffs (the Calculator's own chip list) produces for this same entry.
+        const chipCandidate = conditionalCharacterBuffs(c, [], undefined, []).find((b) => b.stat === 'dmgBonus');
+        expect(chipCandidate?.id).toBe(id);
+    });
+
+    it('returns an empty array (caller falls back to the generic slot) when nothing matches', () => {
+        const c = char();
+        expect(getPassiveSlotBuffs('wuthering-waves', c, 1)).toHaveLength(0);
     });
 });
