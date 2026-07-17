@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ModuleInfo, ModuleUISpec, FieldSpec, GameRuleRef } from '../types';
+import type { ModuleInfo, ModuleUISpec, GameRuleRef } from '../types';
 import { DEFAULT_MODULE_UI_SPECS } from '../data/moduleUISpecs';
 
 interface ModuleOutput {
@@ -9,13 +9,6 @@ interface ModuleOutput {
     data: unknown;
     /** When the channel was last written. */
     timestamp: number;
-}
-
-/** A single value in shared state with baseline/default tracking for revert/reset. */
-interface SharedValue {
-    current: unknown;
-    baseline: unknown;
-    default: unknown;
 }
 
 /** Diff result for merge operations. */
@@ -99,7 +92,7 @@ async function mockExecute(moduleId: string, actionId: string, values: Record<st
 
     switch (`${moduleId}:${actionId}`) {
         case 'damage-calculator:calculate': {
-            const charId = String(values.characterId ?? 'rover-spectro');
+            const charId = typeof values.characterId === 'string' ? values.characterId : 'rover-spectro';
             const rot = Number(values.rotationLength ?? 20);
             const atk = 2400 + Math.floor(Math.random() * 800);
             const critRate = 75;
@@ -218,8 +211,8 @@ function shallowEqual(a: unknown, b: unknown): boolean {
     if (typeof a !== typeof b) return false;
     if (a === null || b === null) return false;
     if (typeof a === 'object' && typeof b === 'object') {
-        const ak = Object.keys(a as Record<string, unknown>);
-        const bk = Object.keys(b as Record<string, unknown>);
+        const ak = Object.keys(a);
+        const bk = Object.keys(b);
         if (ak.length !== bk.length) return false;
         return ak.every((k) => shallowEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
     }
@@ -362,7 +355,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
         set((s) => ({ modules: s.modules.map((m) => (m.id === id ? { ...m, enabled: true } : m)) }));
         if (bridge.frequencyManager?.enableModule) {
             await bridge.frequencyManager.enableModule(id);
-            get().refreshModules();
+            await get().refreshModules();
         }
     },
 
@@ -370,7 +363,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
         set((s) => ({ modules: s.modules.map((m) => (m.id === id ? { ...m, enabled: false } : m)) }));
         if (bridge.frequencyManager?.disableModule) {
             await bridge.frequencyManager.disableModule(id);
-            get().refreshModules();
+            await get().refreshModules();
         }
     },
 
@@ -403,7 +396,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
     executeAction: async (id, actionId, values) => {
         set((s) => ({ running: { ...s.running, [id]: true } }));
         try {
-            let result: { outputs?: Record<string, unknown> } | unknown;
+            let result: unknown;
             if (bridge.frequencyManager?.executeModuleAction) {
                 result = await bridge.frequencyManager.executeModuleAction(id, actionId, values);
                 // The kernel returns `{ __unhandled: true }` when the module

@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useWindowStore } from '../../stores/windowStore';
 import { RotationCharacterPickerWindow } from '../CharacterWindows';
-import type { FieldSpec, RotationStepSpec, RotationBuilderSpec } from '../../types';
+import type { FieldSpec, RotationStepSpec } from '../../types';
 
 interface RotationBuilderProps {
     field: FieldSpec;
@@ -30,14 +30,9 @@ interface RotationBuilderProps {
 export function RotationBuilder({ field, value, onChange, disabled }: RotationBuilderProps) {
     const config = field.rotationConfig;
 
-    if (!config) {
-        return (
-            <div className="p-4 border border-dashed border-red-500/40 bg-red-500/10 rounded-lg text-red-300 text-sm">
-                RotationBuilder: missing rotationConfig in field spec
-            </div>
-        );
-    }
-
+    // Hooks must run unconditionally on every render (Rules of Hooks) — the
+    // `!config` guard clause was previously above these, calling them
+    // conditionally between renders.
     const [expandedStep, setExpandedStep] = useState<number | null>(null);
     const [totalTime, setTotalTime] = useState(0);
     const [totalEnergy, setTotalEnergy] = useState(0);
@@ -49,6 +44,14 @@ export function RotationBuilder({ field, value, onChange, disabled }: RotationBu
         setTotalTime(time);
         setTotalEnergy(energy);
     }, [value]);
+
+    if (!config) {
+        return (
+            <div className="p-4 border border-dashed border-red-500/40 bg-red-500/10 rounded-lg text-red-300 text-sm">
+                RotationBuilder: missing rotationConfig in field spec
+            </div>
+        );
+    }
 
     const characters = config.characters || [];
     const skills = config.skills || {};
@@ -464,9 +467,6 @@ function configShowEnergy(step: RotationStepSpec): boolean {
 function formatEnergy(e: number): string {
     return e >= 0 ? `+${e}` : String(e);
 }
-
-// Note: maxTime needs to be available here - we'll use a default
-const maxTime = 30;
 
 // Helper to check if step shows energy (for use in RotationStepCard)
 const checkStepEnergy = configShowEnergy;

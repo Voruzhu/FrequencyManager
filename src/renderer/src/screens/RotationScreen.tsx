@@ -207,7 +207,7 @@ export function RotationScreen() {
         const enabledSelfBuffs = member && enabledIds.size > 0 ? conditionalBuffCandidates(member, data.statCatalog).filter((b) => enabledIds.has(b.id)) : [];
         const { skill, damage } = computeStepDamage(step, member, enabledBuffs, enabledSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog);
         return { step, index, member, skill, damage };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }), [steps, members, enabledBuffs, enabledSelfBuffIds, calc.critMode, calc.enemy, reaction, data.statCatalog]);
 
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);

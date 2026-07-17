@@ -18,9 +18,10 @@ import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty, activeSetName } from '@/lib/party';
-import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalGearBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId } from '@/lib/selfBuffs';
+import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
-import { getGameData, useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
+import type { getGameData} from '../data/gameData';
+import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
 
@@ -426,7 +427,7 @@ export function CalculatorScreen() {
                             </div>
 
                             <div className="flex flex-wrap gap-2">
-                                <Button className="flex-1" onClick={run} disabled={calc.optimizeProgress !== null}>
+                                <Button className="flex-1" onClick={() => { void run(); }} disabled={calc.optimizeProgress !== null}>
                                     <Wand2 /> {calc.optimizeProgress !== null ? 'Optimizing…' : 'Optimize loadouts'}
                                 </Button>
                                 <Button className="flex-1" variant="secondary" onClick={calculateCurrent} disabled={calc.optimizeProgress !== null} title="Score only the gear currently equipped on this character — no search.">

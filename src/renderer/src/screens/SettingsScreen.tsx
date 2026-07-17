@@ -179,7 +179,7 @@ export function SettingsScreen() {
     };
     const doImport = async () => {
         let parsed: { kind?: string; data?: Record<string, unknown> };
-        try { parsed = JSON.parse(importText); } catch { toast.error('Invalid JSON'); return; }
+        try { parsed = JSON.parse(importText) as { kind?: string; data?: Record<string, unknown> }; } catch { toast.error('Invalid JSON'); return; }
         if (parsed?.kind !== 'frequency-manager-userdata' || typeof parsed.data !== 'object' || !parsed.data) {
             toast.error('Not a FrequencyManager backup file'); return;
         }
@@ -218,7 +218,7 @@ export function SettingsScreen() {
     };
     const doGameImport = () => {
         let parsed: GameDataEnvelope;
-        try { parsed = JSON.parse(gameImportText); } catch { toast.error('Invalid JSON'); return; }
+        try { parsed = JSON.parse(gameImportText) as GameDataEnvelope; } catch { toast.error('Invalid JSON'); return; }
         if (parsed?.kind !== 'frequency-manager-game-data' || typeof parsed.data !== 'object' || !parsed.data) {
             toast.error('Not a FrequencyManager game-data backup file'); return;
         }
@@ -419,7 +419,7 @@ export function SettingsScreen() {
                                         <div className="text-sm font-medium text-foreground">{m.name}</div>
                                         {m.description && <div className="text-xs text-muted-foreground">{m.description}</div>}
                                     </div>
-                                    <Switch checked={m.enabled} onCheckedChange={(v) => (v ? enableModule(m.id) : disableModule(m.id))} />
+                                    <Switch checked={m.enabled} onCheckedChange={(v) => { void (v ? enableModule(m.id) : disableModule(m.id)); }} />
                                 </div>
                             ))}
                         </CardContent>
@@ -439,7 +439,7 @@ export function SettingsScreen() {
                                         : 'Not checked yet'}
                                 </CardDescription>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={checkNow} disabled={checking}>
+                            <Button size="sm" variant="secondary" onClick={() => { void checkNow(); }} disabled={checking}>
                                 <RefreshCw className={checking ? 'animate-spin' : ''} /> {checking ? 'Checking…' : 'Check now'}
                             </Button>
                         </CardHeader>
@@ -551,7 +551,7 @@ export function SettingsScreen() {
                                                             size="sm"
                                                             variant="secondary"
                                                             disabled={installingGameId === u.id}
-                                                            onClick={() => installGameUpdate(u.id, u.downloadUrl)}
+                                                            onClick={() => { void installGameUpdate(u.id, u.downloadUrl); }}
                                                         >
                                                             {installingGameId === u.id ? 'Installing…' : 'Update'}
                                                         </Button>
@@ -587,8 +587,8 @@ export function SettingsScreen() {
                                 <Button onClick={doGameExport}>Export {activeGameLabel} data</Button>
                                 {gameExportText && (
                                     <>
-                                        <Button variant="secondary" onClick={saveGameToFile}>Save to file…</Button>
-                                        <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(gameExportText); toast.success('Copied'); }}>Copy</Button>
+                                        <Button variant="secondary" onClick={() => { void saveGameToFile(); }}>Save to file…</Button>
+                                        <Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(gameExportText); toast.success('Copied'); }}>Copy</Button>
                                     </>
                                 )}
                             </div>
@@ -597,7 +597,7 @@ export function SettingsScreen() {
                             )}
                             <div className="space-y-2 border-t border-border pt-3">
                                 <div className="flex flex-wrap gap-2">
-                                    <Button variant="secondary" onClick={loadGameFromFile}>Load from file…</Button>
+                                    <Button variant="secondary" onClick={() => { void loadGameFromFile(); }}>Load from file…</Button>
                                 </div>
                                 <textarea
                                     value={gameImportText}
@@ -620,11 +620,11 @@ export function SettingsScreen() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={doExport}>Export current data</Button>
+                                <Button onClick={() => { void doExport(); }}>Export current data</Button>
                                 {exportText && (
                                     <>
-                                        <Button variant="secondary" onClick={saveToFile}>Save to file…</Button>
-                                        <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(exportText); toast.success('Copied'); }}>Copy</Button>
+                                        <Button variant="secondary" onClick={() => { void saveToFile(); }}>Save to file…</Button>
+                                        <Button variant="secondary" onClick={() => { void navigator.clipboard.writeText(exportText); toast.success('Copied'); }}>Copy</Button>
                                     </>
                                 )}
                             </div>
@@ -640,7 +640,7 @@ export function SettingsScreen() {
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex flex-wrap gap-2">
-                                <Button variant="secondary" onClick={loadFromFile}>Load from file…</Button>
+                                <Button variant="secondary" onClick={() => { void loadFromFile(); }}>Load from file…</Button>
                             </div>
                             <textarea
                                 value={importText}
@@ -648,7 +648,7 @@ export function SettingsScreen() {
                                 placeholder="Paste a FrequencyManager backup here…"
                                 className="h-40 w-full rounded-md border border-input bg-surface p-3 font-mono text-xs text-foreground placeholder:text-muted-foreground scrollbar-thin"
                             />
-                            <Button onClick={doImport} disabled={!importText.trim()}>Import &amp; reload</Button>
+                            <Button onClick={() => { void doImport(); }} disabled={!importText.trim()}>Import &amp; reload</Button>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -699,7 +699,7 @@ export function SettingsScreen() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button variant="secondary" onClick={() => dataBridge()?.openLogsFolder?.()}>Open logs folder</Button>
+                            <Button variant="secondary" onClick={() => { void dataBridge()?.openLogsFolder?.(); }}>Open logs folder</Button>
                         </CardContent>
                     </Card>
                 </TabsContent>

@@ -19,8 +19,8 @@ interface ScalingTable {
 }
 
 const TABLES: Record<string, ScalingTable> = {
-    'genshin-impact': genshinImpact as ScalingTable,
-    'wuthering-waves': wutheringWaves as ScalingTable,
+    'genshin-impact': genshinImpact,
+    'wuthering-waves': wutheringWaves,
 };
 
 export interface WeaponScaling {

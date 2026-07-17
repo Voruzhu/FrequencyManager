@@ -16,16 +16,13 @@ export function StatusBar() {
     const degradedCount = healthChecks.filter((h: HealthStatus) => h.status === 'degraded').length;
     const healthyCount = healthChecks.filter((h: HealthStatus) => h.status === 'healthy').length;
 
-    let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
     let statusColor = 'bg-ok';
-    let statusLabel = 'All systems operational';
+    let statusLabel: string;
 
     if (unhealthyCount > 0) {
-        overallStatus = 'unhealthy';
         statusColor = 'bg-error';
         statusLabel = `${unhealthyCount} module${unhealthyCount > 1 ? 's' : ''} unhealthy`;
     } else if (degradedCount > 0) {
-        overallStatus = 'degraded';
         statusColor = 'bg-yellow-500';
         statusLabel = `${degradedCount} module${degradedCount > 1 ? 's' : ''} degraded`;
     } else if (healthyCount > 0) {

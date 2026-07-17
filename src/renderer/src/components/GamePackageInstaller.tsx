@@ -76,7 +76,7 @@ export function GamePackageInstaller() {
                 <Label htmlFor="game-pkg-repo">GitHub repo</Label>
                 <div className="flex gap-2">
                     <Input id="game-pkg-repo" placeholder="owner/name" value={updateAppRepo} onChange={(e) => setUpdateAppRepo(e.target.value)} />
-                    <Button variant="secondary" onClick={fetchPackages} disabled={fetching}>
+                    <Button variant="secondary" onClick={() => { void fetchPackages(); }} disabled={fetching}>
                         <RefreshCw className={fetching ? 'animate-spin' : ''} /> {fetching ? 'Fetching…' : 'Fetch packages'}
                     </Button>
                 </div>
@@ -92,11 +92,11 @@ export function GamePackageInstaller() {
                                 <div className="text-xs text-muted-foreground">{Math.round(p.size / 1024)} KB</div>
                             </div>
                             {p.alreadyInstalled ? (
-                                <Button size="sm" variant="secondary" onClick={() => install(p)} disabled={installingId === p.id}>
+                                <Button size="sm" variant="secondary" onClick={() => { void install(p); }} disabled={installingId === p.id}>
                                     <Download className={installingId === p.id ? 'animate-pulse' : ''} /> {installingId === p.id ? 'Updating…' : 'Update'}
                                 </Button>
                             ) : (
-                                <Button size="sm" onClick={() => install(p)} disabled={installingId === p.id}>
+                                <Button size="sm" onClick={() => { void install(p); }} disabled={installingId === p.id}>
                                     <Download className={installingId === p.id ? 'animate-pulse' : ''} /> {installingId === p.id ? 'Installing…' : 'Install'}
                                 </Button>
                             )}
@@ -108,7 +108,7 @@ export function GamePackageInstaller() {
             {needsRestart && (
                 <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/5 p-2">
                     <span className="flex items-center gap-1.5 text-sm text-foreground"><CheckCircle2 className="h-4 w-4 text-success" /> Update downloaded — restart to apply.</span>
-                    <Button size="sm" onClick={() => gamePackageBridge()?.restartApp?.()}>Restart now</Button>
+                    <Button size="sm" onClick={() => { void gamePackageBridge()?.restartApp?.(); }}>Restart now</Button>
                 </div>
             )}
         </div>

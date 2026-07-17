@@ -8,15 +8,18 @@
  * @packageDocumentation
  */
 
-import { app, BrowserWindow, ipcMain, dialog, shell, Notification, protocol, net, desktopCapturer, globalShortcut, screen, nativeImage, NativeImage } from 'electron';
+import type { NativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, Notification, protocol, net, desktopCapturer, globalShortcut, screen, nativeImage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { pathToFileURL } from 'url';
 import electronLog from 'electron-log/main';
-import { createKernel, Kernel } from '@core/kernel';
+import type { Kernel } from '@core/kernel';
+import { createKernel } from '@core/kernel';
 import { StructuredLogger } from '@core/kernel';
 import { FileStorage } from '@core/storage';
-import { autoUpdater, UpdateInfo, ProgressInfo } from 'electron-updater';
+import type { UpdateInfo, ProgressInfo } from 'electron-updater';
+import { autoUpdater } from 'electron-updater';
 import { initExternalGameModules, getExternalIconsDir, hasGameDefinition } from '@adapters/game-definitions';
 import AdmZip from 'adm-zip';
 
@@ -104,12 +107,12 @@ function createWindow(): void {
 
     // Load the renderer
     if (process.env.NODE_ENV === 'development') {
-        mainWindow.loadURL('http://localhost:5173');
+        void mainWindow.loadURL('http://localhost:5173');
         mainWindow.webContents.openDevTools();
     } else {
         // Production: Vite builds the renderer into dist/renderer/
         // __dirname is dist/src/main/ so we go up two levels to dist/
-        mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
+        void mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
     }
 
     mainWindow.once('ready-to-show', () => {
@@ -122,7 +125,7 @@ function createWindow(): void {
 
     // Handle external links
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
+        void shell.openExternal(url);
         return { action: 'deny' };
     });
 }
@@ -147,7 +150,7 @@ async function initializeKernel(): Promise<void> {
         });
 
         // Expose module list via IPC
-        ipcMain.handle('kernel:modules', async () => {
+        ipcMain.handle('kernel:modules', () => {
             if (!kernel) return [];
             return kernel.moduleRegistry.getAll().map(m => ({
                 id: m.moduleId,
@@ -250,11 +253,11 @@ async function initializeKernel(): Promise<void> {
         });
 
         // ── Module enable/disable ──
-        ipcMain.handle('kernel:module-enable', async (_e, id: string) => {
+        ipcMain.handle('kernel:module-enable', (_e, id: string) => {
             try { kernel?.moduleRegistry.setHealth(id, 'healthy'); return { ok: true }; }
             catch (err) { return { ok: false, error: (err as Error).message }; }
         });
-        ipcMain.handle('kernel:module-disable', async (_e, id: string) => {
+        ipcMain.handle('kernel:module-disable', (_e, id: string) => {
             try { kernel?.moduleRegistry.setHealth(id, 'unloaded'); return { ok: true }; }
             catch (err) { return { ok: false, error: (err as Error).message }; }
         });
@@ -333,7 +336,7 @@ async function initializeKernel(): Promise<void> {
             }
         });
 
-        ipcMain.handle('damage:calculate', async (_event, request: any) => {
+        ipcMain.handle('damage:calculate', async (_event, request: unknown) => {
             if (!kernel) throw new Error('Kernel not initialized');
             const correlationId = `ipc-${Date.now()}`;
             return new Promise((resolve, reject) => {
@@ -350,7 +353,7 @@ async function initializeKernel(): Promise<void> {
                         reject(new Error((msg.payload as { error: string }).error));
                     }
                 }, { once: true });
-                kernel!.eventBus.publish('damage:calculate-request', request, { source: 'electron', correlationId });
+                void kernel!.eventBus.publish('damage:calculate-request', request, { source: 'electron', correlationId });
             });
         });
 
@@ -430,6 +433,12 @@ function parseRepo(repo: string): { owner: string; name: string } | null {
  * ALREADY-installed game's files on disk still needs a restart, since the
  * in-memory registry doesn't support hot-replacing an existing entry.
  */
+/** The subset of GitHub's release API response this file actually reads. */
+interface GitHubReleaseResponse {
+    tag_name?: string;
+    assets?: Array<{ name?: string; browser_download_url?: string; size?: number }>;
+}
+
 function setupGamePackageInstaller(): void {
     ipcMain.handle('game-package:list-from-repo', async (_e, repo: string) => {
         const parsed = parseRepo(repo);
@@ -439,15 +448,16 @@ function setupGamePackageInstaller(): void {
                 headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'FrequencyManager' },
             });
             if (!res.ok) return { error: `GitHub HTTP ${res.status}` };
-            const release = await res.json();
+            const release = await res.json() as GitHubReleaseResponse;
             const assets = Array.isArray(release.assets) ? release.assets : [];
             const packages = assets
-                .filter((a: { name?: string }) => typeof a.name === 'string' && a.name.toLowerCase().endsWith('.zip'))
-                .map((a: { name: string; browser_download_url: string; size: number }) => ({
+                .filter((a): a is { name: string; browser_download_url?: string; size?: number } =>
+                    typeof a.name === 'string' && a.name.toLowerCase().endsWith('.zip'))
+                .map((a) => ({
                     id: a.name.replace(/\.zip$/i, ''),
                     name: a.name,
-                    downloadUrl: a.browser_download_url,
-                    size: a.size,
+                    downloadUrl: a.browser_download_url ?? '',
+                    size: a.size ?? 0,
                     alreadyInstalled: hasGameDefinition(a.name.replace(/\.zip$/i, '')),
                 }));
             return { releaseTag: typeof release.tag_name === 'string' ? release.tag_name : undefined, packages };
@@ -543,7 +553,7 @@ function runOcrScan(imagePath: string): Promise<{ success: boolean; echo?: unkno
                 settle({ success: false, error: payload.error, rawText: payload.rawText });
             }
         }, { once: true });
-        kernel!.eventBus.publish('ocr:scan-request', { imagePath }, { source: 'electron', correlationId });
+        void kernel!.eventBus.publish('ocr:scan-request', { imagePath }, { source: 'electron', correlationId });
     });
 }
 
@@ -1087,12 +1097,12 @@ function registerScanHotkey(accelerator: string): void {
  * Set up IPC handlers for file operations
  */
 function setupFileIpc(): void {
-    ipcMain.handle('ocr:capture-screen', async (_event, scanType?: string) => captureScreen(scanType));
+    ipcMain.handle('ocr:capture-screen', (_event, scanType?: string) => captureScreen(scanType));
 
     // Run a file picked via the browse flow through the same crop+upscale
     // pipeline a live capture gets, so OCR accuracy doesn't depend on which
     // path the image came from. Returns a new processed temp file's path.
-    ipcMain.handle('ocr:process-file', async (_event, filePath: string, scanType?: string) => processImageFile(filePath, scanType));
+    ipcMain.handle('ocr:process-file', (_event, filePath: string, scanType?: string) => processImageFile(filePath, scanType));
 
     // Arms/disarms the global hotkey for live scanning — see `armedScanType`.
     // `scanType` is ignored (and disarms) when `active` is false.
@@ -1175,7 +1185,7 @@ function setupFileIpc(): void {
     const IMAGE_MIME_TYPES: Record<string, string> = {
         '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
     };
-    ipcMain.handle('fs:read-image-preview', async (_event, filePath: string) => {
+    ipcMain.handle('fs:read-image-preview', (_event, filePath: string) => {
         try {
             const ext = path.extname(filePath).toLowerCase();
             const mime = IMAGE_MIME_TYPES[ext];
@@ -1252,14 +1262,14 @@ function setupAutoUpdater(): void {
 
     autoUpdater.on('checking-for-update', () => {
         logger.info('[AutoUpdater] Checking for update');
-        kernel?.eventBus.publish('app:update-checking', { at: Date.now() }, { source: 'electron-updater' });
+        void kernel?.eventBus.publish('app:update-checking', { at: Date.now() }, { source: 'electron-updater' });
         mainWindow?.webContents.send('app:update-status', { kind: 'checking' });
     });
 
     autoUpdater.on('update-available', (info: UpdateInfo) => {
         logger.info('[AutoUpdater] Update available', { version: info.version });
         const payload = { version: info.version, releaseDate: info.releaseDate };
-        kernel?.eventBus.publish('app:update-available', payload, { source: 'electron-updater' });
+        void kernel?.eventBus.publish('app:update-available', payload, { source: 'electron-updater' });
         mainWindow?.webContents.send('app:update-available', payload);
         if (Notification.isSupported()) {
             new Notification({
@@ -1271,7 +1281,7 @@ function setupAutoUpdater(): void {
 
     autoUpdater.on('update-not-available', (info: UpdateInfo) => {
         logger.info('[AutoUpdater] No update available', { version: info.version });
-        kernel?.eventBus.publish('app:update-not-available', { version: info.version }, { source: 'electron-updater' });
+        void kernel?.eventBus.publish('app:update-not-available', { version: info.version }, { source: 'electron-updater' });
         mainWindow?.webContents.send('app:update-status', { kind: 'up-to-date', version: info.version });
     });
 
@@ -1286,7 +1296,7 @@ function setupAutoUpdater(): void {
     autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
         logger.info('[AutoUpdater] Update downloaded', { version: info.version });
         const payload = { version: info.version, releaseDate: info.releaseDate };
-        kernel?.eventBus.publish('app:update-downloaded', payload, { source: 'electron-updater' });
+        void kernel?.eventBus.publish('app:update-downloaded', payload, { source: 'electron-updater' });
         mainWindow?.webContents.send('app:update-downloaded', payload);
         if (Notification.isSupported()) {
             new Notification({
@@ -1298,7 +1308,7 @@ function setupAutoUpdater(): void {
 
     autoUpdater.on('error', (err: Error) => {
         logger.error('[AutoUpdater] Error', { error: err.message });
-        kernel?.eventBus.publish('app:update-error', { message: err.message }, { source: 'electron-updater' });
+        void kernel?.eventBus.publish('app:update-error', { message: err.message }, { source: 'electron-updater' });
         mainWindow?.webContents.send('app:update-status', { kind: 'error', message: err.message });
     });
 
@@ -1351,25 +1361,31 @@ app.whenReady().then(async () => {
             createWindow();
         }
     });
+}).catch((err: Error) => {
+    logger.error('[electron-main] Fatal error during boot', { error: err.message });
 });
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll();
 });
 
-app.on('window-all-closed', async () => {
-    if (kernel) {
-        await kernel.shutdown();
-    }
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+app.on('window-all-closed', () => {
+    void (async () => {
+        if (kernel) {
+            await kernel.shutdown();
+        }
+        if (process.platform !== 'darwin') {
+            app.quit();
+        }
+    })();
 });
 
-app.on('before-quit', async () => {
-    if (kernel) {
-        await kernel.shutdown();
-    }
+app.on('before-quit', () => {
+    void (async () => {
+        if (kernel) {
+            await kernel.shutdown();
+        }
+    })();
 });
 
 // Security: Prevent new window creation and route external links to system browser

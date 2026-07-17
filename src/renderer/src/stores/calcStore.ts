@@ -245,8 +245,8 @@ export const useCalcStore = create<CalcState>()(
             // ever intentionally authored without a scope.
             migrate: (persisted, version) => {
                 const s = persisted as (Partial<CalcState> & { buffs?: Buff[] }) | undefined;
-                if (!s?.buffs || version >= 1) return s as CalcState;
-                return { ...s, buffs: s.buffs.filter((b) => !(b.stat === 'elemDmg' && b.appliesTo && b.appliesTo.length > 0)) } as CalcState;
+                if (!s?.buffs || version >= 1) return s;
+                return { ...s, buffs: s.buffs.filter((b) => !(b.stat === 'elemDmg' && b.appliesTo && b.appliesTo.length > 0)) };
             },
         }
     )

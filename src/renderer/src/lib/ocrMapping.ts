@@ -432,7 +432,7 @@ export function buildGearEntryFromDraft(
     const baseEntry = draft.baseStat
         ? (() => {
             const def = catalog.subs.find((s) => s.key === draft.baseStat!.key);
-            return def ? { key: def.key, label: def.label, value: draft.baseStat!.value } : undefined;
+            return def ? { key: def.key, label: def.label, value: draft.baseStat.value } : undefined;
         })()
         : undefined;
 

@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDevStore } from '../stores/devStore';
 import { useModuleStore } from '../stores/moduleStore';
-import type { DevToolsEvent, RPCRequest, RPCResponse } from '../types';
 
 export function DevPanel() {
     const { devMode, events, rpcLog, clearEvents, clearRpcLog } = useDevStore();
@@ -15,6 +14,7 @@ export function DevPanel() {
         e.preventDefault();
         if (!consoleInput.trim()) return;
         // In a real app, this would send an RPC command
+        // eslint-disable-next-line no-console -- intentional dev-console echo, gated by devMode
         console.log('[Dev Console]', consoleInput);
         setConsoleInput('');
     };
@@ -115,7 +115,7 @@ export function DevPanel() {
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="font-medium text-fg">Module Registry</h3>
-                            <button onClick={refreshModules} className="text-xs text-muted hover:text-fg">Refresh</button>
+                            <button onClick={() => { void refreshModules(); }} className="text-xs text-muted hover:text-fg">Refresh</button>
                         </div>
                         <div className="bg-surface-2 rounded-lg p-3 max-h-96 overflow-y-auto font-mono text-xs">
                             {modules.length === 0 ? (

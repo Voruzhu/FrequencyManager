@@ -16,7 +16,8 @@ import { useOwnedInventory } from '../../stores/inventoryStore';
 import { usePartyStore } from '../../stores/partyStore';
 import { useLoadoutStore } from '../../stores/loadoutStore';
 import { useSequenceStore } from '../../stores/sequenceStore';
-import { getGameData, useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
+import type { getGameData} from '../../data/gameData';
+import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
 import { getBuffs } from '../../data/buffs';
 import { computeBuildStats, elemKey } from '../../data/optimizer';
 import { getEnemies, DUMMY } from '../../data/enemies';
@@ -353,7 +354,7 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
     const gameLoadouts = useLoadoutStore((s) => s.byGame[activeGameId]) ?? {};
     const toggle = (id: string) => setExpanded((prev) => {
         const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
+        if (next.has(id)) { next.delete(id); } else { next.add(id); }
         return next;
     });
     // Characters (other than the active one) whose OWN loadout already includes this gear id.
@@ -536,7 +537,7 @@ function BuffPicker({ gameId }: { gameId: string }) {
                     {basicF.map((b) => {
                         const ab = activeOf(b.id);
                         const on = !!ab;
-                        const value = on ? ab!.value : (pending[b.id] ?? b.value);
+                        const value = on ? ab.value : (pending[b.id] ?? b.value);
                         const setValue = (v: number) => (on ? updateBuffValue(b.id, v) : setPending((p) => ({ ...p, [b.id]: v })));
                         return (
                             <div key={b.id} className={cn('flex items-center gap-2 rounded-md border p-2', on ? 'border-primary bg-primary/5' : 'border-border bg-surface')}>

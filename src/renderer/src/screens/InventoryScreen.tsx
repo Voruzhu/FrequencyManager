@@ -69,7 +69,7 @@ export function InventoryScreen() {
     const [expandedGear, setExpandedGear] = useState<Set<string>>(new Set());
     const toggleGear = (id: string) => setExpandedGear((prev) => {
         const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
+        if (next.has(id)) { next.delete(id); } else { next.add(id); }
         return next;
     });
 

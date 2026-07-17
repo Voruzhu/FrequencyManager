@@ -15,7 +15,8 @@
  * @packageDocumentation
  */
 
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import type { IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 import type { ScannedEcho } from '@shared/types/ocr';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -372,7 +373,7 @@ const frequencyManagerApi = {
      * gear, enemies, buffs, passives) for a game — active game if id omitted.
      * The renderer's single source of truth for game data.
      */
-    getGameBundle: (id?: string): Promise<unknown | null> =>
+    getGameBundle: (id?: string): Promise<unknown> =>
         ipcRenderer.invoke('game-loader:get-bundle', id),
 
     /** Enable/disable a feature module in the kernel. */
@@ -384,10 +385,10 @@ const frequencyManagerApi = {
      * `opts.appRepo` is "owner/name"; `opts.manifestUrl` points at the remote
      * game-definitions manifest. Returns the full status (app + games).
      */
-    checkUpdates: (opts?: { manifestUrl?: string; appRepo?: string }): Promise<unknown | null> =>
+    checkUpdates: (opts?: { manifestUrl?: string; appRepo?: string }): Promise<unknown> =>
         ipcRenderer.invoke('update-checker:check-now', opts),
     /** The cached update status without triggering a network check. */
-    getUpdateStatus: (): Promise<unknown | null> =>
+    getUpdateStatus: (): Promise<unknown> =>
         ipcRenderer.invoke('update-checker:get-status'),
 
     /** Open an http(s) URL in the user's default browser. */

@@ -104,7 +104,7 @@ export const useInventoryStore = create<InventoryState>()(
             version: 2,
             migrate: (persisted, version) => {
                 let s = persisted as InventoryState | undefined;
-                if (!s?.byGame) return s as InventoryState;
+                if (!s?.byGame) return s;
                 // v0→v1: guarantee unique gear ids for any legacy inventory (older
                 // builds could mint colliding/blank ids, which made the gear list
                 // expand/remove all matching cards at once). Reassign only where
@@ -135,7 +135,7 @@ export const useInventoryStore = create<InventoryState>()(
                         };
                     }
                 }
-                return s as InventoryState;
+                return s;
             },
         }
     )
@@ -163,5 +163,5 @@ export function useOwnedInventory(gameId: string): {
                 .filter(Boolean) as WeaponEntry[],
             gear: i.gear,
         };
-    }, [inv, gameId, data]);
+    }, [inv, data]);
 }

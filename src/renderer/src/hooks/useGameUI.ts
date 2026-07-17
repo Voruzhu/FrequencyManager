@@ -118,12 +118,12 @@ export function useGameUI(): UseGameUIResult {
     }, []);
 
     useEffect(() => {
-        fetchOptions();
+        void fetchOptions();
 
         // Subscribe to game reload events. Optional-chain the bridge so a
         // missing preload can never throw here and blank the window.
         const unsubscribe = window.frequencyManager?.on?.('game:reload-request', () => {
-            fetchOptions();
+            void fetchOptions();
         });
 
         return () => { unsubscribe?.(); };

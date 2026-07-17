@@ -70,10 +70,10 @@ export function runOptimizerPool(
         const buckets = assignFirstIndices(pool.length, k, effectiveThreads);
 
         const workers: Worker[] = [];
-        const perWorkerDone = new Array(effectiveThreads).fill(0);
-        const perWorkerTotal = new Array(effectiveThreads).fill(0);
-        const perWorkerRanges: (TargetRange[] | null)[] = new Array(effectiveThreads).fill(null);
-        const perWorkerTop: (Loadout[] | null)[] = new Array(effectiveThreads).fill(null);
+        const perWorkerDone: number[] = Array.from({ length: effectiveThreads }, () => 0);
+        const perWorkerTotal: number[] = Array.from({ length: effectiveThreads }, () => 0);
+        const perWorkerRanges: (TargetRange[] | null)[] = Array.from({ length: effectiveThreads }, () => null);
+        const perWorkerTop: (Loadout[] | null)[] = Array.from({ length: effectiveThreads }, () => null);
         let settled = false;
 
         const cleanup = () => { for (const w of workers) w.terminate(); };
@@ -120,7 +120,7 @@ export function runOptimizerPool(
                     perWorkerRanges[i] = msg.ranges;
                     reportProgress();
                     if (perWorkerRanges.every((r) => r !== null)) {
-                        const globalRanges = mergeRanges(perWorkerRanges as TargetRange[][]);
+                        const globalRanges = mergeRanges(perWorkerRanges);
                         for (const w of workers) {
                             w.postMessage({ type: 'score', ranges: globalRanges } satisfies WorkerInboundMessage);
                         }
@@ -132,7 +132,7 @@ export function runOptimizerPool(
                     if (perWorkerTop.every((t) => t !== null)) {
                         if (settled) return;
                         settled = true;
-                        const merged = (perWorkerTop as Loadout[][])
+                        const merged = (perWorkerTop)
                             .flat()
                             .sort((a, b) => (Number(b.meets) - Number(a.meets)) || (b.score - a.score))
                             .slice(0, Math.max(1, config.topN));

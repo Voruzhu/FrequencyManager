@@ -194,7 +194,7 @@ export function ScannerScreen() {
             const id = `scan-${Date.now()}`;
             const imagePath = p.imagePath ?? 'screen-capture.png';
             const imageName = fileNameOf(imagePath);
-            (async () => {
+            void (async () => {
                 const previewUrl = p.imagePath && b.readImagePreview ? await b.readImagePreview(p.imagePath) : null;
                 if (scanTokenRef.current !== myToken) return; // stopped while reading the preview
                 if (p.success && p.result?.echo) {
@@ -264,7 +264,7 @@ export function ScannerScreen() {
                         <Button variant="secondary" onClick={autoImportFromLatest} disabled={!hasEligibleForImport}>
                             <Download /> Auto import from latest
                         </Button>
-                        <Button variant="secondary" onClick={browseAndScan} disabled={scanning}><FolderOpen /> Browse…</Button>
+                        <Button variant="secondary" onClick={() => { void browseAndScan(); }} disabled={scanning}><FolderOpen /> Browse…</Button>
                         <Button
                             onClick={() => useWindowStore.getState().openWindow('Scan', <ScanTypeWindow onPickEchoes={() => activateScanner('echoes')} />)}
                             disabled={scannerActive || scanning}
