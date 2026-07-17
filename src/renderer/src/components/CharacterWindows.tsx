@@ -12,9 +12,9 @@ import { useSelectionStore } from '../stores/selectionStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useOwnedInventory } from '../stores/inventoryStore';
 import { iconSrc } from '@/lib/icons';
-import { useGameData, getPassives, getSequenceLabel, describePassiveSlot, SEQUENCE_MAX } from '../data/gameData';
+import { useGameData, getPassives, getSequenceLabel, getPassiveSlotBuffs, SEQUENCE_MAX, type GearData } from '../data/gameData';
 import { groupSkillsForTalents } from '../data/talentGroups';
-import { isSkillTreeBuff } from '@/lib/selfBuffs';
+import { isSkillTreeBuff, passiveBuffId, resolveSelfScaleOff, resolveConditionalValue } from '@/lib/selfBuffs';
 
 /** Small placeholder art tile for talents/passives/sequence nodes. */
 function IconSlot({ icon: Icon, active = true, className }: { icon: LucideIcon; active?: boolean; className?: string }) {
@@ -160,13 +160,18 @@ export function RotationCharacterPickerWindow({ onPick }: { onPick: (characterId
 export function TalentsWindow() {
     const gameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(gameId);
-    const { characterId, skillLevels, passives, sequence, setSkillLevel, togglePassive, setSequence, skillTreeInvested, setSkillTreeInvested } = useCalcStore();
+    const owned = useOwnedInventory(gameId);
+    const { characterId, skillLevels, sequence, setSkillLevel, setSequence, skillTreeInvested, setSkillTreeInvested, equipped, buffStacks, hasBuff, addBuff, removeBuff } = useCalcStore();
     const character = data.characters.find((c) => c.id === characterId);
 
     if (!character) return <p className="text-sm text-muted-foreground">Pick a character in the Damage Calculator first.</p>;
 
     const passiveList = getPassives(gameId);
     const seqLabel = getSequenceLabel(gameId);
+    // Real toggling needs the same gear/weapon a scaleOff-based passive (e.g.
+    // "X% of own ATK") resolves against — same resolution CalculatorScreen uses.
+    const gear = equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
+    const weapon = data.weapons.find((w) => w.id === equipped.weaponId);
 
     return (
         <div className="max-h-[70vh] space-y-5 overflow-y-auto scrollbar-thin pr-1">
@@ -222,15 +227,62 @@ export function TalentsWindow() {
                 <p className="text-[11px] text-muted-foreground">Max Lv {MAX_SKILL_LEVEL} trained (talent books). {seqLabel} 3/5 can push a specific skill further, shown as "(+3)" — applied automatically in the Calculator. Skills that level together (e.g. Basic + Heavy Attack) share one row; each is still a separate optimization target.</p>
             </section>
 
-            {/* Passives */}
+            {/* Passives — the switch here is the SAME real toggle as the Calculator's own
+                "Passive talent" chips (same buff ids via passiveBuffId), not a separate
+                decorative tracker, so flipping it here actually changes computed damage. */}
             <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Passive skills</h3>
                 {passiveList.map((p, i) => {
-                    const on = passives[p.id] ?? false;
-                    // The generic slot label ("Inherent Skill I", "1st Ascension Passive")
-                    // is the same for every character — swap in this character's own
-                    // tagged self-buff text when we have it (see `describePassiveSlot`).
-                    const description = describePassiveSlot(gameId, character, i) ?? p.description;
+                    // The generic slot label ("Inherent Skill I", "1st Ascension Passive") is the
+                    // same for every character — swap in this character's own tagged self-buff(s).
+                    const matches = getPassiveSlotBuffs(gameId, character, i);
+                    const description = matches.length > 0
+                        ? matches.map(({ sb }) => sb.label.replace(/\s*\([^()]*\)\s*$/, '')).join('; ')
+                        : p.description;
+
+                    // No modeled data for this slot at all — nothing to toggle, purely informational.
+                    if (matches.length === 0) {
+                        return (
+                            <div key={p.id} className="flex items-center gap-3 rounded-md border border-border bg-surface p-2">
+                                <IconSlot icon={Star} active={false} />
+                                <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm font-medium text-foreground">{p.name}</div>
+                                    <div className="truncate text-xs text-muted-foreground">{description}</div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // Every matching buff is unconditional — already always-applied via
+                    // characterAutoBuffs, a toggle here would be misleading (it'd do nothing).
+                    if (matches.every(({ sb }) => sb.conditional === false)) {
+                        return (
+                            <div key={p.id} className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/5 p-2">
+                                <IconSlot icon={Star} active />
+                                <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm font-medium text-foreground">{p.name}</div>
+                                    <div className="truncate text-xs text-muted-foreground">{description}</div>
+                                </div>
+                                <Badge variant="outline">Always active</Badge>
+                            </div>
+                        );
+                    }
+
+                    const toggleable = matches.filter(({ sb }) => sb.conditional !== false);
+                    const ids = toggleable.map(({ sb, index }) => passiveBuffId(character.id, sb, index));
+                    const on = ids.every((id) => hasBuff(id));
+                    const toggle = () => {
+                        if (on) {
+                            ids.forEach((id) => removeBuff(id));
+                        } else {
+                            toggleable.forEach(({ sb, index }) => {
+                                const id = passiveBuffId(character.id, sb, index);
+                                const scaleOffValue = sb.scaleOff ? resolveSelfScaleOff(character, gear, weapon, sb.scaleOff, data.statCatalog) : 0;
+                                const value = resolveConditionalValue(sb, id, buffStacks, scaleOffValue);
+                                addBuff({ id, name: `${character.name} passive`, source: character.name, stat: sb.stat, value, ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) });
+                            });
+                        }
+                    };
                     return (
                         <Tooltip key={p.id} delayDuration={200}>
                             <TooltipTrigger asChild>
@@ -240,7 +292,7 @@ export function TalentsWindow() {
                                         <div className="truncate text-sm font-medium text-foreground">{p.name}</div>
                                         <div className="truncate text-xs text-muted-foreground">{description}</div>
                                     </div>
-                                    <Switch checked={on} onCheckedChange={() => togglePassive(p.id)} />
+                                    <Switch checked={on} onCheckedChange={toggle} />
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-xs">{description}</TooltipContent>

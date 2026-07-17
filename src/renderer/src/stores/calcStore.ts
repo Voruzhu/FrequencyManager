@@ -62,7 +62,6 @@ interface CalcState {
     skillStacks: Record<string, number>;
     /** buffId -> user-chosen stack count, for self/party buffs with `stacksMax` (e.g. Galbrena's Afterflame-scaled Crit DMG). Absent means "assume max stacks". */
     buffStacks: Record<string, number>;
-    passives: Record<string, boolean>;   // passiveId -> unlocked
     /** WW's "Skill Tree" stat nodes (labeled "Skill Tree: ..." in selfBuffs) are a
      * fixed "fully invested" assumption every serious build reaches — default true
      * so they count without the player individually toggling each one, unlike
@@ -81,7 +80,6 @@ interface CalcState {
     setSkillStacks: (id: string, stacks: number, max: number) => void;
     setBuffStacks: (id: string, stacks: number, max: number) => void;
     toggleTargetStatus: (id: string) => void;
-    togglePassive: (id: string) => void;
     setSkillTreeInvested: (v: boolean) => void;
     setSequence: (n: number) => void;
     equipGear: (id: string) => void;
@@ -120,7 +118,6 @@ export const useCalcStore = create<CalcState>()(
     skillLevels: {},
     skillStacks: {},
     buffStacks: {},
-    passives: {},
     skillTreeInvested: true,
     sequence: 0,
     reaction: 'none',
@@ -132,7 +129,6 @@ export const useCalcStore = create<CalcState>()(
     setSkillStacks: (id, stacks, max) => set((s) => ({ skillStacks: { ...s.skillStacks, [id]: Math.max(0, Math.min(max, stacks)) } })),
     setBuffStacks: (id, stacks, max) => set((s) => ({ buffStacks: { ...s.buffStacks, [id]: Math.max(0, Math.min(max, stacks)) } })),
     toggleTargetStatus: (id) => set((s) => ({ targetStatuses: { ...s.targetStatuses, [id]: !s.targetStatuses[id] } })),
-    togglePassive: (id) => set((s) => ({ passives: { ...s.passives, [id]: !s.passives[id] } })),
     setSkillTreeInvested: (v) => set({ skillTreeInvested: v }),
     setSequence: (n) => set((s) => {
         const level = Math.max(0, Math.min(6, n));
@@ -157,7 +153,6 @@ export const useCalcStore = create<CalcState>()(
             skillLevels: {},
             skillStacks: {},
             buffStacks: {},
-            passives: {},
             skillTreeInvested: true,
             sequence: useSequenceStore.getState().getSequence(gameId, c.id),
             reaction: 'none',
@@ -248,7 +243,6 @@ export const useCalcStore = create<CalcState>()(
                 skillLevels: s.skillLevels,
                 skillStacks: s.skillStacks,
                 buffStacks: s.buffStacks,
-                passives: s.passives,
                 skillTreeInvested: s.skillTreeInvested,
                 sequence: s.sequence,
                 reaction: s.reaction,

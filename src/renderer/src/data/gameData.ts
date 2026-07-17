@@ -397,12 +397,19 @@ const PASSIVE_SLOT_TAGS: Record<string, RegExp[]> = {
     'genshin-impact': [/\(P1\)/, /\(P2\)/],
 };
 
-export function describePassiveSlot(gameId: string, character: CharacterData, slotIndex: number): string | undefined {
+/** The character's own `selfBuffs` entries tagged for the Nth passive slot, each paired with its
+ * original index in `character.selfBuffs` (needed to reconstruct the SAME id `characterAutoBuffs`/
+ * `passiveBuffId` would use for it, so toggling here stays in sync with the Calculator's own chips). */
+export function getPassiveSlotBuffs(gameId: string, character: CharacterData, slotIndex: number): Array<{ sb: NonNullable<CharacterData['selfBuffs']>[number]; index: number }> {
     const tag = PASSIVE_SLOT_TAGS[gameId]?.[slotIndex];
-    if (!tag) return undefined;
-    const matches = (character.selfBuffs ?? []).filter((sb) => tag.test(sb.label));
+    if (!tag) return [];
+    return (character.selfBuffs ?? []).map((sb, index) => ({ sb, index })).filter(({ sb }) => tag.test(sb.label));
+}
+
+export function describePassiveSlot(gameId: string, character: CharacterData, slotIndex: number): string | undefined {
+    const matches = getPassiveSlotBuffs(gameId, character, slotIndex);
     if (matches.length === 0) return undefined;
-    return matches.map((sb) => sb.label.replace(/\s*\([^()]*\)\s*$/, '')).join('; ');
+    return matches.map(({ sb }) => sb.label.replace(/\s*\([^()]*\)\s*$/, '')).join('; ');
 }
 
 /** WuWa calls them Sequences (Resonance Chains); Genshin calls them Constellations. */

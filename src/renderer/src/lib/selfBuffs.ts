@@ -23,6 +23,13 @@ function resolveStackedValue(id: string, sb: { value: number; stacksMax?: number
     return sb.value * count;
 }
 
+/** Resolves a conditional self-buff's magnitude: `stacksMax` (per-stack rate × user-chosen stack count, default max) takes priority over `scaleOff`.
+ * `refineMultiplier` scales a weapon passive for its actual refinement rank (1 for character/gear self-buffs, which have no refinement). */
+export function resolveConditionalValue(sb: { value: number; scaleOff?: unknown; stacksMax?: number }, id: string, buffStacks: Record<string, number>, scaleOffValue: number, refineMultiplier = 1): number {
+    if (sb.stacksMax != null) return sb.value * refineMultiplier * (buffStacks[id] ?? sb.stacksMax);
+    return (sb.scaleOff ? scaleOffValue : sb.value) * refineMultiplier;
+}
+
 /**
  * Resolve a self-buff's real magnitude when it carries a `scaleOff` (e.g. a
  * weapon passive that grants "X% of the wielder's own EM as ATK") — mirrors

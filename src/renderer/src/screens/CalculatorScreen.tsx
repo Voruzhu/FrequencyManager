@@ -18,7 +18,7 @@ import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
-import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs } from '@/lib/selfBuffs';
+import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
@@ -31,13 +31,6 @@ const REACTIONS: ReactionType[] = ['none', 'vape-1.5', 'vape-2', 'melt-1.5', 'me
 
 let tseq = 0;
 const nextId = () => `t${++tseq}`;
-
-/** Resolves a conditional self-buff's magnitude: `stacksMax` (per-stack rate × user-chosen stack count, default max) takes priority over `scaleOff`.
- * `refineMultiplier` scales a weapon passive for its actual refinement rank (1 for character/gear self-buffs, which have no refinement). */
-function resolveConditionalValue(sb: { value: number; scaleOff?: unknown; stacksMax?: number }, id: string, buffStacks: Record<string, number>, scaleOffValue: number, refineMultiplier = 1): number {
-    if (sb.stacksMax != null) return sb.value * refineMultiplier * (buffStacks[id] ?? sb.stacksMax);
-    return (sb.scaleOff ? scaleOffValue : sb.value) * refineMultiplier;
-}
 
 /** Searchable dropdown for picking an optimization target key (skill or stat) — a closed list, but long enough on some characters' full skill roster to need a filter. Mirrors `InventoryWindows.tsx`'s `SetCombobox` pattern. */
 function KeyLabelCombobox({ options, value, onChange }: { options: Array<{ key: string; label: string }>; value: string; onChange: (key: string) => void }) {
