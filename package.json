@@ -1,6 +1,6 @@
 {
     "name": "frequency-manager",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Damage calculator, gear optimizer, and OCR scanner for gacha-RPGs - Wuthering Waves and Genshin Impact download separately as game modules",
     "main": "dist/src/main/electron-main.js",
     "scripts": {
