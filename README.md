@@ -4,6 +4,11 @@
 > calculate damage, and find your best loadout — for Wuthering Waves and
 > Genshin Impact, with more games on the way.
 
+*FrequencyManager is an independent fan-made project and is not affiliated
+with, endorsed by, or sponsored by Kuro Games, HoYoverse, or any other game
+developer/publisher. Wuthering Waves, Genshin Impact, and all related assets
+are trademarks of their respective owners.*
+
 ---
 
 ## What is FrequencyManager?
