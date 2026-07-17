@@ -75,6 +75,11 @@ in-game Echo screen like this before pressing the scan hotkey:
 That's the individual echo's detail view — name, cost, main stat, and
 sub-stats all visible on one screen, which is what the scanner reads.
 
+**Requires the game running fullscreen at 1920×1080.** The scanner crops
+fixed regions of the screen calibrated against that resolution — a different
+resolution, windowed mode, or a different display scale will crop the wrong
+area and produce a bad or empty scan.
+
 ---
 
 ## 📊 Data accuracy
