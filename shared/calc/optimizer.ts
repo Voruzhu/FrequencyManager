@@ -254,6 +254,49 @@ export function isScopedBuff(b: BuffEntry): boolean {
     return !!(b.appliesTo && b.appliesTo.length) || b.stat === 'defIgnore' || b.stat === 'resShred';
 }
 
+/**
+ * Gear stat keys that are really a per-attack-type DMG% bonus, not a global
+ * stat — e.g. WuWa's echo sub-stats "Basic Attack DMG Bonus"/"Heavy Attack
+ * DMG Bonus"/"Resonance Skill DMG Bonus"/"Resonance Liberation DMG Bonus"
+ * only boost that ONE attack type, same real mechanic as a kit buff with
+ * `appliesTo`. These never had a stat-catalog entry (correctly — a catalog
+ * entry drives `computeBuildStats`'s GLOBAL flat/pct accumulation, which
+ * would incorrectly apply them to every skill, not just the one type the
+ * game restricts them to) which meant gear rolling them contributed NOTHING
+ * to computed damage at all: `computeBuildStats` only surfaces catalog keys
+ * into `BuildStats`, so these were silently dropped on the floor. Keyed
+ * generically (not "WW's 4 keys" hardcoded elsewhere) so a future game
+ * module can add its own equivalent stat keys with no engine change.
+ */
+const GEAR_SCOPED_DMG_KEYS: Record<string, string> = {
+    basicAttackDmgBonus: 'basic',
+    heavyAttackDmgBonus: 'heavy',
+    resonanceSkillDmgBonus: 'skill',
+    resonanceLiberationDmgBonus: 'ult',
+};
+
+/**
+ * Synthesizes scoped `BuffEntry` rows from a gear loadout's own main/sub
+ * stats for any key in `GEAR_SCOPED_DMG_KEYS` — same shape a kit/weapon buff
+ * with `appliesTo` would produce, so they flow through the exact same
+ * `isScopedBuff` → `SkillContext.scopedBuffs` → `scopedDmgFor` pipeline
+ * every other per-attack-type buff already uses. Must be computed PER GEAR
+ * COMBO (unlike kit/weapon buffs, which are the same across every combo
+ * during an Optimizer search) since different combos roll different
+ * sub-stats — see `computeBaseLoadouts`, the one caller that needs this
+ * inside its per-combo loop rather than once upfront.
+ */
+export function gearScopedBuffs(gear: GearEntry[]): BuffEntry[] {
+    const out: BuffEntry[] = [];
+    for (const piece of gear) {
+        for (const s of [piece.mainStat, ...piece.subStats]) {
+            const scope = GEAR_SCOPED_DMG_KEYS[s.key];
+            if (scope) out.push({ id: `gear-${piece.id}-${s.key}`, name: s.label, source: piece.name, stat: 'dmgBonus', value: s.value, appliesTo: [scope] });
+        }
+    }
+    return out;
+}
+
 /** Multiplier for a skill at a talent level (uses the table when present). */
 export function skillMultiplierAt(skill: SkillDef, level: number): number {
     const table = skill.multipliers;
@@ -593,17 +636,21 @@ export type BaseLoadout = Omit<Loadout, 'score' | 'meets'>;
  */
 export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], config: OptimizeConfig, idOffset = 0): BaseLoadout[] {
     const minTargets = config.targets.filter((t) => t.mode === 'min');
-    const ctx: SkillContext = {
+    const kitScopedBuffs = config.buffs.filter(isScopedBuff);
+    const baseCtx: Omit<SkillContext, 'scopedBuffs'> = {
         mode: config.critMode,
         enemy: config.enemy,
         talentLevels: config.talentLevels,
         stacks: config.stacks,
         reaction: config.reaction,
         charLevel: config.charLevel,
-        scopedBuffs: config.buffs.filter(isScopedBuff),
     };
     return combos.map((gear, idx) => {
         const stats = computeBuildStats(c, gear, config.buffs, config.weapon, config.catalog);
+        // Per-attack-type DMG% sub-stats (e.g. WW's "Basic Attack DMG Bonus")
+        // vary per combo, unlike kit/weapon buffs — must be recomputed here,
+        // not folded into `kitScopedBuffs` above (see `gearScopedBuffs`).
+        const ctx: SkillContext = { ...baseCtx, scopedBuffs: [...kitScopedBuffs, ...gearScopedBuffs(gear)] };
         const skillDmg: Record<string, number> = {};
         for (const skill of c.skills) skillDmg[skill.id] = skillDamage(stats, skill, ctx);
         const failed = minTargets.filter((t) => targetValue(t, stats, skillDmg) < (t.min ?? 0)).map((t) => t.label);

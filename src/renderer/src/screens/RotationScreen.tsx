@@ -13,7 +13,7 @@ import { useRotationStore, type SavedRotation } from '../stores/rotationStore';
 import { useGameData } from '../data/gameData';
 import { resolveParty, activeSetName, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, type SkillContext } from '../data/optimizer';
+import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, type SkillContext } from '../data/optimizer';
 import type { FieldSpec, RotationStepSpec } from '../types';
 import type { BuffEntry, SkillDef } from '@shared/types/game-bundle';
 
@@ -77,7 +77,7 @@ function computeStepDamage(
         stacks: { [skill.id]: step.stackCount ?? skill.stackMax ?? 0 },
         reaction,
         charLevel: 90,
-        scopedBuffs: buffs.filter(isScopedBuff),
+        scopedBuffs: [...buffs.filter(isScopedBuff), ...gearScopedBuffs(member.gear)],
     };
     return { skill, damage: skillDamage(stats, skill, ctx) };
 }

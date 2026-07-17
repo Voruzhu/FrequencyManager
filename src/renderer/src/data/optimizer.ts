@@ -21,6 +21,7 @@ export {
     targetRanges,
     scoreAndRank,
     isScopedBuff,
+    gearScopedBuffs,
 } from '@shared/calc/optimizer';
 
 export type {

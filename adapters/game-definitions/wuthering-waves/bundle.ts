@@ -68,6 +68,13 @@ const supplements: GameCatalogSupplements = {
         { key: 'critDmg', label: 'Crit DMG', percent: true },
         { key: 'energyRegen', label: 'Energy Regen', percent: true },
         { key: 'elemDmg', label: 'Elemental DMG', percent: true },
+        // ADDED 2026-07-17 — a real rollable echo main-stat (cost-4 slot,
+        // see WW_GEAR_CATALOG) had no stat-catalog entry, so gear rolling it
+        // was invisible in Build Stats and unselectable as an optimize
+        // target. Doesn't affect damage output (no healing-amount formula
+        // exists in this calculator) — purely for visibility/support-build
+        // theorycrafting.
+        { key: 'healingBonus', label: 'Healing Bonus', percent: true },
     ],
     enemies: [
         { id: 'ww-crownless', name: 'Crownless', level: 90, def: 900, res: 10 },

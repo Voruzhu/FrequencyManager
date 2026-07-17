@@ -1,7 +1,7 @@
 import {
     combinations, subtreeSize, totalCombinations, gearSlotsFor,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
-    enemyMultiplier, skillDamage, isScopedBuff,
+    enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs,
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
 import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry } from '../../shared/types/game-bundle';
@@ -287,5 +287,126 @@ describe('computeBaseLoadouts / targetRanges / mergeRanges / scoreAndRank — wo
         const partB = [{ t, lo: 5, hi: 80 }];
         const merged = mergeRanges([partA, partB]);
         expect(merged).toEqual([{ t, lo: 5, hi: 80 }]);
+    });
+});
+
+describe('gearScopedBuffs — echo/artifact per-attack-type DMG sub-stats', () => {
+    function echoWith(mainKey: string, mainValue: number, subs: Array<{ key: string; value: number }>): GearEntry {
+        return {
+            kind: 'echo', id: 'e1', name: 'Test Echo', setName: 'Test Set', rarity: 5,
+            mainStat: { key: mainKey, label: mainKey, value: mainValue },
+            subStats: subs.map((s) => ({ key: s.key, label: s.key, value: s.value })),
+        };
+    }
+
+    it('a plain ATK/HP/DEF/Crit main+subs produce no scoped buffs', () => {
+        const piece = echoWith('atkPct', 33, [{ key: 'critRate', value: 10 }, { key: 'hp', value: 500 }]);
+        expect(gearScopedBuffs([piece])).toEqual([]);
+    });
+
+    it('a "Basic Attack DMG Bonus" sub-stat produces a dmgBonus buff scoped to basic', () => {
+        const piece = echoWith('atkPct', 33, [{ key: 'basicAttackDmgBonus', value: 10 }]);
+        const buffs = gearScopedBuffs([piece]);
+        expect(buffs).toHaveLength(1);
+        expect(buffs[0]).toMatchObject({ stat: 'dmgBonus', value: 10, appliesTo: ['basic'] });
+    });
+
+    it('each of the 4 known keys maps to its correct scope', () => {
+        const piece = echoWith('healingBonus', 20, [
+            { key: 'basicAttackDmgBonus', value: 1 },
+            { key: 'heavyAttackDmgBonus', value: 2 },
+            { key: 'resonanceSkillDmgBonus', value: 3 },
+            { key: 'resonanceLiberationDmgBonus', value: 4 },
+        ]);
+        const buffs = gearScopedBuffs([piece]);
+        const scopeFor = (v: number) => buffs.find((b) => b.value === v)?.appliesTo;
+        expect(scopeFor(1)).toEqual(['basic']);
+        expect(scopeFor(2)).toEqual(['heavy']);
+        expect(scopeFor(3)).toEqual(['skill']);
+        expect(scopeFor(4)).toEqual(['ult']);
+    });
+
+    it('a main-stat scoped key is picked up too, not just sub-stats', () => {
+        // Not a real WW echo main-stat slot today, but the function reads
+        // mainStat the same generic way as subStats — future-proof either way.
+        const piece = echoWith('resonanceLiberationDmgBonus', 15, []);
+        expect(gearScopedBuffs([piece])).toEqual([
+            expect.objectContaining({ stat: 'dmgBonus', value: 15, appliesTo: ['ult'] }),
+        ]);
+    });
+
+    it('sums across multiple equipped pieces (as separate entries — summed later by scopedDmgFor)', () => {
+        const p1 = echoWith('atkPct', 10, [{ key: 'basicAttackDmgBonus', value: 6 }]);
+        const p2 = echoWith('hpPct', 10, [{ key: 'basicAttackDmgBonus', value: 8 }]);
+        const buffs = gearScopedBuffs([p1, p2]);
+        expect(buffs).toHaveLength(2);
+        expect(buffs.reduce((s, b) => s + b.value, 0)).toBe(14);
+    });
+});
+
+describe('computeBaseLoadouts — echo per-attack-type DMG sub-stats reach the actual computed damage', () => {
+    function charWithSkills(): CharacterEntry {
+        return {
+            kind: 'character', id: 'c1', name: 'Test', element: 'Spectro', weaponType: 'Sword', rarity: 5,
+            stats: { atk: 1000, critRate: 0, critDmg: 0 },
+            skills: [
+                { id: 'basic', name: 'Basic Attack', type: 'Basic', description: '', multiplier: 1, scaling: 'atk' },
+                { id: 'skill', name: 'Resonance Skill', type: 'Skill', description: '', multiplier: 1, scaling: 'atk' },
+            ],
+            equipped: { gearIds: [] },
+        };
+    }
+    function echoWithSub(key: string, value: number): GearEntry {
+        return {
+            kind: 'echo', id: `e-${key}`, name: 'Test Echo', setName: 'Test Set', rarity: 5,
+            mainStat: { key: 'atkPct', label: 'ATK%', value: 33 },
+            subStats: [{ key, label: key, value }],
+        };
+    }
+
+    it('a Basic Attack DMG Bonus sub-stat increases the Basic Attack skill damage', () => {
+        const c = charWithSkills();
+        const catalog: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }];
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog, topN: 5,
+        };
+        const withoutBonus = computeBaseLoadouts(c, [[]], config)[0];
+        const withBonus = computeBaseLoadouts(c, [[echoWithSub('basicAttackDmgBonus', 20)]], config)[0];
+        expect(withBonus.skillDamage.basic).toBeGreaterThan(withoutBonus.skillDamage.basic);
+    });
+
+    it('a Basic Attack DMG Bonus sub-stat does NOT affect a Resonance Skill\'s damage', () => {
+        const c = charWithSkills();
+        const catalog: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }];
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog, topN: 5,
+        };
+        // Same ATK%-main-stat baseline both sides — isolates the scoped
+        // sub-stat's effect from the main stat's (correctly) global ATK boost.
+        const plainEcho: GearEntry = { kind: 'echo', id: 'e-plain', name: 'Plain', setName: 'Test Set', rarity: 5, mainStat: { key: 'atkPct', label: 'ATK%', value: 33 }, subStats: [] };
+        const withoutBonus = computeBaseLoadouts(c, [[plainEcho]], config)[0];
+        const withBonus = computeBaseLoadouts(c, [[echoWithSub('basicAttackDmgBonus', 20)]], config)[0];
+        expect(withBonus.skillDamage.skill).toBe(withoutBonus.skillDamage.skill);
+    });
+
+    it('different gear combos in the same optimize pass each get their OWN gear-scoped buffs, not leaked across combos', () => {
+        const c = charWithSkills();
+        const catalog: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }];
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog, topN: 5,
+        };
+        const combos = [
+            [echoWithSub('basicAttackDmgBonus', 20)],
+            [echoWithSub('heavyAttackDmgBonus', 20)],
+        ];
+        const results = computeBaseLoadouts(c, combos, config);
+        // Combo 0 (basic sub-stat) should NOT have its basic-boost leak into combo 1.
+        expect(results[1].skillDamage.basic).toBeLessThan(results[0].skillDamage.basic);
     });
 });
