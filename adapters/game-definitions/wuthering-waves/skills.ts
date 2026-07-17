@@ -2485,15 +2485,23 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     // group, YYY = sub-hit within that move) cross-checked against
     // SkillDescribe's stage names — each named stage/move here is the SUM of
     // its sub-hits, matching the "one entry per named stage" convention used
-    // elsewhere in this file. NOT yet included: her Forte Circuit ("The Way
-    // of Ten Thousand Voices", 22 raw damage entries whose SkillDescribe text
-    // didn't cleanly separate into distinct named moves) and her 2nd Inherent
-    // Skill's Windbound/"Feather Release: Xuanling" summon mechanic — both
-    // are real but too structurally ambiguous from the raw API payload alone
-    // to author accurately; flagged for a follow-up pass once community
-    // guides solidify. Until then she uses the generic game-wide fallback
-    // for Forte damage specifically (her Basic/Skill/Liberation/Intro/Outro
-    // below are real, sourced values).
+    // elsewhere in this file.
+    //
+    // 2026-07-17 follow-up: her "Forte Circuit" (SkillId 1005407, "The Way of
+    // Ten Thousand Voices") isn't a separate button — it's a catch-all
+    // description covering Sword Stance Flow (already captured above, 3 of
+    // its 22 raw DamageList entries are byte-identical duplicates of
+    // skillAzureFlow/skillFeatherFlow/skillBonus and were skipped), Heavy
+    // Attack (Azure + Feather, added below — its `heavyAzure`/`heavyFeather`
+    // ID buckets 002/012 were unambiguous), and Mid-air Attack - Feather Fall
+    // + Basic Attack - Havoc in Bloom (ID buckets 013/014, 14 raw entries).
+    // Those last two moves are Feather-stance-exclusive follow-ups reachable
+    // only after Azure Plume caps — their raw entries don't separate into a
+    // stage count the SkillDescribe text confirms (unlike Basic Attack's
+    // clean 1/2/3/4-stage split above), so rather than guess a breakdown they
+    // still fall back to the generic combat-action default. Her most common
+    // rotation damage (Basic/Skill/Liberation/Heavy Attack/Intro/Outro) is
+    // now all real, sourced values.
     'yangyang-xuanling': [
         { id: 'basicAzure1', name: "Basic Attack - Azure Sword Stance (Stage 1)", type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.24, 0.2597, 0.2794, 0.307, 0.3266, 0.3493, 0.3808, 0.4122, 0.4437, 0.4772] },
@@ -2515,6 +2523,10 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.2, 1.2986, 1.397, 1.5347, 1.633, 1.7463, 1.9037, 2.061, 2.2186, 2.3859] },
         { id: 'midairFeather', name: "Mid-air Attack - Feather Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.496, 0.5367, 0.5774, 0.6343, 0.675, 0.7218, 0.7869, 0.8519, 0.917, 0.9861] },
+        { id: 'heavyAzure', name: "Heavy Attack - Azure Sword Stance", type: 'Heavy', scaling: 'atk', element: 'Havoc',
+            multipliers: [2.2663, 2.452, 2.6379, 2.898, 3.0839, 3.2976, 3.5949, 3.8923, 4.1896, 4.5053] },
+        { id: 'heavyFeather', name: "Heavy Attack - Feather Sword Stance", type: 'Heavy', scaling: 'atk', element: 'Havoc',
+            multipliers: [1.0918, 1.1813, 1.2708, 1.3962, 1.4857, 1.5886, 1.7318, 1.875, 2.0184, 2.1705] },
         { id: 'dodgeCounterAzure', name: "Dodge Counter - Azure Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.9865, 1.0674, 1.1484, 1.2615, 1.3424, 1.4354, 1.5649, 1.6943, 1.8238, 1.9613] },
         { id: 'dodgeCounterFeather', name: "Dodge Counter - Feather Sword Stance", type: 'Basic', scaling: 'atk', element: 'Havoc',
