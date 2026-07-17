@@ -58,12 +58,37 @@ export function weaponAutoBuffs(weapon: { id: string; name: string; baseAtk: num
 export const passiveBuffId = (charId: string, sb: { stat: string; appliesTo?: string[] }, i: number) =>
     `passive-${charId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
-/** Unconditional character passive-talent self-buffs (own kit, not weapon/constellation) — always applied. */
-export function characterAutoBuffs(c: CharacterData | null, gear: GearData[], weapon: { baseAtk: number } | undefined, catalog: GameData['statCatalog'], stacks: Record<string, number> = {}) {
+/** WW's "Skill Tree" stat nodes — a fixed "fully invested" assumption, gated
+ * by ONE master switch (`calcStore.skillTreeInvested`) instead of the normal
+ * per-buff conditional toggle. See `characterAutoBuffs`/`conditionalCharacterBuffs`. */
+export const isSkillTreeBuff = (sb: { label: string }) => sb.label.startsWith('Skill Tree:');
+
+/**
+ * `calc.buffs` may still carry a Skill Tree entry a user manually toggled ON
+ * before this master switch existed (it's a plain persisted buff, stable id,
+ * survives an app update) — without stripping it out here, turning the
+ * switch on would double-count that stat once from the stale manual toggle
+ * and once from `characterAutoBuffs`'s automatic inclusion. Only matters
+ * when the switch is ON; when OFF neither path includes it.
+ */
+export function stripAutoSkillTreeBuffs<T extends { id: string }>(buffs: T[], c: CharacterData | null, skillTreeInvested: boolean): T[] {
+    if (!skillTreeInvested || !c?.selfBuffs) return buffs;
+    const autoIds = new Set(c.selfBuffs.map((sb, i) => ({ sb, i })).filter(({ sb }) => isSkillTreeBuff(sb)).map(({ sb, i }) => passiveBuffId(c.id, sb, i)));
+    return buffs.filter((b) => !autoIds.has(b.id));
+}
+
+/** Unconditional character passive-talent self-buffs (own kit, not weapon/constellation) — always applied.
+ * `skillTreeInvested` additionally includes "Skill Tree: ..." buffs even though they're authored
+ * `conditional: true` — see `isSkillTreeBuff`. Defaults to false (i.e. behaves exactly as before this
+ * flag existed) so callers that don't know about the Talents window's master switch — Rotation Builder,
+ * which still lets a Skill Tree buff be toggled per-member via `conditionalCharacterBuffs` instead —
+ * don't silently start double-counting or auto-including them. Only the Calculator passes the real
+ * `calcStore.skillTreeInvested` value (default true there). */
+export function characterAutoBuffs(c: CharacterData | null, gear: GearData[], weapon: { baseAtk: number } | undefined, catalog: GameData['statCatalog'], stacks: Record<string, number> = {}, skillTreeInvested = false) {
     if (!c?.selfBuffs) return [];
     return c.selfBuffs
         .map((sb, i) => ({ sb, i }))
-        .filter(({ sb }) => sb.conditional === false)
+        .filter(({ sb }) => sb.conditional === false || (skillTreeInvested && isSkillTreeBuff(sb)))
         .map(({ sb, i }) => { const id = passiveBuffId(c.id, sb, i); return { id, name: `${c.name} passive`, source: c.name, stat: sb.stat, value: resolveStackedValue(id, { value: sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
 }
 

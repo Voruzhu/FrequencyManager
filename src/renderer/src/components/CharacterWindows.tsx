@@ -12,8 +12,9 @@ import { useSelectionStore } from '../stores/selectionStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useOwnedInventory } from '../stores/inventoryStore';
 import { iconSrc } from '@/lib/icons';
-import { useGameData, getPassives, getSequenceLabel, SEQUENCE_MAX } from '../data/gameData';
+import { useGameData, getPassives, getSequenceLabel, describePassiveSlot, SEQUENCE_MAX } from '../data/gameData';
 import { groupSkillsForTalents } from '../data/talentGroups';
+import { isSkillTreeBuff } from '@/lib/selfBuffs';
 
 /** Small placeholder art tile for talents/passives/sequence nodes. */
 function IconSlot({ icon: Icon, active = true, className }: { icon: LucideIcon; active?: boolean; className?: string }) {
@@ -159,7 +160,7 @@ export function RotationCharacterPickerWindow({ onPick }: { onPick: (characterId
 export function TalentsWindow() {
     const gameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(gameId);
-    const { characterId, skillLevels, passives, sequence, setSkillLevel, togglePassive, setSequence } = useCalcStore();
+    const { characterId, skillLevels, passives, sequence, setSkillLevel, togglePassive, setSequence, skillTreeInvested, setSkillTreeInvested } = useCalcStore();
     const character = data.characters.find((c) => c.id === characterId);
 
     if (!character) return <p className="text-sm text-muted-foreground">Pick a character in the Damage Calculator first.</p>;
@@ -224,8 +225,12 @@ export function TalentsWindow() {
             {/* Passives */}
             <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Passive skills</h3>
-                {passiveList.map((p) => {
+                {passiveList.map((p, i) => {
                     const on = passives[p.id] ?? false;
+                    // The generic slot label ("Inherent Skill I", "1st Ascension Passive")
+                    // is the same for every character — swap in this character's own
+                    // tagged self-buff text when we have it (see `describePassiveSlot`).
+                    const description = describePassiveSlot(gameId, character, i) ?? p.description;
                     return (
                         <Tooltip key={p.id} delayDuration={200}>
                             <TooltipTrigger asChild>
@@ -233,16 +238,34 @@ export function TalentsWindow() {
                                     <IconSlot icon={Star} active={on} />
                                     <div className="min-w-0 flex-1">
                                         <div className="truncate text-sm font-medium text-foreground">{p.name}</div>
-                                        <div className="truncate text-xs text-muted-foreground">{p.description}</div>
+                                        <div className="truncate text-xs text-muted-foreground">{description}</div>
                                     </div>
                                     <Switch checked={on} onCheckedChange={() => togglePassive(p.id)} />
                                 </div>
                             </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-xs">{p.description}</TooltipContent>
+                            <TooltipContent side="left" className="max-w-xs">{description}</TooltipContent>
                         </Tooltip>
                     );
                 })}
             </section>
+
+            {/* WW's Skill Tree stat nodes (ATK%/Crit Rate/etc — a fixed "fully
+                invested" amount) — one master switch instead of per-stat chips,
+                on by default since a serious build reaches this anyway. */}
+            {character.selfBuffs?.some(isSkillTreeBuff) && (
+                <section>
+                    <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-2">
+                        <IconSlot icon={Star} active={skillTreeInvested} />
+                        <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-foreground">Skill Tree bonuses</div>
+                            <div className="truncate text-xs text-muted-foreground">
+                                {character.selfBuffs.filter(isSkillTreeBuff).map((sb) => sb.label.replace(/^Skill Tree:\s*/, '').replace(/\s*\(fully invested\)\s*$/, '')).join(', ')}
+                            </div>
+                        </div>
+                        <Switch checked={skillTreeInvested} onCheckedChange={setSkillTreeInvested} />
+                    </div>
+                </section>
+            )}
 
             {/* Sequences / Constellations */}
             <section className="space-y-2">

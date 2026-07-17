@@ -18,7 +18,7 @@ import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
-import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId } from '@/lib/selfBuffs';
+import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
@@ -204,7 +204,7 @@ export function CalculatorScreen() {
         // threshold on its own. `requiredSets` still restricts the search
         // POOL below (only search gear from these sets) — it just no longer
         // fakes the resulting bonus.
-        const config = { targets: calc.targets, buffs: [...calc.buffs, ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
+        const config = { targets: calc.targets, buffs: [...stripAutoSkillTreeBuffs(calc.buffs, character, calc.skillTreeInvested), ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog, {}, calc.skillTreeInvested)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
         return { config, equippedGear };
     };
 
@@ -447,7 +447,7 @@ export function CalculatorScreen() {
 function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<typeof getGameData> }) {
     const activeGameId = useGameStore((s) => s.activeGameId);
     const owned = useOwnedInventory(activeGameId);
-    const { equipped, buffs, sequence, skillLevels, skillStacks, setSkillStacks, buffStacks, setBuffStacks, removeBuff, addBuff, updateBuffValue, hasBuff, targetStatuses } = useCalcStore();
+    const { equipped, buffs, sequence, skillLevels, skillStacks, setSkillStacks, buffStacks, setBuffStacks, removeBuff, addBuff, updateBuffValue, hasBuff, targetStatuses, skillTreeInvested } = useCalcStore();
     const { showItem, showGearPicker, showWeaponPicker, showBuffs } = useSelectionStore();
     const openWindow = useWindowStore((s) => s.openWindow);
     const weapon = data.weapons.find((w) => w.id === equipped.weaponId);
@@ -468,7 +468,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     // actual damage calc — see `setBonusBuffEntries`), so this preview never
     // silently disagrees with the real "calculate current" numbers below.
     const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
-    const allStatBuffs = [...buffs, ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog), ...gearAutoBuffs(gear)];
+    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear)];
     const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
     // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
     // same reasoning as the set-bonus buffs above, keeps this preview honest.
@@ -650,12 +650,13 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                 </div>
                             );
                         })()}
-                        {c.selfBuffs && c.selfBuffs.some((sb) => sb.conditional !== false) && (
+                        {c.selfBuffs && c.selfBuffs.some((sb) => sb.conditional !== false && !isSkillTreeBuff(sb)) && (
                             <div>
                                 <SummaryLabel>Passive talent</SummaryLabel>
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                    {/* Conditional passive-talent self-buffs — opt-in toggles (unconditional ones auto-apply via characterAutoBuffs, no chip needed). */}
-                                    {c.selfBuffs.map((sb, i) => ({ sb, i })).filter(({ sb }) => sb.conditional !== false).map(({ sb, i }) => {
+                                    {/* Conditional passive-talent self-buffs — opt-in toggles (unconditional ones auto-apply via characterAutoBuffs, no chip needed).
+                                        Skill Tree buffs are excluded here — they're gated by the single master toggle in the Talents window instead of per-stat chips. */}
+                                    {c.selfBuffs.map((sb, i) => ({ sb, i })).filter(({ sb }) => sb.conditional !== false && !isSkillTreeBuff(sb)).map(({ sb, i }) => {
                                         const id = passiveBuffId(c.id, sb, i);
                                         const on = hasBuff(id);
                                         const scaleOffValue = sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, data.statCatalog) : 0;

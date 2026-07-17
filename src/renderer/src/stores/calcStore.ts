@@ -63,6 +63,12 @@ interface CalcState {
     /** buffId -> user-chosen stack count, for self/party buffs with `stacksMax` (e.g. Galbrena's Afterflame-scaled Crit DMG). Absent means "assume max stacks". */
     buffStacks: Record<string, number>;
     passives: Record<string, boolean>;   // passiveId -> unlocked
+    /** WW's "Skill Tree" stat nodes (labeled "Skill Tree: ..." in selfBuffs) are a
+     * fixed "fully invested" assumption every serious build reaches — default true
+     * so they count without the player individually toggling each one, unlike
+     * genuinely situational conditional self-buffs. One master switch (the Talents
+     * window's "Skill Tree bonuses" toggle) instead of per-stat chips. */
+    skillTreeInvested: boolean;
     sequence: number;                     // 0..6 constellation / sequence level
     reaction: ReactionType;               // elemental reaction applied to skill damage
     /** Which WW reaction/Negative-Status debuffs the user has marked as active on the current enemy — a reference toggle, not auto-wired to any buff yet. Defaults to all on (matches this project's existing "assume active" convention for target-conditional buffs). */
@@ -76,6 +82,7 @@ interface CalcState {
     setBuffStacks: (id: string, stacks: number, max: number) => void;
     toggleTargetStatus: (id: string) => void;
     togglePassive: (id: string) => void;
+    setSkillTreeInvested: (v: boolean) => void;
     setSequence: (n: number) => void;
     equipGear: (id: string) => void;
     unequipGear: (id: string) => void;
@@ -114,6 +121,7 @@ export const useCalcStore = create<CalcState>()(
     skillStacks: {},
     buffStacks: {},
     passives: {},
+    skillTreeInvested: true,
     sequence: 0,
     reaction: 'none',
     targetStatuses: { frazzle: true, erosion: true, chafe: true, flare: true, bane: true, fusionburst: true },
@@ -125,6 +133,7 @@ export const useCalcStore = create<CalcState>()(
     setBuffStacks: (id, stacks, max) => set((s) => ({ buffStacks: { ...s.buffStacks, [id]: Math.max(0, Math.min(max, stacks)) } })),
     toggleTargetStatus: (id) => set((s) => ({ targetStatuses: { ...s.targetStatuses, [id]: !s.targetStatuses[id] } })),
     togglePassive: (id) => set((s) => ({ passives: { ...s.passives, [id]: !s.passives[id] } })),
+    setSkillTreeInvested: (v) => set({ skillTreeInvested: v }),
     setSequence: (n) => set((s) => {
         const level = Math.max(0, Math.min(6, n));
         useSequenceStore.getState().setSequence(useGameStore.getState().activeGameId, s.characterId, level);
@@ -149,6 +158,7 @@ export const useCalcStore = create<CalcState>()(
             skillStacks: {},
             buffStacks: {},
             passives: {},
+            skillTreeInvested: true,
             sequence: useSequenceStore.getState().getSequence(gameId, c.id),
             reaction: 'none',
         });
@@ -239,6 +249,7 @@ export const useCalcStore = create<CalcState>()(
                 skillStacks: s.skillStacks,
                 buffStacks: s.buffStacks,
                 passives: s.passives,
+                skillTreeInvested: s.skillTreeInvested,
                 sequence: s.sequence,
                 reaction: s.reaction,
                 requiredSets: s.requiredSets,
