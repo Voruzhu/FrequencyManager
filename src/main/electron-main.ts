@@ -556,28 +556,28 @@ function runOcrScan(imagePath: string): Promise<{ success: boolean; echo?: unkno
     return new Promise((resolve) => {
         // Whichever branch settles this promise is done reading `imagePath` —
         // release our half of the temp-file reference count regardless of
-        // which one fires (success, failure, or timeout).
+        // which one fires (success or failure).
         const settle = (result: { success: boolean; echo?: unknown; error?: string; rawText?: string }) => {
             releaseTempScanFile(imagePath);
             resolve(result);
         };
-        // 60s, not 30s (bumped 2026-07-13): the `echoes` crop now stitches in
-        // an extra top-left region (the Sonata-set filter chip) alongside the
-        // stat-panel regions, so Tesseract runs over a larger combined image
-        // per scan than before — the old ceiling left less headroom for a
-        // slower machine to legitimately finish, not just for a truly hung
-        // worker.
-        const timeout = setTimeout(() => settle({ success: false, error: 'OCR scan timeout' }), 60000);
+        // ponytail: no ceiling here on purpose (removed 2026-07-18, user
+        // request) — a fixed timeout was firing mid-session on slower
+        // machines ("OCR scan timeout") even though the scan just needed
+        // more time, which read as the scanner randomly dying. The renderer's
+        // Stop button already soft-cancels (bumps its own token and discards
+        // whatever arrives late), so the user's real "stop" control already
+        // exists; this promise just waits for a real result. If Tesseract
+        // truly hangs forever, add a much longer ceiling back — not one this
+        // tight.
         kernel!.eventBus.subscribe('echo:scanned', (msg) => {
             if (msg.correlationId === correlationId) {
-                clearTimeout(timeout);
                 const payload = msg.payload as { echo: unknown; source: string };
                 settle({ success: true, echo: payload.echo });
             }
         }, { once: true });
         kernel!.eventBus.subscribe('echo:scan-failed', (msg) => {
             if (msg.correlationId === correlationId) {
-                clearTimeout(timeout);
                 const payload = msg.payload as { error: string; rawText?: string };
                 settle({ success: false, error: payload.error, rawText: payload.rawText });
             }
