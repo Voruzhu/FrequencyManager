@@ -1066,6 +1066,13 @@ let registeredScanHotkey: string | null = null;
  */
 let armedScanType: string | null = null;
 
+/** True while a hotkey-triggered capture+scan is in flight. Guards the hotkey
+ * callback below against a second press piling up ANOTHER concurrent
+ * capture+scan on top of one still running — with no fixed per-scan timeout
+ * (removed 2026-07-18), a slow scan now stays in flight longer, so an
+ * impatient re-press was becoming more likely, not less. */
+let hotkeyScanInFlight = false;
+
 /**
  * Register (or re-register, unregistering whatever was there before) the
  * global hotkey that triggers "capture the screen + OCR-scan it," even while
@@ -1094,20 +1101,29 @@ function registerScanHotkey(accelerator: string): void {
                 logger.info('[ocr-hotkey] pressed while not armed — ignored', { accelerator });
                 return;
             }
+            if (hotkeyScanInFlight) {
+                logger.info('[ocr-hotkey] pressed while a scan is already running — ignored', { accelerator });
+                return;
+            }
             const scanType = armedScanType;
+            hotkeyScanInFlight = true;
             void (async () => {
-                logger.info('[ocr-hotkey] triggered', { accelerator, scanType });
-                mainWindow?.webContents.send('ocr:hotkey-scan-started', {});
-                const imagePath = await captureScreen(scanType);
-                if (!imagePath) {
-                    mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: false, error: lastCaptureFailureReason ?? 'Screen capture failed' });
-                    return;
-                }
-                const result = await runOcrScan(imagePath);
-                if (result.success) {
-                    mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: true, imagePath, result: { echo: result.echo } });
-                } else {
-                    mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: false, imagePath, error: result.error, rawText: result.rawText });
+                try {
+                    logger.info('[ocr-hotkey] triggered', { accelerator, scanType });
+                    mainWindow?.webContents.send('ocr:hotkey-scan-started', {});
+                    const imagePath = await captureScreen(scanType);
+                    if (!imagePath) {
+                        mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: false, error: lastCaptureFailureReason ?? 'Screen capture failed' });
+                        return;
+                    }
+                    const result = await runOcrScan(imagePath);
+                    if (result.success) {
+                        mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: true, imagePath, result: { echo: result.echo } });
+                    } else {
+                        mainWindow?.webContents.send('ocr:hotkey-scan-result', { success: false, imagePath, error: result.error, rawText: result.rawText });
+                    }
+                } finally {
+                    hotkeyScanInFlight = false;
                 }
             })();
         });
