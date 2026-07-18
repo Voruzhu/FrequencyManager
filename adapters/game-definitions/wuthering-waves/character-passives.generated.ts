@@ -22,7 +22,18 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // Glacio DMG +240%, once every 25s" (wuthering.gg). Scoped to
     // 'skill'/'intro' — both are Suisui's only moves of each type.
     "suisui": [{"stat":"critRate","label":"Crit Rate +80%, on Awakening Spring/Tinkling Jade hit (Inherent I)","value":80,"conditional":true,"appliesTo":["skill","intro"]},{"stat":"elemDmg","label":"Glacio DMG +240%, on Awakening Spring/Tinkling Jade hit (Inherent I)","value":240,"conditional":true,"appliesTo":["skill","intro"]},{"stat":"atkPct","label":"When a Resonator other than Suisui takes a fatal blow, they will not be knocked out but will instead regain 50% of Suisui's current HP, while Suisui herself loses the same amount of HP. Suisui's HP will not go below 1 from this effect. This effect can be triggered once every 10 minutes. (Inherent II)","value":0,"conditional":false}],
-    "rover-spectro": [{"stat":"dmgBonus","label":"Basic Atk (Resonating Echoes) DMG +60% (Inherent I)","value":60,"conditional":false,"appliesTo":["basic"]},{"stat":"atkPct","label":"ATK +15%, 5s after Heavy Attack Resonance (Inherent II)","value":15,"conditional":true}],
+    // FIXED 2026-07-19 — Inherent I ("Reticence") real text is "DMG dealt by
+    // Rover's Basic Attack Resonating Echoes is increased by 60%" — names
+    // "Resonating Echoes" specifically (the Forte-Circuit-sourced,
+    // scope:'Basic'-overridden basicResonatingEchoesS1/S2 entries — per
+    // encore.moe SkillId 1000607/1000617, "Resonating Echoes" is a sub-hit
+    // of the Forte Circuit, not a name for Rover's plain Basic Attack combo,
+    // which is separately named "Vibration Manifestation"), not Rover's real
+    // plain Basic Attack chain ('basic'/basic-stage-2..4/mid-air-attack/
+    // dodge-counter). All of these share the 'basic' canonical scope, so
+    // appliesTo:["basic"] was silently also buffing the unrelated plain
+    // combo. Narrowed to Resonating Echoes' 2 unique ids.
+    "rover-spectro": [{"stat":"dmgBonus","label":"Basic Atk (Resonating Echoes) DMG +60% (Inherent I)","value":60,"conditional":false,"appliesTo":["basicResonatingEchoesS1","basicResonatingEchoesS2"]},{"stat":"atkPct","label":"ATK +15%, 5s after Heavy Attack Resonance (Inherent II)","value":15,"conditional":true}],
     "jinhsi": [{"stat":"elemDmg","label":"Spectro DMG Bonus +20% (Inherent I)","value":20,"conditional":false},{"stat":"atkPct","label":"DMG Multiplier of Intro Skill Loong's Halo is increased by 50%. (Inherent II)","value":0,"conditional":false}],
     "yinlin": [{"stat":"critRate","label":"Crit Rate +15%, 5s after Resonance Skill (Inherent I)","value":15,"conditional":true},{"stat":"dmgBonus","label":"Resonance Skill DMG +10% vs Sinner's-Mark targets (Inherent II)","value":10,"conditional":true,"appliesTo":["skill"]},{"stat":"atkPct","label":"ATK +10%, 4s, on Sinner's-Mark trigger (Inherent II)","value":10,"conditional":true}],
     "changli": [{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, 4 stacks of Enflamement (Inherent I)","value":20,"conditional":true},{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, after Heavy Atk/Liberation cast (Inherent II)","value":20,"conditional":true}],
@@ -33,8 +44,34 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "sanhua": [{"stat":"dmgBonus","label":"Res. Skill DMG +20%, 8s after Intro Skill (Inherent I)","value":20,"conditional":true,"appliesTo":["skill"]},{"stat":"dmgBonus","label":"Forte Circuit DMG +20%, 8s after Basic Atk 5 (Inherent II)","value":20,"conditional":true,"appliesTo":["forte"]}],
     "yangyang": [{"stat":"elemDmg","label":"Aero DMG Bonus +8%, 8s after Intro Skill (Inherent II)","value":8,"conditional":true},{"stat":"atkPct","label":"Yangyang recovers 30 STA after she casts a Mid-air Attack Feather Release. (Inherent I)","value":0,"conditional":false}],
     "chixia": [{"stat":"dmgBonus","label":"Resonance Skill DMG +50% (Inherent I)","value":50,"conditional":false,"appliesTo":["skill"]},{"stat":"atkPct","label":"ATK +30% (max 30 stacks), during Resonance Skill (Inherent II)","value":30,"conditional":true}],
-    "danjin": [{"stat":"dmgBonus","label":"Res. Skill DMG +20%, via Dodge-Counter trigger (Inherent I)","value":20,"conditional":true,"appliesTo":["skill"]},{"stat":"dmgBonus","label":"Heavy Atk DMG +30%, 5s after Res. Skill (Inherent II)","value":30,"conditional":true,"appliesTo":["heavy"]}],
-    "mortefi": [{"stat":"dmgBonus","label":"Res. Skill DMG +25%, 8s after casting (Inherent I)","value":25,"conditional":true,"appliesTo":["skill"]},{"stat":"dmgBonus","label":"Liberation DMG +75% (max 50 stacks), during Burning Rhapsody (Inherent II)","value":75,"conditional":true,"appliesTo":["ult"]}],
+    // FIXED 2026-07-19 — Inherent I ("Crimson Light") real text is "Damage
+    // of Resonance Skill Crimson Erosion triggered by Dodge Counter: Ruby
+    // Shades is increased by 20%" — names Crimson Erosion specifically
+    // (Danjin's 'skill2' entry), not her base Resonance Skill ('skill',
+    // Incinerating Will) or 'sanguine-pulse' — all 3 share the 'skill'
+    // canonical scope (no override on skill2/sanguine-pulse), so
+    // appliesTo:["skill"] was silently also buffing those two. Narrowed to
+    // Crimson Erosion's unique id.
+    "danjin": [{"stat":"dmgBonus","label":"Res. Skill DMG +20%, via Dodge-Counter trigger (Inherent I)","value":20,"conditional":true,"appliesTo":["skill2"]},{"stat":"dmgBonus","label":"Heavy Atk DMG +30%, 5s after Res. Skill (Inherent II)","value":30,"conditional":true,"appliesTo":["heavy"]}],
+    // FIXED 2026-07-19 — Inherent I ("Harmonic Control") real text: "After
+    // casting Resonance Skill Passionate Variation, the damage of Resonance
+    // Skill Fury Fugue is increased by 25% for 8s" (confirmed via
+    // api.encore.moe SkillId 1001204). Despite the "Resonance Skill" prefix
+    // in the tooltip, Fury Fugue's own SkillType is "Forte Circuit" (id
+    // 1001207) — it's the game's own compound naming, not a Skill-category
+    // move. This entry was wrongly scoped appliesTo:["skill"], which matches
+    // Mortefi's real Resonance Skill ('skill', Passionate Variation) — the
+    // buff was silently applying to the WRONG move entirely and never
+    // touching its actual target, Fury Fugue ('forte'). Narrowed to 'forte'.
+    // Inherent II ("Rhythmic Vibrato") real text is "each hit of Resonance
+    // Liberation Marcato will increase the DMG of the next ... Marcato by
+    // 1.5%... stacking up to 50 times" (1.5%*50=75%, matches this entry's
+    // value) — Marcato-specific, not Mortefi's base Liberation cast ('ult',
+    // Violent Finale). Both share the 'ult' canonical scope (no override on
+    // 'ult-marcato'), so appliesTo:["ult"] was silently also buffing Violent
+    // Finale. Narrowed to Marcato's unique id (api.encore.moe SkillId
+    // 1001203's DamageList: Violent Finale/Marcato are 2 separate entries).
+    "mortefi": [{"stat":"dmgBonus","label":"Fury Fugue DMG +25%, 8s after Res. Skill (Inherent I)","value":25,"conditional":true,"appliesTo":["forte"]},{"stat":"dmgBonus","label":"Liberation DMG +75% (max 50 stacks), during Burning Rhapsody (Inherent II)","value":75,"conditional":true,"appliesTo":["ult-marcato"]}],
     "taoqi": [{"stat":"defPct","label":"DEF +15% while Rocksteady Shield active (Inherent I)","value":15,"conditional":true},{"stat":"atkPct","label":"After Heavy Attack Strategic Parry is successfully triggered, 25 STA is recovered. (Inherent II)","value":0,"conditional":false}],
     "xiangli-yao": [{"stat":"elemDmg","label":"Electro DMG Bonus +20% (max 4 stacks), 8s after Res. Skill (Inherent I)","value":20,"conditional":true},{"stat":"atkPct","label":"When in Intuition triggered by Resonance Liberation, Xiangli Yao's resistance to interruption is enhanced. (Inherent II)","value":0,"conditional":false}],
     "zhezhi": [{"stat":"atkPct","label":"ATK +18% (max 3 stacks), 27s after Res. Skill (Inherent I)","value":18,"conditional":true},{"stat":"dmgBonus","label":"Basic Atk DMG +18%, 27s after Creation's Zenith (Forte Circuit)","value":18,"conditional":true,"appliesTo":["basic"]},{"stat":"atkPct","label":"After Outro Skill is cast, restore 15 Resonance Energy for the incoming Resonator. (Inherent II)","value":0,"conditional":false}],
@@ -51,9 +88,21 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "youhu": [{"stat":"elemDmg","label":"Glacio DMG Bonus +15%, 14s after Intro Skill (Inherent II)","value":15,"conditional":true},{"stat":"atkPct","label":"Restore HP for all nearby party members based on 30% of the healing provided by Resonance Skill Scroll Divination when Resonance Skill Antique Appraisal is cast. (Inherent I)","value":0,"conditional":false}],
     "brant": [{"stat":"elemDmg","label":"Fusion DMG Bonus +15%, during Mid-air Attacks (Inherent II)","value":15,"conditional":true},{"stat":"atkPct","label":"Healing provided by Waves of Acclaims is increased by 20%. (Inherent I)","value":0,"conditional":false}],
     "phoebe": [{"stat":"elemDmg","label":"Spectro DMG Bonus +12%, in Absolution+Confession status (Inherent II)","value":12,"conditional":true},{"stat":"atkPct","label":"Mid-air Heavy Attack can be cast 1 more times. (Inherent I)","value":0,"conditional":false}],
-    "ciaccona": [{"stat":"dmgBonus","label":"Heavy Atk (Quadruple Downbeat) DMG +30% (Inherent II)","value":30,"conditional":true,"appliesTo":["heavy"]},{"stat":"atkPct","label":"Casting Resonance Liberation Singer's Triple Cadenza grants Ciaccona a Shield equal to 100% of her Max HP for 4s. Switching out Ciaccona removes the Shield. (Inherent I)","value":0,"conditional":false}],
+    // FIXED 2026-07-19 — Inherent II was conditional:true; real text
+    // "Increase Heavy Attack - Quadruple Downbeat's DMG by 30%" has no
+    // trigger/duration, matching this file's unconditional-baseline
+    // convention. Also: Quadruple Downbeat's real skills.ts entries
+    // (quadruple-downbeat/forte/forteDownbeatFinisher) are `type:'Forte'`
+    // with no scope override, so `appliesTo:["heavy"]` was silently missing
+    // its actual target and instead buffing her unrelated plain Heavy
+    // Attack — added `scope:'Heavy'` to those 3 entries below.
+    "ciaccona": [{"stat":"dmgBonus","label":"Heavy Atk (Quadruple Downbeat) DMG +30% (Inherent II)","value":30,"conditional":false,"appliesTo":["heavy"]},{"stat":"atkPct","label":"Casting Resonance Liberation Singer's Triple Cadenza grants Ciaccona a Shield equal to 100% of her Max HP for 4s. Switching out Ciaccona removes the Shield. (Inherent I)","value":0,"conditional":false}],
     "zani": [{"stat":"elemDmg","label":"Spectro DMG Bonus +12%, 14s after Intro Skill (Inherent I)","value":12,"conditional":true},{"stat":"atkPct","label":"When in Ready Stance, all DMG taken is reduced by 40%. (Inherent II)","value":0,"conditional":false}],
-    "phrolova": [{"stat":"critDmg","label":"Crit DMG +25% (10 Aftersound stacks on combat entry) (Inherent II)","value":25,"conditional":false},{"stat":"atkPct","label":"Casting Echo Skill grants increased resistance to interruption and reduces damage taken by 30% for 15s.After casting Suite of Quietus, Suite of Immortality, and Echo Skill, the next Volatile Note becomes Volatile Note - Cadenza. (Inherent I)","value":0,"conditional":false}],
+    // FIXED 2026-07-19 — Inherent II was conditional:false; real text says
+    // Aftersound is a maintainable/losable resource ("The increased Crit
+    // DMG is removed when Aftersound stacks are cleared"), not a zero-
+    // trigger permanent baseline.
+    "phrolova": [{"stat":"critDmg","label":"Crit DMG +25% (10 Aftersound stacks on combat entry) (Inherent II)","value":25,"conditional":true},{"stat":"atkPct","label":"Casting Echo Skill grants increased resistance to interruption and reduces damage taken by 30% for 15s.After casting Suite of Quietus, Suite of Immortality, and Echo Skill, the next Volatile Note becomes Volatile Note - Cadenza. (Inherent I)","value":0,"conditional":false}],
     // FIXED 2026-07-17 — real Inherent II ("Wind's Indelible Imprint") is
     // graduated: 1-3 stacks grants +30% flat, 4-6 stacks scales +10%/stack
     // up to +60% at 6. Base-kit max Aero Erosion stack is only 3 (6 needs
@@ -74,7 +123,15 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // assume-max-stacks toggle, same convention as Cartethyia's similar
     // stacked-DMG-Amp Inherent above.
     "yangyang-xuanling": [{"stat":"elemDmg","label":"DMG Amplified +66% at 6 Havoc Bane stacks on target (Inherent I)","value":66,"conditional":true}],
-    "qiuyuan": [{"stat":"dmgBonus","label":"Heavy Atk DMG +50%, after entering Inksplash of Mind (Inherent I)","value":50,"conditional":true,"appliesTo":["heavy"]},{"stat":"atkPct","label":"ATK +10%, 20s on Flowing Panacea consume (Inherent II)","value":10,"conditional":true}],
+    // FIXED 2026-07-19 — Inherent I ("Quietude Within") real text names 3
+    // specific moves only: "Heavy Attack Thus Spoke the Blade: To Teach, ...
+    // To Save, and ... To Sacrifice deal 50% more DMG" (Qiuyuan's 'to-teach'/
+    // 'to-save'/'forte' entries) — NOT the 4 Inkwash stages or her plain
+    // 'heavy', all of which also share the 'heavy' canonical scope via their
+    // own scope:'Heavy' overrides / type:'Heavy'. appliesTo:["heavy"] was
+    // silently also buffing all 5 of those. Narrowed to the 3 named moves'
+    // unique ids.
+    "qiuyuan": [{"stat":"dmgBonus","label":"Heavy Atk DMG +50%, after entering Inksplash of Mind (Inherent I)","value":50,"conditional":true,"appliesTo":["to-teach","to-save","forte"]},{"stat":"atkPct","label":"ATK +10%, 20s on Flowing Panacea consume (Inherent II)","value":10,"conditional":true}],
     "lynae": [{"stat":"elemDmg","label":"Spectro DMG Bonus +25%, 9s after Intro Skill (Inherent II)","value":25,"conditional":true},{"stat":"atkPct","label":"After casting Basic Attack - Visual Impact, Lynae leaves Spray Paint on the ground and continuously inflicts Photochromic Flux on targets within the Spray Paint for 5s, triggered once every 2s. When Spray Paint is on the ground, switching to another Resonance Mode doesn't affect the Photochromic Flux effects inflicted by the Spray Paint.With Lynae in the team, the expedition motorbike's Energy Tank expands by 600 points. Lynae enters Kaleidoscopic Parade automatically while on the expedition motorbike and restores 20% of Lumiflow per second. (Inherent I)","value":0,"conditional":false}],
     // Base-kit self-scaling on her own Resonance Liberation "Critical
     // Protocol" (confirmed 2026-07-16, wuthering.gg, distinct from the

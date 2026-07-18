@@ -40,7 +40,10 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     ],
     "changli": [
         { level: 1, name: "Hidden Thoughts", description: "Resonance Skill Tripartite Flames and Heavy Attack Flaming Sacrifice increase Changli's DMG dealt by 10% and resistance to interruption.", selfBuffs: [{"stat":"elemDmg","label":"DMG Bonus","value":10,"conditional":true}] },
-        { level: 2, name: "Pursuit of Desires", description: "Enflamement increases Changli's Crit. Rate by 25% for 8s.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":25,"conditional":false}] },
+        // FIXED 2026-07-19 — was conditional:false (permanently baked in);
+        // real text is "for 8s" (a timed proc after Enflamement), not a
+        // zero-trigger baseline.
+        { level: 2, name: "Pursuit of Desires", description: "Enflamement increases Changli's Crit. Rate by 25% for 8s.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":25,"conditional":true}] },
         { level: 3, name: "Learned Secrets", description: "Resonance Liberation Radiance of Fealty DMG is increased by 80%." },
         { level: 4, name: "Polished Words", description: "After Intro Skill is cast, all team members' ATK is increased by 20% for 30s.", buffs: [{"stat":"atkPct","label":"ATK%","value":20}] },
         { level: 5, name: "Sacrificed Gains", description: "Heavy Attack Flaming Sacrifice's Multiplier is increased by 50% and its DMG dealt is increased by 50%." },
@@ -65,7 +68,10 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     "calcharo": [
         { level: 1, name: "Covert Negotiation", description: "When Resonance Skill Extermination Order hits a target, it additionally recovers 10 Resonance Energy. This can be triggered once every 20s." },
         { level: 2, name: "Zero-Sum Game", description: "After Calcharo casts Intro Skill Wanted Criminal or Intro Skill \"Necessary Means\", his Resonance Skill DMG Bonus is increased by 30% for 15s.", selfBuffs: [{"stat":"elemDmg","label":"Res. Skill DMG","value":30,"conditional":true,"appliesTo":["skill"]}] },
-        { level: 3, name: "Iron Fist Diplomacy", description: "During the Resonance Liberation Deathblade Gear state, Calcharo's Electro DMG Bonus is increased by 25%.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":25,"conditional":false}] },
+        // FIXED 2026-07-19 — was conditional:false (permanently baked in);
+        // real text is state-gated ("During the ... Deathblade Gear state"),
+        // not a zero-trigger baseline.
+        { level: 3, name: "Iron Fist Diplomacy", description: "During the Resonance Liberation Deathblade Gear state, Calcharo's Electro DMG Bonus is increased by 25%.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":25,"conditional":true}] },
         { level: 4, name: "Dark Alliance", description: "After casting Outro Skill Shadowy Raid, Electro DMG Bonus of all team members is increased by 20% for 30s.", buffs: [{"stat":"elemDmg","label":"Elem DMG","value":20}] },
         { level: 5, name: "Unconventional Compact", description: "Intro Skill Wanted Criminal and Intro Skill \"Necessary Means\" deal 50% more DMG." },
         { level: 6, name: "The Ultimatum", description: "When casting Resonance Liberation \"Death Messenger\", Calcharo will summon 2 Phantoms to perform Coordinated Attacks. Each Phantom deals Electro DMG equal to 100.00% of Calcharo's ATK, which is considered Resonance Liberation DMG." },
@@ -87,7 +93,9 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         { level: 6, name: "Joyous Harvest", description: "Heavy Attack Starflower Blooms and Mid-air Attack Starflower Blooms deal 20% more DMG. They will trigger Coordinated Attack 1 time and heal all characters nearby. The damage of this Coordinated Attack and the Healing are equal to those of the Resonance Liberation's Photosynthesis Mark." },
     ],
     "sanhua": [
-        { level: 1, name: "Solitude's Embrace", description: "Basic Attack V increases Sanhua's Crit. Rate by 15% for 10s.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":15,"conditional":false}] },
+        // FIXED 2026-07-19 — was conditional:false; real text is "for 10s"
+        // (timed proc after Basic Attack V), not a zero-trigger baseline.
+        { level: 1, name: "Solitude's Embrace", description: "Basic Attack V increases Sanhua's Crit. Rate by 15% for 10s.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":15,"conditional":true}] },
         { level: 2, name: "Snowy Clarity", description: "Heavy Attack Detonate STA cost is reduced by 10. When Sanhua casts Resonance Skill Eternal Frost, her resistance to interruption is enhanced for 10s." },
         { level: 3, name: "Anomalous Vision", description: "Sanhua's damage dealt is increased by 35% against targets with HP below 70%.", selfBuffs: [{"stat":"elemDmg","label":"DMG Bonus (target below 70% HP)","value":35,"conditional":true}] },
         { level: 4, name: "Blade Mastery", description: "Resonance Liberation Glacial Gaze restores 10 Resonance Energy. \r\nDMG of the next Heavy Attack Detonate within 5s is increased by 120%." },
@@ -96,8 +104,13 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     ],
     "baizhi": [
         { level: 1, name: "Complex Simplicity", description: "Resonance Skill Emergency Plan additionally restores 2.5 Resonance Energy for every 1 Concentration consumed." },
-        { level: 2, name: "Silent Tundra", description: "Resonance Skill Emergency Plan increases Baizhi's Glacio DMG Bonus by 15% and her Healing by 15% if she has 4 Concentration. These effects last for 12s.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":15,"conditional":false},{"stat":"healingBonus","label":"Healing Bonus","value":15,"conditional":false}] },
-        { level: 3, name: "Veritas Lux Mea", description: "Intro Skill Overflowing Frost increases Baizhi's Max HP by 12% for 10s.", selfBuffs: [{"stat":"hpPct","label":"HP%","value":12,"conditional":false}] },
+        // FIXED 2026-07-19 — both were conditional:false; real text requires
+        // "if she has 4 Concentration" and lasts "12s" — a real trigger
+        // condition, not a zero-trigger baseline.
+        { level: 2, name: "Silent Tundra", description: "Resonance Skill Emergency Plan increases Baizhi's Glacio DMG Bonus by 15% and her Healing by 15% if she has 4 Concentration. These effects last for 12s.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":15,"conditional":true},{"stat":"healingBonus","label":"Healing Bonus","value":15,"conditional":true}] },
+        // FIXED 2026-07-19 — was conditional:false; real text is "for 10s"
+        // after Intro Skill, not a zero-trigger baseline.
+        { level: 3, name: "Veritas Lux Mea", description: "Intro Skill Overflowing Frost increases Baizhi's Max HP by 12% for 10s.", selfBuffs: [{"stat":"hpPct","label":"HP%","value":12,"conditional":true}] },
         { level: 4, name: "Eternal Verity", description: "Upon casting Resonance Liberation Momentary Union, Resonance Liberation Remnant Entities gains the following enhancements:\n\n-Remnant Entities can be performed 2 more time(s);\n\n-Healing multiplier of Remnant Entities is increased by 20%;\n\n-Remnant Entities deals additional Glacio DMG equal to 1.20% of Baizhi's Max HP." },
         { level: 5, name: "A Wish Answered", description: "If a team member is knocked out when Baizhi is alive on the team, immediately revive them and restore 100% of their Max HP. This effect can be triggered once every 10 minute(s)." },
         { level: 6, name: "Seeker's Devotion", description: "When Euphonia is picked up, increase the Glacio DMG Bonus of all characters nearby by 12% for 20s.", buffs: [{"stat":"elemDmg","label":"Elem DMG","value":12}] },
@@ -129,7 +142,15 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     "mortefi": [
         { level: 1, name: "Solitary Etude", description: "During Resonance Liberation Burning Rhapsody, Mortefi launches Coordinated Attacks when the on-field character performs their Resonance Skills, firing 2 Resonance Liberation's Marcato hits, dealing Fusion DMG." },
         { level: 2, name: "Hypocritical Hymn", description: "After using the Echo Skill, Mortefi restores an additional 10 Resonance Energy. This can be triggered once every 20 second." },
-        { level: 3, name: "Flaming Recitativo", description: "During Resonance Liberation Burning Rhapsody, the Crit. DMG of Resonance Liberation's Marcato is increased by 30%.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":30,"conditional":true,"appliesTo":["ult"]}] },
+        // FIXED 2026-07-19 — text names "Resonance Liberation's Marcato"
+        // specifically (Mortefi's Ultimate-scoped 'ult-marcato' entry), not
+        // his base Liberation cast ('ult', Violent Finale) — both share the
+        // 'ult' canonical scope (Marcato has no scope override), so
+        // appliesTo:["ult"] was silently also buffing Violent Finale's own
+        // damage. Narrowed to Marcato's unique id (api.encore.moe SkillId
+        // 1001203's DamageList confirms Violent Finale/Marcato are 2 separate
+        // RateLv entries — 80%/16% at L1, matching 'ult'/'ult-marcato' here).
+        { level: 3, name: "Flaming Recitativo", description: "During Resonance Liberation Burning Rhapsody, the Crit. DMG of Resonance Liberation's Marcato is increased by 30%.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":30,"conditional":true,"appliesTo":["ult-marcato"]}] },
         { level: 4, name: "Cathartic Waltz", description: "The duration of Resonance Liberation Burning Rhapsody is extended by 7s." },
         { level: 5, name: "Funerary Quartet", description: "When Resonance Skill Passionate Variation or Resonance Skill Fury Fugue hits a target, Coordinated Attacks will be triggered to fire 4 Resonance Liberation's Marcato hit(s), dealing Fusion Damage. DMG of Resonance Liberation's Marcato fired in this way is reduced by 50%." },
         { level: 6, name: "Apoplectic Instrumental", description: "When Resonance Liberation Violent Finale is cast, ATK of all team members is increased by 20% for 20s.", buffs: [{"stat":"atkPct","label":"ATK%","value":20}] },
@@ -138,8 +159,14 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         { level: 1, name: "Trickster's Opening Show", description: "The cooldown of Resonance Skill Shift Trick is reduced by 4s." },
         { level: 2, name: "Mistweaver's Debut", description: "\"Mist Avatar\" inherits 100% more HP from Aalto. When Aalto attacks targets taunted by the \"Mist Avatar(s)\", his ATK is increased by 15%.", selfBuffs: [{"stat":"atkPct","label":"ATK%","value":15,"conditional":true}] },
         { level: 3, name: "Hazey Transition", description: "When Aalto's Basic Attack or Mid-air Attack passes through the Mist, 2 more bullets will be generated, dealing 50% of the DMG of Basic Attack or Mid-air Attack." },
-        { level: 4, name: "Blake Bloom for Finale", description: "The damage of Resonance Skill Mist Bullets is increased by 30%; Aalto receives 30% less DMG in his Forte Circuit Mistcloak Dash state." },
-        { level: 5, name: "Applause of the Lost", description: "In the Forte Circuit Mistcloak Dash state, Aalto's Aero DMG Bonus is increased by 25% for 6s.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":25,"conditional":false}] },
+        // FIXED 2026-07-19 — the first clause ("DMG of Resonance Skill Mist
+        // Bullets +30%") had no selfBuffs at all despite being a clean,
+        // unambiguous, unconditional scope (Aalto's only Skill-type move).
+        { level: 4, name: "Blake Bloom for Finale", description: "The damage of Resonance Skill Mist Bullets is increased by 30%; Aalto receives 30% less DMG in his Forte Circuit Mistcloak Dash state.", selfBuffs: [{"stat":"dmgBonus","label":"Res. Skill DMG","value":30,"conditional":false,"appliesTo":["skill"]}] },
+        // FIXED 2026-07-19 — was conditional:false; real text is state-gated
+        // ("In the ... Mistcloak Dash state") and timed ("for 6s"), not a
+        // zero-trigger baseline.
+        { level: 5, name: "Applause of the Lost", description: "In the Forte Circuit Mistcloak Dash state, Aalto's Aero DMG Bonus is increased by 25% for 6s.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":25,"conditional":true}] },
         { level: 6, name: "Broker's Secrets", description: "Resonance Liberation Flower in the Mist now additionally increases Crit. Rate by 8%. When Aalto's Heavy Attack passes through the Gate of Quandary, the damage dealt is additionally increased by 50%.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":8,"conditional":false}] },
     ],
     "taoqi": [
@@ -192,7 +219,12 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         { level: 1, name: "Beauty Blazes Brightest Before It Fades", description: "When Carlotta deals DMG to a target inflicted with Deconstruction, the Crit. Rate of this instance of DMG is increased by 12.5%. When Resonance Skill Chromatic Splendor hits a target inflicted with Dispersion, Carlotta additionally restores 30 points of Substance.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":12.5,"conditional":true}] },
         { level: 2, name: "Fallen Petals Give Life to New Blooms", description: "The DMG Multiplier of Resonance Liberation Fatal Finale is increased by 126%." },
         { level: 3, name: "Adelante, Cortado, Spinning in Grace", description: "Enable Outro Skill Kaleidoscope Sparks: Deal 1 additional strike at the end of Outro Skill Closing Remark, dealing Glacio DMG equal to 1032.18% of Carlotta's ATK. The DMG Multiplier of Resonance Skill Art of Violence and Resonance Skill Chromatic Splendor is increased by 93%." },
-        { level: 4, name: "Yesterday's Raindrops Make Finest Wine", description: "Casting Heavy Attack, Heavy Attack Containment Tactics, and Heavy Attack Imminent Oblivion grants all Resonators in the team 25% Resonance Skill DMG Bonus for 30s.", buffs: [{"stat":"elemDmg","label":"Res. Skill DMG","value":25,"appliesTo":["skill"]}] },
+        // FIXED 2026-07-19 — was stat:'elemDmg', which the engine reads as a
+        // GLOBAL unscoped stat (appliesTo silently ignored, see
+        // shared/calc/optimizer.ts), inflating the WHOLE team's WHOLE kit
+        // damage instead of just Resonance Skill DMG. 'dmgBonus' respects
+        // appliesTo scoping.
+        { level: 4, name: "Yesterday's Raindrops Make Finest Wine", description: "Casting Heavy Attack, Heavy Attack Containment Tactics, and Heavy Attack Imminent Oblivion grants all Resonators in the team 25% Resonance Skill DMG Bonus for 30s.", buffs: [{"stat":"dmgBonus","label":"Res. Skill DMG","value":25,"appliesTo":["skill"]}] },
         { level: 5, name: "Toast to Past, Today, and Every Day to Come", description: "The DMG Multiplier of Heavy Attack Imminent Oblivion is increased by 47%." },
         { level: 6, name: "As the Curtain Falls, I Remain What I Am", description: "Shots of Resonance Liberation Death Knell deal higher DMG and shoot out double the number of crystal shards, representing a total increase of 186.6% in the DMG Multiplier of Resonance Liberation Death Knell.\nShots of Resonance Liberation Death Knell inflict Scattering on targets when hit, during which the target is immobilized. This effect is removed after 1.5s or when the target receives DMG." },
     ],
@@ -218,10 +250,19 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         // cleanly targets it alone.
         { level: 1, name: "Embrace the Endless Waves", description: "Casting Resonance Skill recovers 1 point of Trance. The DMG Multiplier of Resonance Skill Graceful Step, Resonance Skill Flickering Reverie, and Forte Circuit Perception Drain is increased by 50%. Immune to interruptions while casting Perception Drain." },
         { level: 2, name: "Surrender to the Illusive Reverie", description: "Resonance Liberation Flowing Suffocation now sends the target into Hazy Dream. The DMG Multiplier of Jolt triggered by Cantarella is increased by 245%." },
-        { level: 3, name: "Gaze into the Abyss", description: "The DMG Multiplier of Resonance Liberation Flowing Suffocation is increased by 370%. After casting Resonance Liberation Flowing Suffocation, enter into Mirage. If already in Mirage, casting Resonance Liberation Flowing Suffocation does not activate the Mirage state again.", selfBuffs: [{"stat":"dmgBonus","label":"Liberation DMG (Flowing Suffocation)","value":370,"conditional":true,"appliesTo":["ult"]}] },
+        // FIXED 2026-07-19 — was conditional:true; real text is a flat "DMG
+        // Multiplier... is increased by 370%" with no trigger/duration
+        // stated, matching this file's own unconditional-flat-bonus
+        // convention (e.g. S1 "Hero Takes the Stage!" line 78).
+        { level: 3, name: "Gaze into the Abyss", description: "The DMG Multiplier of Resonance Liberation Flowing Suffocation is increased by 370%. After casting Resonance Liberation Flowing Suffocation, enter into Mirage. If already in Mirage, casting Resonance Liberation Flowing Suffocation does not activate the Mirage state again.", selfBuffs: [{"stat":"dmgBonus","label":"Liberation DMG (Flowing Suffocation)","value":370,"conditional":false,"appliesTo":["ult"]}] },
         { level: 4, name: "Behold Your Own Soul", description: "When in Mirage, Healing Bonus is increased by 25%.", selfBuffs: [{"stat":"healingBonus","label":"Healing Bonus","value":25,"conditional":true}] },
         { level: 5, name: "Rest in Your Reflection", description: "The maximum number of Dreamweavers Cantarella can summon through Resonance Liberation Diffusion is increased by 5." },
-        { level: 6, name: "Fall, Fall... and Fall Deeper into the Dream", description: "Increase the DMG Multiplier of Basic Attack Phantom Sting by 80%. Casting Resonance Liberation Flowing Suffocation makes Cantarella's DMG ignore 30% of the target's DEF for 10s.\nFor the first 1.2s of Hazy Dream, when the target takes an instance of DMG that does not inflict Hazy Dream, Jolt will not be triggered on the target." },
+        // FIXED 2026-07-19 — added the DEF-ignore clause ("Flowing
+        // Suffocation makes Cantarella's DMG ignore 30% of the target's
+        // DEF for 10s") — unscoped (whole kit) since it says "Cantarella's
+        // DMG", not one named move; the Phantom Sting DMG+80% clause stays
+        // unmodeled per the S1/S2 comment above (no clean scope).
+        { level: 6, name: "Fall, Fall... and Fall Deeper into the Dream", description: "Increase the DMG Multiplier of Basic Attack Phantom Sting by 80%. Casting Resonance Liberation Flowing Suffocation makes Cantarella's DMG ignore 30% of the target's DEF for 10s.\nFor the first 1.2s of Hazy Dream, when the target takes an instance of DMG that does not inflict Hazy Dream, Jolt will not be triggered on the target.", selfBuffs: [{"stat":"defIgnore","label":"DEF Ignore","value":30,"conditional":true}] },
     ],
     "lingyang": [
         { level: 1, name: "Lion of Light, Blessings Abound", description: "During Resonance Liberation Lion's Vigor, Lingyang's Anti-Interruption is enhanced." },
@@ -241,10 +282,16 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     ],
     "lumi": [
         { level: 1, name: "Parcel To Be Delivered", description: "After casting Energized Rebound, additionally recovers 60 STA within 3s." },
-        { level: 2, name: "Lollo Logistics, Ready to Help", description: "Energized Pounce and Energized Rebound ignore 20% of the target's DEF." },
-        { level: 3, name: "Priority Parcel In Transit", description: "The DMG of Resonance Liberation Squeakie Express is increased by 30%.", selfBuffs: [{"stat":"dmgBonus","label":"Liberation DMG (Squeakie Express)","value":30,"conditional":true,"appliesTo":["ult"]}] },
+        // FIXED 2026-07-19 — added: flat, unconditional DEF-ignore on Lumi's
+        // 2 uniquely-named moves (no scope-collision risk).
+        { level: 2, name: "Lollo Logistics, Ready to Help", description: "Energized Pounce and Energized Rebound ignore 20% of the target's DEF.", selfBuffs: [{"stat":"defIgnore","label":"DEF Ignore","value":20,"conditional":false,"appliesTo":["energized-pounce","energized-rebound"]}] },
+        // FIXED 2026-07-19 — was conditional:true; real text is a flat "DMG
+        // ... is increased by 30%" with no trigger/duration stated.
+        { level: 3, name: "Priority Parcel In Transit", description: "The DMG of Resonance Liberation Squeakie Express is increased by 30%.", selfBuffs: [{"stat":"dmgBonus","label":"Liberation DMG (Squeakie Express)","value":30,"conditional":false,"appliesTo":["ult"]}] },
         { level: 4, name: "Captain Lumi, At Your Service", description: "Gain 30% Basic Attack DMG Bonus.", selfBuffs: [{"stat":"elemDmg","label":"Basic DMG","value":30,"conditional":false,"appliesTo":["basic"]}] },
-        { level: 5, name: "Parcel Collected On Time", description: "When Spark is fully recovered, Laser DMG Multiplier is increased by 100%." },
+        // FIXED 2026-07-19 — added: conditional (requires Spark fully
+        // recovered) DMG bonus to her uniquely-named Laser move.
+        { level: 5, name: "Parcel Collected On Time", description: "When Spark is fully recovered, Laser DMG Multiplier is increased by 100%.", selfBuffs: [{"stat":"dmgBonus","label":"Laser DMG","value":100,"conditional":true,"appliesTo":["single-laser-beam"]}] },
         { level: 6, name: "Give Me A Five-star Rating", description: "Casting Resonance Liberation Squeakie Express increases all team members' ATK by 20% for 20s.", buffs: [{"stat":"atkPct","label":"ATK%","value":20}] },
     ],
     "youhu": [
@@ -286,7 +333,9 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         { level: 1, name: "Where Wind Sings", description: "Casting Resonance Skill Harmonic Allegro grants Ciaccona immunity to interruption for 3s. Casting Basic Attack increases Ciaccona's ATK by 35% for 10s.", selfBuffs: [{"stat":"atkPct","label":"ATK%","value":35,"conditional":true}] },
         { level: 2, name: "Song of the Four Seasons", description: "During Resonance Liberation Singer's Triple Cadenza, Resonators in the team gain 40% Aero DMG Bonus.", buffs: [{"stat":"elemDmg","label":"Elem DMG","value":40}] },
         { level: 3, name: "Starlit Improv", description: "Casting Basic Attack Stage 4 additionally grants 1 segment of Musical Essence. Resonance Skill Harmonic Allegro gains 1 more charge." },
-        { level: 4, name: "Toccata and Fugue", description: "Ciaccona ignores 45% of the targets' DEF when dealing damage with Heavy Attack Quadruple Downbeat;\nCiaccona ignores 45% of the targets' DEF when dealing Resonance Liberation DMG." },
+        // FIXED 2026-07-19 — added: DEF-ignore on Quadruple Downbeat (now that
+        // its real ids carry scope:'Heavy', see skills.ts) and on 'ult'.
+        { level: 4, name: "Toccata and Fugue", description: "Ciaccona ignores 45% of the targets' DEF when dealing damage with Heavy Attack Quadruple Downbeat;\nCiaccona ignores 45% of the targets' DEF when dealing Resonance Liberation DMG.", selfBuffs: [{"stat":"defIgnore","label":"DEF Ignore (Quadruple Downbeat)","value":45,"conditional":false,"appliesTo":["heavy"]},{"stat":"defIgnore","label":"DEF Ignore (Liberation)","value":45,"conditional":false,"appliesTo":["ult"]}] },
         { level: 5, name: "Eternal Idyll to Lasting Summer", description: "Gain 40% Resonance Liberation DMG Bonus;\nDMG taken by Resonators within and around the range of Resonance Liberation Singer's Triple Cadenza is reduced by 30%.", selfBuffs: [{"stat":"elemDmg","label":"Liberation DMG","value":40,"conditional":false,"appliesTo":["ult"]}] },
         { level: 6, name: "Unending Cadence", description: "When in Solo Concert, Ciaccona or Ensemble Sylph deals Aero DMG equal to 220% of Ciaccona's ATK to nearby targets, considered Resonance Liberation DMG." },
     ],
@@ -433,7 +482,18 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     "aemeath": [
         { level: 1, name: "Gilded Glimmer of the First Dawn", description: "In Instant Response, Heavy Attack - Aemeath and Heavy Attack - Mech gain 300% Crit. DMG increase and continuously pull in nearby target while charging.\n\nWhen Aemeath remains in a state that meets all of the following conditions for over 4s, she enters Instant Response - Brilliance:\n- Out of combat;\n- Not performing Heavy Attack - Aemeath, Heavy Attack - Mech, or Resonance Liberation Heavenfall Edict: Finale.\nInstant Response: Brilliance inherits all effects of Instant Response and remains active even when out of the duration of Heavenfall Edict: Unbound. \nWhen in Instant Response - Brilliance and not in Heavenfall Edict: Unbound, casting Heavy Attack - Aemeath Charged II or Heavy Attack - Mech Charged II grants 100 points of Synchronization Rate.\n\nIn Resonance Mode - Tune Rupture or Resonance Mode - Fusion Burst, when Aemeath defeats a target affected by Rupturous Trail/Fusion Trail, she enters Sealed Trail - Tune Rupture/Sealed Trail - Fusion Burst for 10s.\nWhile in Sealed Trail - Tune Rupture or Sealed Trail - Fusion Burst, Aemeath records the highest stack count of Rupturous Trail/Fusion Trail among the targets defeated.\nHer next skill that directly damages the target immediately inflicts the targets with the recorded stacks of Rupturous Trail/Fusion Trail, up to the current max limit of Rupturous Trail/Fusion Trail. This ends Sealed Trail - Tune Rupture/Sealed Trail - Fusion Burst and Aemeath cannot enter Sealed Trail - Tune Rupture or Sealed Trail - Fusion Burst for 1s.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":300,"conditional":true,"appliesTo":["heavy"]}] },
         { level: 2, name: "Downy Notes of Snowfluff", description: "The DMG Multiplier of Resonance Skill Seraphic Duet: Overture is increased by 100%.\nThe DMG Multiplier of Resonance Skill Seraphic Duet: Encore is increased by 100%.\n\nWhile in Resonance Mode - Tune Rupture, when the additional instances Tune Rupture DMG triggered by Resonance Skill Seraphic Duet hit the same target, the DMG Multiplier of the Tune Rupture DMG triggered by Resonance Skill Seraphic Duet against this target is increased by 20% for 1s, stacking up to 5 times.\n\nWhile in Resonance Mode - Fusion Burst, gain the following effects:\n- In the Stardust Resonance state, the DMG Multiplier of Fusion Burst triggered by Resonance Skill Seraphic Duet is further increased to 400% against the main target of the Fusion Burst.\n- Fusion Trail now additionally increases the DMG Multiplier of Fusion Trail triggered by Resonance Skill Seraphic Duet. Each stack of Fusion Trail removed now provides a 15% DMG Multiplier increase to Fusion Burst on the main target.\n- In combat state, when a target near the active Resonator in the team is defeated, immediately trigger Fusion Burst based on the target's current stack limit of Fusion Burst." },
-        { level: 3, name: "Fervor Sightly Burns Bright as New", description: "Resonance Liberation Heavenfall Edict: Finale's DMG Multiplier is increased by 100%.\nResonance Liberation Heavenfall Edict: Overdrive's DMG Multiplier is increased by 40%.\n\nIn Instant Response, Aemeath now inflicts Tune Rupture - Shifting or Fusion Burst on nearby targets while casting Heavy Attack - Aemeath or Heavy Attack - Mech, based on her current Resonance Mode.\n\nInherent Skill Between the Stars is replaced with the following effects:\n\n- In Resonance Mode - Tune Rupture, when Resonators in the team inflict Tune Rupture - Shifting or deal Tune Rupture DMG, Aemeath's Crit. DMG is increased by 60%, and Resonance Liberation Heavenfall Edict: Finale DMG is now Amplified by 25%.\nResonators joining the team or switching Resonance Mode resets this effect.\n\n- In Resonance Mode - Fusion Burst, when Resonators in the team inflict Fusion Burst, Aemeath's Crit. DMG is increased by 60%, and Resonance Liberation Heavenfall Edict: Finale DMG is now Amplified by 25%.\nResonators joining the team or switching Resonance Mode resets this effect.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":60,"conditional":true},{"stat":"dmgBonus","label":"Liberation DMG","value":25,"conditional":true,"appliesTo":["ult"]}] },
+        // FIXED 2026-07-19 — both clauses of "Inherent Skill Between the
+        // Stars" text explicitly and repeatedly name "Resonance Liberation
+        // Heavenfall Edict: FINALE" for the +25% Amplify, distinct from her
+        // base Liberation cast ('ult') and from "Heavenfall Edict: Overdrive"
+        // (this same node's first paragraph gives Overdrive a DIFFERENT,
+        // separate +40% DMG Multiplier — confirming the game tracks these as
+        // distinct named sub-effects). 'ult' and 'ult_finale' share the
+        // 'ult'/'Ultimate' canonical scope (Finale has its own unique id but
+        // 'ult' the base id is itself a recognized keyword), so
+        // appliesTo:["ult"] was silently also buffing the base Liberation
+        // cast. Narrowed to Finale's unique id.
+        { level: 3, name: "Fervor Sightly Burns Bright as New", description: "Resonance Liberation Heavenfall Edict: Finale's DMG Multiplier is increased by 100%.\nResonance Liberation Heavenfall Edict: Overdrive's DMG Multiplier is increased by 40%.\n\nIn Instant Response, Aemeath now inflicts Tune Rupture - Shifting or Fusion Burst on nearby targets while casting Heavy Attack - Aemeath or Heavy Attack - Mech, based on her current Resonance Mode.\n\nInherent Skill Between the Stars is replaced with the following effects:\n\n- In Resonance Mode - Tune Rupture, when Resonators in the team inflict Tune Rupture - Shifting or deal Tune Rupture DMG, Aemeath's Crit. DMG is increased by 60%, and Resonance Liberation Heavenfall Edict: Finale DMG is now Amplified by 25%.\nResonators joining the team or switching Resonance Mode resets this effect.\n\n- In Resonance Mode - Fusion Burst, when Resonators in the team inflict Fusion Burst, Aemeath's Crit. DMG is increased by 60%, and Resonance Liberation Heavenfall Edict: Finale DMG is now Amplified by 25%.\nResonators joining the team or switching Resonance Mode resets this effect.", selfBuffs: [{"stat":"critDmg","label":"Crit DMG","value":60,"conditional":true},{"stat":"dmgBonus","label":"Liberation DMG","value":25,"conditional":true,"appliesTo":["ult_finale"]}] },
         { level: 4, name: "Ethereal Waltz on Binary Tides", description: "When casting Intro Skill Songs Across the Universe, Intro Skill Debut of Meteoric Radiance, Resonance Skill Sync Strike and Resonance Skill Seraphic Duet, Resonators in the team gain 20% All-Attribute DMG Bonus for 30s.", buffs: [{"stat":"elemDmg","label":"DMG Bonus","value":20}] },
         { level: 5, name: "Voyage to the Astral Shore", description: "When Aemeath defeats a target directly with her skills, Starflux is reset to 100%.\n\nWhen taking fatal damage, Aemeath is knocked out and turns into 2D Digital Ghost for 5s.\nIn the 2D Digital Ghost state, Aemeath grants Resonators in the team a Shield equal to 360% of her ATK for 5s. As she exits from the 2D Digital Ghost state, she revives and recovers 100% of her Max HP and 30 points of Resonance Energy. This effect can be triggered once every 10 min.\nWhen Aemeath revives, she exits the 2D Digital Ghost state and removes the Shield provided." },
         { level: 6, name: "A Zephyr-Kissed Journey to You", selfBuffs: [{"stat":"elemDmg","label":"Liberation DMG (vs. target)","value":40,"conditional":true,"appliesTo":["ult"]}], description: "Targets take 40% more Resonance Liberation DMG from Aemeath.\n\nWhen in Resonance Mode - Tune Rupture, Aemeath's Tune Rupture DMG can critically hit, with a fixed Crit. Rate of 80%, and fixed Crit. DMG of 275%.\n\nWhen in Resonance Mode - Fusion Burst and in combat state, Fusion Burst DMG triggered on targets near the active Resonator in the team can critically hit, with a fixed Crit. Rate of 80%, and fixed Crit. DMG of 275%.\n\nThe stacks of Rupturous Trail and Fusion Trail inflicted on the target through Forte Circuit To Sculpt the Silence is doubled.\n\nIn Resonance Mode - Tune Rupture/Resonance Mode - Fusion Burst and in combat, the max stack limit of Rupturous Trail/Fusion Trail on the targets near the active Resonator in the team is increased to 60. While casting Resonance Skill Seraphic Duet, inflict 10 stacks of Rupturous Trail/Fusion Trail on targets within range for 30s.\n" },

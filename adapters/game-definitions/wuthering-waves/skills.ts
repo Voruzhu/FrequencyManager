@@ -584,7 +584,15 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // A 21-hit AoE burst tied to the Resonance Liberation, entirely
         // uncaptured by any existing entry (confirmed 2026-07-14 via
         // encore.moe SkillId 1003103's "Diffusion DMG").
-        { id: 'diffusion', name: 'Diffusion', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        // FIXED 2026-07-19 — scope override added: Sequence 3's "The DMG
+        // Multiplier of Resonance Liberation Flowing Suffocation is
+        // increased by 370%" names Flowing Suffocation (the base 'ult' cast)
+        // specifically — wuthering.wiki confirms the bonus does NOT extend
+        // to Diffusion (a separate summoned-Dreamweaver effect granted BY
+        // Flowing Suffocation, scaling off its own multiplier table). Without
+        // this override, 'diffusion' silently shared 'ult'/'Ultimate''s
+        // canonical scope and absorbed that +370% too.
+        { id: 'diffusion', name: 'Diffusion', type: 'Ultimate', scope: 'diffusion', scaling: 'atk', element: 'Havoc',
             multipliers: [1.5351, 1.6611, 1.7871, 1.9635, 2.0895, 2.2344, 2.436, 2.6376, 2.8392, 3.0534] },
 
         { id: 'basic2', name: 'Basic Attack Stage 2', type: 'Basic', scaling: 'atk', element: 'Havoc',
@@ -957,40 +965,47 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'intro-waveshock', name: 'Waveshock (Intro Skill)', type: 'Intro Skill', scaling: 'atk', element: 'Spectro',
             multipliers: [0.85, 0.9197, 0.9894, 1.087, 1.1567, 1.2369, 1.3484, 1.4599, 1.5714, 1.6899] },
 ],
+    // DEF-scaling exception (confirmed 2026-07-19 full-roster audit, 3rd in
+    // the roster alongside Taoqi/Cartethyia): every Resonance Skill/
+    // Liberation/Forte Circuit/Intro Skill damage entry is real-game
+    // DEF-scaling (api.encore.moe's DamageList PropertyName:"DEF" for all of
+    // them) — only his plain Basic/Heavy/Mid-air/Dodge Counter family stays
+    // ATK-scaling. His own base stats (baseAtk 225 vs baseDef 1638) already
+    // assumed this; only the `scaling` field itself was wrong.
     'yuanwu': [
-        { id: 'lightning-infused-heavy', name: 'Lightning Infused (Heavy Attack)', type: 'Forte', scope: 'Heavy', scaling: 'atk', element: 'Electro',
+        { id: 'lightning-infused-heavy', name: 'Lightning Infused (Heavy Attack)', type: 'Forte', scope: 'Heavy', scaling: 'def', element: 'Electro',
             multipliers: [0.156, 0.1688, 0.1816, 0.1995, 0.2123, 0.227, 0.2475, 0.268, 0.2884, 0.3102] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.247, 0.2673, 0.2876, 0.3159, 0.3362, 0.3595, 0.3919, 0.4243, 0.4567, 0.4911] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.12, 0.1299, 0.1397, 0.1535, 0.1633, 0.1747, 0.1904, 0.2061, 0.2219, 0.2386] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Electro',
             multipliers: [1.76, 1.9044, 2.0488, 2.2508, 2.3952, 2.561, 2.792, 3.0228, 3.2538, 3.4992] },
-        { id: 'basic-lightning-infused-1', name: 'Lightning Infused (Basic Stage 1)', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Electro',
+        { id: 'basic-lightning-infused-1', name: 'Lightning Infused (Basic Stage 1)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.1235, 0.1337, 0.1438, 0.158, 0.1681, 0.1798, 0.196, 0.2122, 0.2284, 0.2456] },
         // Was missing entirely (confirmed 2026-07-16, level-1 15.60%+10.40%x2=36.40%);
         // curve derived from Thunder Uprising's confirmed shape below (no
         // per-level source beyond level 1 for this move specifically).
-        { id: 'thunderweaver', name: 'Thunderweaver', type: 'Forte', scaling: 'atk', element: 'Electro',
+        { id: 'thunderweaver', name: 'Thunderweaver', type: 'Forte', scaling: 'def', element: 'Electro',
             multipliers: [0.364, 0.3938, 0.4237, 0.4656, 0.4954, 0.5298, 0.5775, 0.6252, 0.673, 0.7238] },
-            { id: 'rumbling-spark', name: 'Rumbling Spark', type: 'Skill', scaling: 'atk', element: 'Electro',
+            { id: 'rumbling-spark', name: 'Rumbling Spark', type: 'Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.5460, 0.5907, 0.6355, 0.6982, 0.7429, 0.7944, 0.8660, 0.9376, 1.0093, 1.0854] },
-        { id: 'thunder-uprising', name: 'Thunder Uprising', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'thunder-uprising', name: 'Thunder Uprising', type: 'Forte', scope: 'Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.2000, 0.2164, 0.2328, 0.2558, 0.2722, 0.2911, 0.3173, 0.3435, 0.3698, 0.3977] },
-        { id: 'thunder-wedge-detonation', name: 'Thunder Wedge Detonation', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'thunder-wedge-detonation', name: 'Thunder Wedge Detonation', type: 'Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.3000, 0.3246, 0.3492, 0.3837, 0.4083, 0.4366, 0.4759, 0.5153, 0.5547, 0.5965] },
-        { id: 'basic-lightning-infused-2', name: 'Lightning Infused (Basic Stage 2)', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Electro',
+        { id: 'basic-lightning-infused-2', name: 'Lightning Infused (Basic Stage 2)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.2606, 0.2820, 0.3034, 0.3334, 0.3546, 0.3792, 0.4134, 0.4476, 0.4818, 0.5182] },
-        { id: 'basic-lightning-infused-3', name: 'Lightning Infused (Basic Stage 3)', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Electro',
+        { id: 'basic-lightning-infused-3', name: 'Lightning Infused (Basic Stage 3)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.2748, 0.2974, 0.3198, 0.3514, 0.3738, 0.3998, 0.4358, 0.4718, 0.5078, 0.5460] },
-        { id: 'basic-lightning-infused-4', name: 'Lightning Infused (Basic Stage 4)', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Electro',
+        { id: 'basic-lightning-infused-4', name: 'Lightning Infused (Basic Stage 4)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.2885, 0.3120, 0.3355, 0.3690, 0.3925, 0.4195, 0.4575, 0.4950, 0.5330, 0.5730] },
-        { id: 'basic-lightning-infused-5', name: 'Lightning Infused (Basic Stage 5)', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Electro',
+        { id: 'basic-lightning-infused-5', name: 'Lightning Infused (Basic Stage 5)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.4119, 0.4455, 0.4794, 0.5265, 0.5574, 0.5994, 0.6534, 0.7074, 0.7614, 0.8185] },
         // A Coordinated-Attack proc triggered from Resonance Skill "Thunder
         // Wedge" landing on a target (confirmed 2026-07-14 via encore.moe
         // SkillId 1001602's "Thunder Wedge Coordinated Attack DMG").
-        { id: 'thunder-wedge-coordinated-attack', name: 'Thunder Wedge (Coordinated Attack)', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'thunder-wedge-coordinated-attack', name: 'Thunder Wedge (Coordinated Attack)', type: 'Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.04, 0.0433, 0.0466, 0.0512, 0.0545, 0.0583, 0.0635, 0.0687, 0.074, 0.0796] },
 
         { id: 'basic-stage-2', name: 'Basic Attack (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Electro',
@@ -1007,7 +1022,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.496, 0.5367, 0.5774, 0.6343, 0.675, 0.7218, 0.7869, 0.8519, 0.917, 0.9861] },
         { id: 'dodge-counter', name: 'Dodge Counter', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [1.152, 1.2466, 1.341, 1.4732, 1.5678, 1.6764, 1.8276, 1.9786, 2.1298, 2.2904] },
-        { id: 'intro-thunder-bombardment', name: 'Thunder Bombardment (Intro Skill)', type: 'Intro Skill', scaling: 'atk', element: 'Electro',
+        { id: 'intro-thunder-bombardment', name: 'Thunder Bombardment (Intro Skill)', type: 'Intro Skill', scaling: 'def', element: 'Electro',
             multipliers: [0.32, 0.3463, 0.3725, 0.4093, 0.4355, 0.4657, 0.5077, 0.5496, 0.5916, 0.6362] },
 ],
     'lumi': [
@@ -1186,7 +1201,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.0, 1.082, 1.164, 1.2788, 1.3608, 1.4551, 1.5863, 1.7175, 1.8487, 1.9881] },
 ],
     'ciaccona': [
-        { id: 'quadruple-downbeat', name: 'Quadruple Downbeat', type: 'Forte', scaling: 'atk', element: 'Aero',
+        // scope:'Heavy' added 2026-07-19 to quadruple-downbeat/forte/
+        // forteDownbeatFinisher — api.encore.moe SkillId 1003407's DamageList
+        // reports Type:"Heavy Attack" for all 3; without the override they
+        // canonicalized to 'forte' and Inherent II's appliesTo:["heavy"]
+        // buff silently missed them (and instead buffed her unrelated plain
+        // Heavy Attack).
+        { id: 'quadruple-downbeat', name: 'Quadruple Downbeat', type: 'Forte', scope: 'Heavy', scaling: 'atk', element: 'Aero',
             multipliers: [3.1595, 3.4191, 3.6776, 4.0399, 4.2994, 4.5974, 5.0116, 5.4258, 5.8411, 6.2813] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.287, 0.3106, 0.3341, 0.3671, 0.3906, 0.4177, 0.4553, 0.493, 0.5306, 0.5706] },
@@ -1194,9 +1215,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.8128, 0.8792, 0.946, 1.0392, 1.106, 1.1824, 1.2892, 1.3956, 1.5024, 1.6156] },
         { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
             multipliers: [5.535, 5.9889, 6.4428, 7.0782, 7.5321, 8.054, 8.7802, 9.5064, 10.2326, 11.0042] },
-        { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Aero',
+        { id: 'forte', name: 'Forte Circuit', type: 'Forte', scope: 'Heavy', scaling: 'atk', element: 'Aero',
             multipliers: [1.58, 1.71, 1.839, 2.02, 2.15, 2.299, 2.506, 2.713, 2.921, 3.141] },
-            { id: 'forteDownbeatFinisher', name: 'Quadruple Downbeat (Finisher)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            { id: 'forteDownbeatFinisher', name: 'Quadruple Downbeat (Finisher)', type: 'Forte', scope: 'Heavy', scaling: 'atk', element: 'Aero',
             multipliers: [1.5795, 1.7091, 1.8386, 2.0199, 2.1494, 2.2984, 2.5056, 2.7128, 2.9201, 3.1403] },
         // A 20-hit portion of the Resonance Liberation ("Singer's Triple
         // Cadenza") not captured by the existing 'ult' entry (confirmed
@@ -1660,19 +1681,33 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [3.9989, 4.3268, 4.6548, 5.1138, 5.4417, 5.8188, 6.3435, 6.868, 7.3927, 7.95] },
 ],
     'chisa': [
-        { id: 'sawring-blitz-3-falltone', name: 'Sawring - Blitz Stage 3: Falltone', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        // FIXED 2026-07-19 — these 7 Sawring - Blitz stages were `scope:
+        // 'Ultimate'` (api.encore.moe's DamageList genuinely tags their DMG
+        // Type as "Resonance Liberation", same as the sibling `forte`
+        // Sawring - Eradication entry below) but that shared 'ult'
+        // canonical scope collided with Sequence 5's "Resonance Liberation
+        // Moment of Nihility gains 100% DMG Bonus" — that text (confirmed via
+        // wuthering.gg) names ONLY her base Liberation cast ('ult'); Sawring
+        // - Blitz/Eradication are a SEPARATE Forte Circuit skill ("Sight of
+        // Unraveling - Oblivion", SkillId 1004207, a different SkillId/
+        // SkillType from Moment of Nihility's 1004203) that merely happens to
+        // share the same DMG-type tag. Rescoped 'Ultimate' → 'Forte' (their
+        // real cast category) so they no longer collide with 'ult'-scoped
+        // buffs; nothing currently targets appliesTo:['forte'] for Chisa, so
+        // this is a pure bug fix, not a behavior trade-off.
+        { id: 'sawring-blitz-3-falltone', name: 'Sawring - Blitz Stage 3: Falltone', type: 'Skill', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.054, 0.0585, 0.063, 0.0693, 0.0735, 0.0786, 0.0858, 0.093, 0.0999, 0.1074] },
-        { id: 'sawring-blitz-2-discordance', name: 'Sawring - Blitz Stage 2: Discordance', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-2-discordance', name: 'Sawring - Blitz Stage 2: Discordance', type: 'Skill', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.054, 0.0585, 0.063, 0.0693, 0.0735, 0.0786, 0.0858, 0.093, 0.0999, 0.1074] },
-        { id: 'sawring-blitz-3-hold', name: 'Sawring - Blitz (Stage 3, Hold)', type: 'Basic', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-3-hold', name: 'Sawring - Blitz (Stage 3, Hold)', type: 'Basic', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.4824, 0.522, 0.5616, 0.6168, 0.6564, 0.702, 0.765, 0.8286, 0.8916, 0.9588] },
-        { id: 'sawring-blitz-2-hold', name: 'Sawring - Blitz (Stage 2, Hold)', type: 'Basic', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-2-hold', name: 'Sawring - Blitz (Stage 2, Hold)', type: 'Basic', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.535, 0.579, 0.623, 0.685, 0.729, 0.779, 0.849, 0.919, 0.99, 1.064] },
-        { id: 'sawring-blitz-3', name: 'Sawring - Blitz (Stage 3)', type: 'Basic', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-3', name: 'Sawring - Blitz (Stage 3)', type: 'Basic', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.6432, 0.696, 0.7488, 0.8224, 0.8752, 0.936, 1.02, 1.1048, 1.1888, 1.2784] },
-        { id: 'sawring-blitz-2', name: 'Sawring - Blitz (Stage 2)', type: 'Basic', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-2', name: 'Sawring - Blitz (Stage 2)', type: 'Basic', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.428, 0.4632, 0.4984, 0.548, 0.5832, 0.6232, 0.6792, 0.7352, 0.792, 0.8512] },
-        { id: 'sawring-blitz-1', name: 'Sawring - Blitz (Stage 1)', type: 'Basic', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'sawring-blitz-1', name: 'Sawring - Blitz (Stage 1)', type: 'Basic', scope: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.3468, 0.375, 0.4038, 0.4434, 0.4716, 0.5046, 0.5502, 0.5952, 0.6408, 0.6894] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.168, 0.1818, 0.1956, 0.215, 0.2288, 0.2446, 0.2666, 0.2886, 0.3106, 0.3342] },
@@ -1682,7 +1717,10 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [4.8, 5.1936, 5.5872, 6.1383, 6.5319, 6.9845, 7.6143, 8.244, 8.8738, 9.5429] },
             { id: 'skill2', name: 'Serrated Loop', type: 'Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [0.7024, 0.7600, 0.8176, 0.8976, 0.9552, 1.0216, 1.1136, 1.2056, 1.2976, 1.3960] },
-        { id: 'forte', name: 'Sawring - Eradication', type: 'Forte', scope: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        // FIXED 2026-07-19 — removed scope: 'Ultimate' override (its own
+        // `type: 'Forte'` already canonicalizes correctly); same
+        // collision/fix as the 7 Sawring - Blitz stages above (see comment).
+        { id: 'forte', name: 'Sawring - Eradication', type: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [1.2960, 1.4024, 1.5087, 1.6574, 1.7637, 1.8859, 2.0559, 2.2260, 2.3960, 2.5767] },
         // A held variant of Serrated Loop, not captured by 'skill2'
         // (confirmed 2026-07-14 via encore.moe SkillId 1004202's "Serrated
@@ -1809,7 +1847,12 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.28, 0.303, 0.326, 0.3583, 0.3813, 0.4076, 0.4443, 0.481, 0.5177, 0.5569] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [0.904, 0.9782, 1.0523, 1.1561, 1.2302, 1.3155, 1.4341, 1.5527, 1.6713, 1.7973] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        // DEF-scaling (confirmed 2026-07-19 audit — api.encore.moe's own
+        // DamageList reports PropertyName:"DEF" for both of Critical
+        // Protocol's damage entries; her Skill Tree is already correctly
+        // DEF% not ATK%, so this was an internal inconsistency, not a fresh
+        // guess). Only her Ultimate scales DEF — Skill/Basic/Heavy stay ATK.
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Fusion',
             multipliers: [2.6273, 2.8427, 3.0582, 3.3598, 3.5752, 3.823, 4.1677, 4.5124, 4.857, 5.2233] },
             { id: 'skill2', name: 'Distributed Array', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [0.8000, 0.8656, 0.9312, 1.0232, 1.0888, 1.1644, 1.2692, 1.3740, 1.4792, 1.5908] },
@@ -2336,7 +2379,14 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // 2026-07-14 via encore.moe SkillIds 1005702/1005707). Her
         // Resonance Liberation has zero DMG attributes (pure healing) —
         // confirmed correct to have no 'ult' entry.
-        { id: 'skillAwakeningSpring', name: 'Awakening Spring', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        // HP-scaling (confirmed 2026-07-19 audit — api.encore.moe's own
+        // DamageList reports PropertyName:"HP","DmgType":"Damage" for this
+        // specific sub-hit within Vernal Screen, distinct from that skill's
+        // OTHER ATK-scaling hits, already correctly captured under 'skill'
+        // below. A 2nd-source build guide's "scales off ATK" prose was
+        // describing the skill's other hits, not this one — resolved via
+        // the raw API field, not a real source conflict).
+        { id: 'skillAwakeningSpring', name: 'Awakening Spring', type: 'Skill', scaling: 'hp', element: 'Glacio',
             multipliers: [0.144, 0.1559, 0.1677, 0.1842, 0.196, 0.2096, 0.2285, 0.2474, 0.2663, 0.2863] },
         { id: 'forteIlluminatingDew', name: 'Illuminating Dew', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [0.528, 0.5713, 0.6146, 0.6753, 0.7186, 0.7683, 0.8376, 0.9069, 0.9762, 1.0498] },

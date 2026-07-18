@@ -33,6 +33,43 @@ back to generic combat-action defaults because their raw source data didn't
 separate cleanly into named moves; everything else about her kit is real,
 sourced data.
 
+A 2026-07-19 full-roster accuracy pass (scaling stats, self-buff trigger
+conditions, attack-scope collisions, set/Sequence buffs) fixed real bugs
+across the board: wrong scaling stats on 3 characters (Yuanwu's Resonance
+Skill/Liberation/Forte family is DEF-scaling not ATK; Mornye's ult is
+DEF-scaling; Suisui's Vernal Screen has one HP-scaling sub-hit), several
+self-buffs that auto-applied permanently despite having a real trigger/
+duration window (or vice versa — a couple that should've auto-applied but
+were gated as opt-in), a handful of buffs scoped to a shared attack-type
+category that leaked onto sibling moves it was never meant to touch
+(Ciaccona's Quadruple Downbeat DEF-ignore, notably), and one buff (Carlotta's
+Sequence 4) authored with a stat key the calc engine always treats as
+unscoped regardless of its `appliesTo`, silently inflating her whole team's
+whole kit instead of just Resonance Skill DMG.
+
+That same pass also found combo moves/follow-ups still missing real
+multiplier-table entries — each needs the same multi-hit API-decoding work
+already done for Yangyang: Xuanling above, deferred here rather than
+fabricated:
+
+- **Camellya** — Vining Waltz (follow-up combo)
+- **Calcharo** — Hound's Roar, hits 2–5
+- **Jiyan** — 4 follow-up hits
+- **Xiangli Yao** — Unfathomed
+- **Carlotta** — Outro Skill, and Necessary Measures Stage 1
+- **Yuanwu** — Lightning-Infused Dodge Counter
+- **Galbrena** — 2 missing skills
+- **Lynae** — 1 missing skill
+- **Iuno** — missing Outro Skill
+- **Aemeath** — 8-move Mech combo
+- **Lucilla** — 5-move Reminiscence combo
+- **Lucy** — 3 missing Resonance Skill moves, plus a Sequence 2 damage proc
+- **Jianxin** — Special Chi Counter
+- **Rover (Havoc)** — missing Outro Skill
+- **Phoebe** — missing Outro Skill
+- **Sigrika** — missing Outro Skill
+- **Suisui** — missing Intro Skill, and Drizzle Stance
+
 ### Genshin Impact — 121/121 characters, base data complete, full re-audit still ahead
 
 Full roster has real skill data, base stats, constellations, and kit buffs,
