@@ -12,7 +12,7 @@ import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { ScanTypeWindow, ConfirmScannedGearWindow } from '../components/ScanWindows';
 import { newGearId } from '../components/InventoryWindows';
-import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, findDuplicateSource, type DuplicateSource } from '@/lib/ocrMapping';
+import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, findDuplicateSource, gearIdentityKey, type DuplicateSource } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
 
 /** One scanned screenshot (from either the file-picker or the global-hotkey
@@ -132,31 +132,47 @@ export function ScannerScreen() {
      * is loose by design (user's spec) — a 'minor' issue (an auto-corrected
      * decimal point, a confidently-inferred cost) still imports; only a
      * 'major' one (an unresolved name, an out-of-bounds value with no
-     * correction) blocks it, same bar as `hasBlockingIssues`. Skips the
-     * per-item equip-prompt follow-up during a batch run — stacking several
-     * of those windows at once would be more confusing than helpful, so a
-     * scan naming an equipped owner is left to be equipped manually. */
+     * correction) blocks it, same bar as `hasBlockingIssues`. An exact
+     * duplicate (of inventory OR of another eligible scan) is skipped too —
+     * processed OLDEST FIRST (reversed from `results`' newest-first array
+     * order) so that when duplicates exist, the chronologically-first one
+     * imports and later identical scans are recognized as duplicates and
+     * skipped, leaving exactly one copy in inventory. Skips the per-item
+     * equip-prompt follow-up during a batch run — stacking several of those
+     * windows at once would be more confusing than helpful, so a scan
+     * naming an equipped owner is left to be equipped manually. */
     const autoImportFromLatest = () => {
         const eligible = results.filter((r) => r.status === 'success' && r.echo && !r.autoImported);
         if (eligible.length === 0) {
             toast.info('Nothing to import', { description: 'No new scans since the last auto-import.' });
             return;
         }
+        const seenKeys = new Set(inventoryGear.map((g) => gearIdentityKey(g)));
         const importedIds = new Set<string>();
-        let skipped = 0;
-        for (const r of eligible) {
+        let skippedReview = 0;
+        let skippedDuplicate = 0;
+        for (const r of [...eligible].reverse()) { // oldest first
             const draft = mapScannedEchoToGearDraft(r.echo!, data.gearCatalog);
-            if (hasBlockingIssues(draft)) { skipped++; continue; }
+            if (hasBlockingIssues(draft)) { skippedReview++; continue; }
             const gear = buildGearEntryFromDraft(draft, data.gearCatalog, data.gearKind, () => newGearId(gameId));
-            if (!gear) { skipped++; continue; }
+            if (!gear) { skippedReview++; continue; }
+            const key = gearIdentityKey(gear);
+            if (seenKeys.has(key)) { skippedDuplicate++; continue; }
             addGear(gameId, gear);
+            seenKeys.add(key);
             importedIds.add(r.id);
         }
         if (importedIds.size > 0) {
             setResults((rs) => rs.map((r) => (importedIds.has(r.id) ? { ...r, autoImported: true } : r)));
-            toast.success(`Imported ${importedIds.size} echo${importedIds.size === 1 ? '' : 's'}`, skipped > 0 ? { description: `${skipped} skipped — needs manual review` } : undefined);
+            const parts: string[] = [];
+            if (skippedReview > 0) parts.push(`${skippedReview} need${skippedReview === 1 ? 's' : ''} manual review`);
+            if (skippedDuplicate > 0) parts.push(`${skippedDuplicate} skipped as duplicate${skippedDuplicate === 1 ? '' : 's'}`);
+            toast.success(`Imported ${importedIds.size} echo${importedIds.size === 1 ? '' : 's'}`, parts.length > 0 ? { description: parts.join(', ') } : undefined);
         } else {
-            toast.info('Nothing imported', { description: `${skipped} scan${skipped === 1 ? '' : 's'} need manual review` });
+            const parts: string[] = [];
+            if (skippedReview > 0) parts.push(`${skippedReview} need${skippedReview === 1 ? 's' : ''} manual review`);
+            if (skippedDuplicate > 0) parts.push(`${skippedDuplicate} skipped as duplicate${skippedDuplicate === 1 ? '' : 's'}`);
+            toast.info('Nothing imported', { description: parts.join(', ') });
         }
     };
 
