@@ -8,7 +8,7 @@
         "start": "electron .",
         "build:renderer": "vite build --config src/renderer/vite.config.ts",
         "build:main": "tsc && tsc-alias && node scripts/copy-manifests.js",
-        "build": "npm run build:renderer && npm run build:main && electron-builder --win nsis",
+        "build": "npm run build:renderer && npm run build:main && electron-builder --win nsis --publish never",
         "build:dev": "npm run build:renderer && npm run build:main && electron-builder --dir",
         "test": "jest",
         "test:watch": "jest --watch",
