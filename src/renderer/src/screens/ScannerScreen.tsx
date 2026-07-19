@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils';
 import { useWindowStore } from '../stores/windowStore';
 import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
-import { useInventoryStore } from '../stores/inventoryStore';
+import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { ScanTypeWindow, ConfirmScannedGearWindow } from '../components/ScanWindows';
 import { newGearId } from '../components/InventoryWindows';
-import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues } from '@/lib/ocrMapping';
+import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, findDuplicateSource, type DuplicateSource } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
 
 /** One scanned screenshot (from either the file-picker or the global-hotkey
@@ -64,6 +64,28 @@ export function ScannerScreen() {
     const data = useGameData(gameId);
     const addGear = useInventoryStore((s) => s.addGear);
     const scanHotkey = useSettingsStore((s) => s.scanHotkey);
+    const inventoryGear = useOwnedInventory(gameId).gear;
+
+    // `results` is newest-first (new scans prepend) — so "earlier scans" for
+    // the entry at `index` are everything AFTER it in the array. Only scans
+    // that are successful, not already imported, and not themselves blocked
+    // are worth comparing against (an imported scan's stats already live in
+    // `inventoryGear`; a blocked scan can't build a comparable GearEntry).
+    const duplicateSourceFor = (index: number): DuplicateSource | undefined => {
+        const r = results[index];
+        if (r.status !== 'success' || !r.echo || r.autoImported) return undefined;
+        const draft = mapScannedEchoToGearDraft(r.echo, data.gearCatalog);
+        if (hasBlockingIssues(draft)) return undefined;
+        const earlierGear = results
+            .slice(index + 1)
+            .filter((e) => e.status === 'success' && e.echo && !e.autoImported)
+            .map((e) => {
+                const d = mapScannedEchoToGearDraft(e.echo!, data.gearCatalog);
+                return hasBlockingIssues(d) ? null : buildGearEntryFromDraft(d, data.gearCatalog, data.gearKind, () => 'dup-check');
+            })
+            .filter((g): g is NonNullable<typeof g> => g != null);
+        return findDuplicateSource(draft, data.gearCatalog, data.gearKind, inventoryGear, earlierGear);
+    };
 
     const selected = results.find((r) => r.id === selectedId) ?? null;
 
@@ -301,7 +323,7 @@ export function ScannerScreen() {
                         ) : (
                             <ScrollArea className="h-full">
                                 <ul className="p-2">
-                                    {results.map((r) => {
+                                    {results.map((r, index) => {
                                         // For anything not yet auto-imported, check the SAME condition
                                         // "Auto import from latest" gates on — so the list shows, at a
                                         // glance, which entries actually NEED a manual look (a major
@@ -309,9 +331,13 @@ export function ScannerScreen() {
                                         // click (no issue, will succeed automatically).
                                         const blocked = r.status === 'success' && r.echo && !r.autoImported
                                             && hasBlockingIssues(mapScannedEchoToGearDraft(r.echo, data.gearCatalog));
+                                        const duplicateSource = blocked ? undefined : duplicateSourceFor(index);
                                         const statusLabel = r.status === 'failed' ? 'failed'
                                             : r.autoImported ? 'auto-imported'
-                                                : blocked ? 'needs review' : 'ready to import';
+                                                : blocked ? 'needs review'
+                                                    : duplicateSource === 'inventory' ? 'already owned'
+                                                        : duplicateSource === 'scan' ? 'duplicate scan'
+                                                            : 'ready to import';
                                         return (
                                             <li key={r.id} className="group flex items-center gap-1">
                                                 <button
@@ -319,10 +345,10 @@ export function ScannerScreen() {
                                                     className={cn('flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2 text-left transition-colors', selectedId === r.id ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-surface-2')}
                                                 >
                                                     {r.status === 'failed' && <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-destructive" />}
-                                                    {blocked && <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-warning" />}
+                                                    {(blocked || duplicateSource) && <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-warning" />}
                                                     <div className="min-w-0 flex-1">
                                                         <div className="truncate text-sm font-medium text-foreground">{r.status === 'success' ? (r.echo?.setName ?? r.echo?.name ?? r.imageName) : r.imageName}</div>
-                                                        <div className={cn('truncate text-xs', blocked ? 'text-warning' : 'text-muted-foreground')}>{fmt(r.timestamp)} · {statusLabel}</div>
+                                                        <div className={cn('truncate text-xs', (blocked || duplicateSource) ? 'text-warning' : 'text-muted-foreground')}>{fmt(r.timestamp)} · {statusLabel}</div>
                                                     </div>
                                                 </button>
                                                 <button
