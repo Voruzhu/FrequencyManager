@@ -88,6 +88,8 @@ export function ScannerScreen() {
     };
 
     const selected = results.find((r) => r.id === selectedId) ?? null;
+    const selectedIndex = results.findIndex((r) => r.id === selectedId);
+    const selectedDuplicateSource = selectedIndex >= 0 ? duplicateSourceFor(selectedIndex) : undefined;
 
     // Armed state: the ONLY thing that makes the global hotkey do anything.
     // Picking a scan type in the Scan popup arms it (main process is told via
@@ -402,6 +404,8 @@ export function ScannerScreen() {
                                                     {!selected.autoImported && hasBlockingIssues(mapScannedEchoToGearDraft(selected.echo, data.gearCatalog)) && (
                                                         <Badge variant="warning">Needs review</Badge>
                                                     )}
+                                                    {selectedDuplicateSource === 'inventory' && <Badge variant="warning">Already owned</Badge>}
+                                                    {selectedDuplicateSource === 'scan' && <Badge variant="warning">Duplicate scan</Badge>}
                                                     {selected.echo.cost > 0 && <Badge variant="secondary">Cost {selected.echo.cost}</Badge>}
                                                 </div>
                                             </div>
