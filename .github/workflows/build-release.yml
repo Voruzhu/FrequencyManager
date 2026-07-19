@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug Tailwind content glob
+        run: node scripts/debug-tailwind-glob.mjs
+
       - name: Build application
         run: npm run build
 
