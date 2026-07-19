@@ -19,7 +19,7 @@
  *     Bonus sub-stats used to be a real gap here (missing from the catalog
  *     entirely) until they were added with sourced ranges.
  */
-import { resolveStatKey, mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues } from '../../src/renderer/src/lib/ocrMapping';
+import { resolveStatKey, mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, gearIdentityKey, findDuplicateSource } from '../../src/renderer/src/lib/ocrMapping';
 import { WW_GEAR_CATALOG, GI_GEAR_CATALOG } from '../../shared/game-data/gear-catalogs';
 import { UNKNOWN_ECHO_NAME, type ScannedEcho } from '../../shared/types/ocr';
 
@@ -532,5 +532,91 @@ describe('mapScannedEchoToGearDraft — set inferred from echo name (set icon ha
         const draft = mapScannedEchoToGearDraft(resolvedEcho, WW_GEAR_CATALOG);
         expect(draft.setId).toBe('void-thunder');
         expect(draft.setOptions).toBeUndefined();
+    });
+});
+
+describe('gearIdentityKey / findDuplicateSource', () => {
+    const baseEcho: ScannedEcho = {
+        id: 'echo-1',
+        name: 'Hecate',
+        cost: 4,
+        level: 25,
+        mainStat: { type: 'CRIT RATE%', value: 22.0 },
+        subStats: [
+            { type: 'ATK', value: 150 },
+            { type: 'ATK%', value: 7.9 },
+            { type: 'BASIC ATTACK DMG BONUS%', value: 10.1 },
+            { type: 'DEF', value: 50 },
+            { type: 'CRIT RATE%', value: 7.5 },
+            { type: 'HP%', value: 7.9 },
+        ],
+        setName: 'Void Thunder',
+        equippedByCharacterName: 'Yinlin',
+        confidence: 91,
+        rawText: '...',
+        scannedAt: Date.now(),
+    };
+
+    function buildEntry(echo: ScannedEcho) {
+        const draft = mapScannedEchoToGearDraft(echo, WW_GEAR_CATALOG);
+        const entry = buildGearEntryFromDraft(draft, WW_GEAR_CATALOG, 'echo', () => 'test-id');
+        if (!entry) throw new Error('expected a buildable entry in this fixture');
+        return entry;
+    }
+
+    it('gearIdentityKey ignores name — two echoes with the same stats but different names produce the same key', () => {
+        const a = buildEntry(baseEcho);
+        const b = buildEntry({ ...baseEcho, name: 'A Different Fodder Echo' });
+        expect(gearIdentityKey(a)).toBe(gearIdentityKey(b));
+    });
+
+    it('gearIdentityKey differs when a single sub-stat value differs', () => {
+        const a = buildEntry(baseEcho);
+        const b = buildEntry({
+            ...baseEcho,
+            subStats: baseEcho.subStats.map((s) => (s.type === 'CRIT RATE%' && s.value === 7.5 ? { ...s, value: 8.6 } : s)),
+        });
+        expect(gearIdentityKey(a)).not.toBe(gearIdentityKey(b));
+    });
+
+    it('findDuplicateSource returns undefined when nothing matches', () => {
+        const draft = mapScannedEchoToGearDraft(baseEcho, WW_GEAR_CATALOG);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [], [])).toBeUndefined();
+    });
+
+    it('findDuplicateSource returns "inventory" when an inventory entry has an identical identity key', () => {
+        const draft = mapScannedEchoToGearDraft(baseEcho, WW_GEAR_CATALOG);
+        const inventoryEntry = buildEntry(baseEcho);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [inventoryEntry], [])).toBe('inventory');
+    });
+
+    it('findDuplicateSource returns "scan" when an earlier scan has an identical identity key and inventory does not', () => {
+        const draft = mapScannedEchoToGearDraft(baseEcho, WW_GEAR_CATALOG);
+        const earlierScanEntry = buildEntry(baseEcho);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [], [earlierScanEntry])).toBe('scan');
+    });
+
+    it('findDuplicateSource prefers "inventory" over "scan" when both match', () => {
+        const draft = mapScannedEchoToGearDraft(baseEcho, WW_GEAR_CATALOG);
+        const match = buildEntry(baseEcho);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [match], [match])).toBe('inventory');
+    });
+
+    it('findDuplicateSource returns undefined for a draft with blocking issues (no set resolved)', () => {
+        const unresolvableEcho: ScannedEcho = { ...baseEcho, name: 'Totally Unknown Fodder Name', setName: undefined };
+        const draft = mapScannedEchoToGearDraft(unresolvableEcho, WW_GEAR_CATALOG);
+        expect(hasBlockingIssues(draft)).toBe(true);
+        const inventoryEntry = buildEntry(baseEcho);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [inventoryEntry], [])).toBeUndefined();
+    });
+
+    it('a different roll of the same set/slot/main is NOT a duplicate', () => {
+        const draft = mapScannedEchoToGearDraft(baseEcho, WW_GEAR_CATALOG);
+        const differentRollEcho: ScannedEcho = {
+            ...baseEcho,
+            subStats: baseEcho.subStats.map((s) => (s.type === 'ATK%' ? { ...s, value: 6.4 } : s)),
+        };
+        const differentRollEntry = buildEntry(differentRollEcho);
+        expect(findDuplicateSource(draft, WW_GEAR_CATALOG, 'echo', [differentRollEntry], [])).toBeUndefined();
     });
 });

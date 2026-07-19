@@ -403,6 +403,25 @@ export function hasBlockingIssues(draft: GearDraft): boolean {
 }
 
 /**
+ * Canonical identity string for exact-duplicate comparison: set, cost/slot,
+ * rarity, main-stat (key+value), and every sub-stat including the fixed
+ * base stat (key+value, sorted by key so ordering never affects equality).
+ * Echo NAME is deliberately excluded — many echoes (fodder/world-mob drops)
+ * have no specific catalogued identity at all, and an exact match across
+ * every stat VALUE is what actually signals "this is the same physical
+ * echo" (random rolls make an accidental exact match across every stat
+ * between two genuinely different echoes practically impossible), not the
+ * name.
+ */
+export function gearIdentityKey(g: GearEntry): string {
+    const subs = [...g.subStats]
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .map((s) => `${s.key}:${s.value}`)
+        .join(',');
+    return [g.setName, g.cost ?? '', g.slot ?? '', g.rarity, g.mainStat.key, g.mainStat.value, subs].join('|');
+}
+
+/**
  * Build a complete `GearEntry` from a fully-resolved `GearDraft` — the same
  * construction logic `AddGearWindow`'s manual "Add" button uses (main-stat
  * value from the slot's `mainStatOverrides` when present, base stat from
@@ -454,4 +473,29 @@ export function buildGearEntryFromDraft(
         mainStat: { key: mainDef.key, label: mainDef.label, value: mainValue },
         subStats: [...(baseEntry ? [baseEntry] : []), ...subEntries],
     };
+}
+
+export type DuplicateSource = 'inventory' | 'scan';
+
+/**
+ * Where (if anywhere) an exact duplicate of this draft already exists.
+ * 'inventory' takes precedence over 'scan' when both match — it's already
+ * real, saved gear, which is more actionable to know about than a same-
+ * session re-scan. Returns undefined when the draft can't build a complete
+ * entry (`buildGearEntryFromDraft` returns null for a draft with blocking
+ * issues) — a scan that needs manual review can't be identity-checked.
+ */
+export function findDuplicateSource(
+    draft: GearDraft,
+    catalog: GearCatalog,
+    gearKind: 'echo' | 'artifact',
+    inventoryGear: GearEntry[],
+    earlierGear: GearEntry[],
+): DuplicateSource | undefined {
+    const candidate = buildGearEntryFromDraft(draft, catalog, gearKind, () => 'dup-check');
+    if (!candidate) return undefined;
+    const key = gearIdentityKey(candidate);
+    if (inventoryGear.some((g) => gearIdentityKey(g) === key)) return 'inventory';
+    if (earlierGear.some((g) => gearIdentityKey(g) === key)) return 'scan';
+    return undefined;
 }
