@@ -89,6 +89,8 @@ tmp/
 !jest.config.js
 !eslint.config.js
 !prettier.config.js
+!src/renderer/tailwind.config.js
+!src/renderer/postcss.config.js
 !scripts/**/*.js
 !dist/**/*.js
 *.js.map
