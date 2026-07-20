@@ -15,9 +15,10 @@ import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberRes
 import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { elapsedTimes, isAutoBuffActiveAtStep } from '@/lib/rotationEngine';
+import { elapsedTimes, isAutoBuffActiveAtStep, simulateWaves, type WaveConfig } from '@/lib/rotationEngine';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
+import { getEnemies } from '../data/enemies';
 import type { FieldSpec, RotationStepSpec } from '../types';
 import type { BuffEntry, SkillDef } from '@shared/types/game-bundle';
 
@@ -122,6 +123,8 @@ export function RotationScreen() {
     }, [activePartyId, activeGameId, owned.gear, partyMemberCount, data, calc.targetStatuses]);
 
     const [steps, setSteps] = useState<RotationStepSpec[]>([]);
+    const [mode, setMode] = useState<'boss' | 'waves'>('boss');
+    const [waves, setWaves] = useState<WaveConfig[]>([{ enemyId: 'dummy' }]);
 
     // A step can reference a character outside the currently-selected party —
     // either no party is selected yet (full-roster picker still active) or a
@@ -172,7 +175,7 @@ export function RotationScreen() {
         const name = rotationName.trim();
         if (!name) return;
         const id = loadedRotationId ?? nextRotationId();
-        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, enabledSelfBuffIds };
+        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, enabledSelfBuffIds, mode, waves };
         useRotationStore.getState().save(activeGameId, rotation);
         setLoadedRotationId(id);
         toast.success(`Saved "${name}"`);
@@ -183,6 +186,8 @@ export function RotationScreen() {
         setRotationName(r.name);
         setLoadedRotationId(r.id);
         setActivePartyId(r.partyId);
+        setMode(r.mode ?? 'boss');
+        setWaves(r.waves ?? [{ enemyId: 'dummy' }]);
     };
     const handleDelete = (r: SavedRotation) => {
         useRotationStore.getState().remove(activeGameId, r.id);
@@ -196,6 +201,8 @@ export function RotationScreen() {
         setEnabledSelfBuffIds({});
         setRotationName('');
         setLoadedRotationId(null);
+        setMode('boss');
+        setWaves([{ enemyId: 'dummy' }]);
     };
 
     const field: FieldSpec = useMemo(() => ({
@@ -246,6 +253,7 @@ export function RotationScreen() {
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);
     const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
     const dps = totalDuration > 0 ? totalDamage / totalDuration : 0;
+    const waveSim = useMemo(() => simulateWaves(results.map((r) => r.damage), waves), [results, waves]);
     const byCharacter = useMemo(() => {
         const map = new Map<string, { name: string; damage: number }>();
         for (const r of results) {
@@ -273,6 +281,40 @@ export function RotationScreen() {
                     <Card>
                         <CardContent className="p-4">
                             <RotationBuilder field={field} value={steps} onChange={setSteps} restrictToCharacterIds={activePartyId ? partyMembers.map((m) => m.character.id) : undefined} />
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader><CardTitle>Enemy</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex gap-2">
+                                <Button size="sm" variant={mode === 'boss' ? 'default' : 'secondary'} onClick={() => { setMode('boss'); setWaves((w) => (w.slice(0, 1).length ? w.slice(0, 1) : [{ enemyId: 'dummy' }])); }}>Boss</Button>
+                                <Button size="sm" variant={mode === 'waves' ? 'default' : 'secondary'} onClick={() => setMode('waves')}>Waves</Button>
+                            </div>
+                            {waves.map((w, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <select
+                                        value={w.enemyId}
+                                        onChange={(e) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, enemyId: e.target.value } : x)))}
+                                        className="rounded-md border border-border bg-bg px-2 py-1 text-sm text-fg"
+                                    >
+                                        {getEnemies(activeGameId).map((en) => <option key={en.id} value={en.id}>{en.name}</option>)}
+                                    </select>
+                                    <Input
+                                        type="number"
+                                        placeholder="HP (optional)"
+                                        className="w-32"
+                                        value={w.hp ?? ''}
+                                        onChange={(e) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, hp: e.target.value === '' ? undefined : Number(e.target.value) } : x)))}
+                                    />
+                                    {mode === 'waves' && waves.length > 1 && (
+                                        <Button size="sm" variant="ghost" onClick={() => setWaves((ws) => ws.filter((_, xi) => xi !== i))}><Trash2 /></Button>
+                                    )}
+                                </div>
+                            ))}
+                            {mode === 'waves' && (
+                                <Button size="sm" variant="secondary" onClick={() => setWaves((ws) => [...ws, { enemyId: 'dummy' }])}>Add wave</Button>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -365,6 +407,23 @@ export function RotationScreen() {
                                         <div className="text-lg font-semibold tabular-nums text-foreground">{totalDuration.toFixed(1)}s</div>
                                     </div>
                                 </div>
+
+                                {mode === 'waves' && waveSim.damageByWave.length > 1 && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Per-wave damage</div>
+                                        {waveSim.damageByWave.map((d, i) => (
+                                            <div key={i} className="flex items-center justify-between rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm">
+                                                <span className="text-foreground">Wave {i + 1} ({getEnemies(activeGameId).find((e) => e.id === waves[i]?.enemyId)?.name ?? waves[i]?.enemyId})</span>
+                                                <span className="tabular-nums text-muted-foreground">{Math.round(d).toLocaleString()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {waveSim.overflowDiscarded > 0 && (
+                                    <div className="rounded-md border border-warning/40 bg-warning/10 px-2.5 py-1.5 text-xs text-warning">
+                                        {Math.round(waveSim.overflowDiscarded).toLocaleString()} damage discarded to overkill (per-step granularity — see this feature's spec for why)
+                                    </div>
+                                )}
 
                                 {byCharacter.length > 1 && (
                                     <div className="space-y-1.5">
