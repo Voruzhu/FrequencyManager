@@ -399,6 +399,7 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
                             g={g}
                             gameId={activeGameId}
                             highlight={here}
+                            mainSlot={here && g.cost === 4}
                             expanded={expanded.has(g.id)}
                             onToggleExpand={() => toggle(g.id)}
                             actions={

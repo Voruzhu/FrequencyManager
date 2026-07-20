@@ -11,6 +11,7 @@ import { useGameStore } from '../stores/gameStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
+import { useLoadoutStore } from '../stores/loadoutStore';
 import { useGameData } from '../data/gameData';
 import { AddCharacterWindow, AddWeaponWindow, AddGearWindow } from '../components/InventoryWindows';
 import { GearCard } from '../components/GearCard';
@@ -23,6 +24,9 @@ export function InventoryScreen() {
     const { content, showItem } = useSelectionStore();
     const { openWindow, closeWindow } = useWindowStore();
     const { removeCharacter, removeWeapon, removeGear } = useInventoryStore();
+    // Reactive to every character's loadout, to know which owned cost-4 echo (if any) is someone's "main slot" piece.
+    const gameLoadouts = useLoadoutStore((s) => s.byGame[activeGameId]) ?? {};
+    const isEquippedAnywhere = (gearId: string) => Object.values(gameLoadouts).some((l) => l.gearIds.includes(gearId));
     const selectedId = content?.kind === 'item' ? content.item.id : null;
 
     // ── Characters: search + element/weapon/rarity filters ──
@@ -203,6 +207,7 @@ export function InventoryScreen() {
                                     g={g}
                                     gameId={activeGameId}
                                     highlight={selectedId === g.id}
+                                    mainSlot={g.cost === 4 && isEquippedAnywhere(g.id)}
                                     expanded={expandedGear.has(g.id)}
                                     onToggleExpand={() => toggleGear(g.id)}
                                     onClick={() => showItem(g)}
