@@ -118,12 +118,12 @@ export function constellationAutoBuffs(character: CharacterData | null, sequence
 }
 
 /** Conditional (opt-in) weapon-passive self-buffs — mirrors `weaponAutoBuffs` but for the toggle-chip candidates instead of the always-on ones. `refineMultiplier` — see `weaponAutoBuffs`. */
-export function conditionalWeaponBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; label?: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}, refineMultiplier = 1) {
+export function conditionalWeaponBuffs(weapon: { id: string; name: string; baseAtk: number; selfBuffs?: Array<{ stat: string; label?: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: SelfBuffScaleOff; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> } | undefined, c: CharacterData | null, gear: GearData[], catalog: GameData['statCatalog'], stacks: Record<string, number> = {}, refineMultiplier = 1) {
     if (!weapon || !c) return [];
     return (weapon.selfBuffs ?? [])
         .map((sb, i) => ({ sb, i }))
         .filter(({ sb }) => sb.conditional !== false)
-        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: (sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value) * refineMultiplier, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
+        .map(({ sb, i }) => { const id = selfBuffId(weapon.id, sb, i); return { id, name: `${weapon.name} passive`, source: weapon.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: (sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value) * refineMultiplier, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}), ...(sb.autoTrigger ? { autoTrigger: sb.autoTrigger } : {}) }; });
 }
 
 /** Conditional (opt-in) character passive-talent self-buffs — mirrors `characterAutoBuffs`. */
@@ -132,19 +132,19 @@ export function conditionalCharacterBuffs(c: CharacterData | null, gear: GearDat
     return c.selfBuffs
         .map((sb, i) => ({ sb, i }))
         .filter(({ sb }) => sb.conditional !== false)
-        .map(({ sb, i }) => { const id = passiveBuffId(c.id, sb, i); return { id, name: `${c.name} passive`, source: c.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }; });
+        .map(({ sb, i }) => { const id = passiveBuffId(c.id, sb, i); return { id, name: `${c.name} passive`, source: c.name, stat: sb.stat, label: sb.label, stacksMax: sb.stacksMax, value: resolveStackedValue(id, { value: sb.scaleOff ? resolveSelfScaleOff(c, gear, weapon, sb.scaleOff, catalog) : sb.value, stacksMax: sb.stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}), ...(sb.autoTrigger ? { autoTrigger: sb.autoTrigger } : {}) }; });
 }
 
 /** Conditional (opt-in) Constellation/Sequence self-buffs, for unlocked nodes — mirrors `constellationAutoBuffs`. */
 export function conditionalConstellationBuffs(character: CharacterData | null, sequence: number, gear: GearData[], weapon: { baseAtk: number } | undefined, catalog: GameData['statCatalog'], stacks: Record<string, number> = {}) {
     if (!character?.constellations) return [];
-    const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; stacksMax?: number }> = [];
+    const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> = [];
     for (const node of character.constellations) {
         if (sequence < node.level) continue;
         (node.selfBuffs ?? [])
             .map((sb, i) => ({ sb, i }))
             .filter(({ sb }) => sb.conditional !== false)
-            .forEach(({ sb, i }) => { const id = constBuffId(character.id, node.level, sb, i); const scaleOff = (sb as { scaleOff?: SelfBuffScaleOff }).scaleOff; const stacksMax = (sb as { stacksMax?: number }).stacksMax; out.push({ id, name: `${node.name} (L${node.level})`, source: character.name, stat: sb.stat, label: sb.label, stacksMax, value: resolveStackedValue(id, { value: scaleOff ? resolveSelfScaleOff(character, gear, weapon, scaleOff, catalog) : sb.value, stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }); });
+            .forEach(({ sb, i }) => { const id = constBuffId(character.id, node.level, sb, i); const scaleOff = (sb as { scaleOff?: SelfBuffScaleOff }).scaleOff; const stacksMax = (sb as { stacksMax?: number }).stacksMax; const autoTrigger = (sb as { autoTrigger?: { skillIds: string[]; durationSeconds: number } }).autoTrigger; out.push({ id, name: `${node.name} (L${node.level})`, source: character.name, stat: sb.stat, label: sb.label, stacksMax, value: resolveStackedValue(id, { value: scaleOff ? resolveSelfScaleOff(character, gear, weapon, scaleOff, catalog) : sb.value, stacksMax }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}), ...(autoTrigger ? { autoTrigger } : {}) }); });
     }
     return out;
 }
@@ -167,12 +167,12 @@ export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> =
 
 /** Conditional (opt-in) self-buffs from specific named equipped gear pieces' own "Echo Skill" — mirrors `gearAutoBuffs`. */
 export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, number> = {}) {
-    const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[] }> = [];
+    const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> = [];
     for (const g of gear) {
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
             .filter(({ sb }) => sb.conditional !== false)
-            .forEach(({ sb, i }) => { const id = gearBuffId(g.id, sb, i); out.push({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, label: sb.label, value: resolveStackedValue(id, { value: sb.value }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }); });
+            .forEach(({ sb, i }) => { const id = gearBuffId(g.id, sb, i); const autoTrigger = (sb as { autoTrigger?: { skillIds: string[]; durationSeconds: number } }).autoTrigger; out.push({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, label: sb.label, value: resolveStackedValue(id, { value: sb.value }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}), ...(autoTrigger ? { autoTrigger } : {}) }); });
     }
     return out;
 }
