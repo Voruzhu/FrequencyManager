@@ -711,11 +711,20 @@ export function gearSlotsFor(poolSize: number): number {
 }
 
 /** Whether a gear combo stays within the real in-game total-cost budget (WuWa's
- * 12, across 5 echoes costing 1/3/4 each — see `OptimizeConfig.maxTotalCost`).
- * Always true when `maxTotalCost` is undefined (GI has no cost concept) or a
- * piece has no `cost` (same reason). Exported so the worker path can apply
- * the identical filter to its own generated slice of combos. */
+ * 12, across 5 echoes costing 1/3/4 each — see `OptimizeConfig.maxTotalCost`)
+ * AND obeys the real per-slot cost ceiling (WuWa's 5 slots are capped at
+ * [4, 3, 3, 1, 1] — only ONE slot can ever hold a cost-4 piece, so a combo
+ * with 2+ cost-4 pieces is illegal even if their total sum fits the budget,
+ * e.g. two cost-4 + three cost-1 = 11, under any real cap, but physically
+ * impossible to equip). The cost-4 check runs unconditionally (not gated
+ * behind maxTotalCost) since it's a slot-SHAPE constraint, not a budget
+ * number — it would still apply even for a hypothetical game module with no
+ * total-cost cap at all. Always true for GI (no piece ever has a `cost`
+ * field, so neither check ever fires) or a piece with no `cost` (same
+ * reason). Exported so the worker path can apply the identical filter to
+ * its own generated slice of combos. */
 export function withinCostBudget(combo: GearEntry[], maxTotalCost: number | undefined): boolean {
+    if (combo.filter((g) => g.cost === 4).length > 1) return false;
     if (maxTotalCost == null) return true;
     let total = 0;
     for (const g of combo) total += g.cost ?? 0;

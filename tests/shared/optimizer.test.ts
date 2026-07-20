@@ -126,14 +126,34 @@ describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes
         expect(withinCostBudget(combo, 12)).toBe(false);
     });
 
-    it('undefined cap (GI, no cost concept) never rejects anything', () => {
-        const combo = Array.from({ length: 5 }, () => gear(1, 4));
+    it('undefined cap never applies a total-SUM rejection (the separate at-most-one-cost-4 slot rule still applies regardless)', () => {
+        const combo = [gear(1, 4), gear(1, 3), gear(1, 3), gear(1, 3), gear(1, 3)]; // sum 16, only 1 cost-4 piece
         expect(withinCostBudget(combo, undefined)).toBe(true);
     });
 
     it('gear with no cost field at all contributes 0, never blocking a combo', () => {
         const combo = [gear(1), gear(1), gear(1), gear(1), gear(1)];
         expect(withinCostBudget(combo, 12)).toBe(true);
+    });
+
+    it('a combo with 2 cost-4 pieces is rejected even when the total is well within budget (impossible in-game: only 1 slot can hold a cost-4 piece)', () => {
+        const combo = [gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1), gear(1, 1)]; // sum 11, under any real cap
+        expect(withinCostBudget(combo, 12)).toBe(false);
+    });
+
+    it('a combo with 2 cost-4 pieces is rejected regardless of maxTotalCost, including undefined', () => {
+        const combo = [gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1), gear(1, 1)];
+        expect(withinCostBudget(combo, undefined)).toBe(false);
+    });
+
+    it('a combo with exactly 1 cost-4 piece is never rejected by the slot-shape rule', () => {
+        const combo = [gear(1, 4), gear(1, 3), gear(1, 3), gear(1, 1), gear(1, 1)];
+        expect(withinCostBudget(combo, 12)).toBe(true);
+    });
+
+    it('a GI-style combo (no piece has a cost field) is unaffected by the slot-shape rule', () => {
+        const combo = [gear(1), gear(1), gear(1), gear(1), gear(1)];
+        expect(withinCostBudget(combo, undefined)).toBe(true);
     });
 });
 
@@ -247,10 +267,9 @@ describe('optimize — never recommends a loadout exceeding the real total-cost 
     });
 
     it('with no maxTotalCost set (GI), an over-12 combo is still allowed — no constraint applies', () => {
-        const pool = Array.from({ length: 5 }, (_, i) => gear(100 + i, 4)); // would total 20
+        const pool = Array.from({ length: 5 }, (_, i) => gear(100 + i)); // GI-style: no cost field; sum is irrelevant without maxTotalCost
         const result = optimize(char(), pool, baseConfig({ topN: 1 }));
         expect(result.length).toBe(1);
-        expect(result[0].gear.reduce((sum, g) => sum + (g.cost ?? 0), 0)).toBe(20);
     });
 });
 
