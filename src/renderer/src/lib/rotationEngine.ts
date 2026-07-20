@@ -48,3 +48,30 @@ export function cooldownWarningFor(
     }
     return undefined;
 }
+
+/**
+ * True if an auto-triggered buff is active at `stepIndex`, given the
+ * rotation's steps and their precomputed `elapsedTimes`. The buff becomes
+ * active once its triggering skill COMPLETES (trigger step's elapsed start
+ * + its own duration) and stays active for `durationSeconds` after that.
+ * `restrictToCharacterId`: for a SELF buff, only that character's steps
+ * count as valid triggers; omit for a TEAM-wide buff, where any party
+ * member's step counts.
+ */
+export function isAutoBuffActiveAtStep(
+    steps: RotationStepSpec[],
+    elapsed: number[],
+    stepIndex: number,
+    autoTrigger: { skillIds: string[]; durationSeconds: number },
+    restrictToCharacterId?: string,
+): boolean {
+    const tNow = elapsed[stepIndex];
+    for (let j = 0; j < stepIndex; j++) {
+        const s = steps[j];
+        if (restrictToCharacterId && s.characterId !== restrictToCharacterId) continue;
+        if (!s.skillId || !autoTrigger.skillIds.includes(s.skillId)) continue;
+        const triggerCompletesAt = elapsed[j] + (s.duration ?? 0);
+        if (tNow >= triggerCompletesAt && tNow - triggerCompletesAt <= autoTrigger.durationSeconds) return true;
+    }
+    return false;
+}

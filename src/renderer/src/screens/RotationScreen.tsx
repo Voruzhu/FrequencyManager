@@ -15,6 +15,7 @@ import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberRes
 import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
+import { elapsedTimes, isAutoBuffActiveAtStep } from '@/lib/rotationEngine';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import type { FieldSpec, RotationStepSpec } from '../types';
@@ -213,14 +214,34 @@ export function RotationScreen() {
     }), [members]);
 
     const reaction: SkillContext['reaction'] = data.supportsReactions ? calc.reaction : 'none';
+    const elapsed = useMemo(() => elapsedTimes(steps), [steps]);
+    // Team-wide effects carrying `autoTrigger` are excluded from `enabledBuffs`
+    // (`enabledPartyBuffs`'s autoTrigger exclusion) — resolve them per-step
+    // here instead, active for any step whose elapsed time falls in a
+    // trigger's window regardless of which party member cast the trigger.
+    const windowedTeamEffects = useMemo(
+        () => partyEffects(data, members).flatMap((e) =>
+            e.buffs
+                .map((b, i) => ({ e, b, i }))
+                .filter(({ b }) => !!b.autoTrigger)),
+        [data, members],
+    );
     const results: StepResult[] = useMemo(() => steps.map((step, index) => {
         const member = members.find((m) => m.character.id === step.characterId);
         const enabledIds = new Set(enabledSelfBuffIds[step.characterId] ?? []);
-        const enabledSelfBuffs = member && enabledIds.size > 0 ? conditionalBuffCandidates(member, data.statCatalog, activeGameId).filter((b) => enabledIds.has(b.id)) : [];
-        const { skill, damage } = computeStepDamage(step, member, enabledBuffs, enabledSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
+        const candidates = member ? conditionalBuffCandidates(member, data.statCatalog, activeGameId) : [];
+        const manuallyToggled = enabledIds.size > 0 ? candidates.filter((b) => enabledIds.has(b.id) && !(b as { autoTrigger?: unknown }).autoTrigger) : [];
+        const autoActive = candidates.filter((b) => {
+            const at = (b as { autoTrigger?: { skillIds: string[]; durationSeconds: number } }).autoTrigger;
+            return at && member && isAutoBuffActiveAtStep(steps, elapsed, index, at, member.character.id);
+        });
+        const windowedTeamBuffs: BuffEntry[] = windowedTeamEffects
+            .filter(({ b }) => isAutoBuffActiveAtStep(steps, elapsed, index, b.autoTrigger!))
+            .map(({ e, b, i }) => ({ id: `${e.id}#${i}`, name: e.name, source: e.source, stat: b.stat, value: b.value, appliesTo: b.appliesTo }));
+        const stepTeamBuffs = [...enabledBuffs, ...windowedTeamBuffs];
+        const { skill, damage } = computeStepDamage(step, member, stepTeamBuffs, [...manuallyToggled, ...autoActive], calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
         return { step, index, member, skill, damage };
-         
-    }), [steps, members, enabledBuffs, enabledSelfBuffIds, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
+    }), [steps, members, enabledBuffs, enabledSelfBuffIds, elapsed, windowedTeamEffects, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
 
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);
     const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -295,6 +316,18 @@ export function RotationScreen() {
                                         <SummaryLabel>{m.character.name}</SummaryLabel>
                                         <div className="mt-1 flex flex-wrap gap-1">
                                             {candidates.map((b) => {
+                                                const autoTrigger = (b as { autoTrigger?: unknown }).autoTrigger;
+                                                if (autoTrigger) {
+                                                    return (
+                                                        <span
+                                                            key={b.id}
+                                                            className="rounded-md border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-muted-foreground"
+                                                            title="Auto-computed from rotation timing — active on whichever steps fall in its trigger window"
+                                                        >
+                                                            Auto: {(b as { label?: string }).label ?? b.name} +{b.value}
+                                                        </span>
+                                                    );
+                                                }
                                                 const on = enabled.has(b.id);
                                                 return (
                                                     <button
