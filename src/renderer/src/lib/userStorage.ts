@@ -8,13 +8,18 @@ import type { StateStorage } from 'zustand/middleware';
  * makes the upcoming JSON export/import trivial (it's just that file). Falls
  * back to localStorage when the bridge is unavailable (dev-in-browser).
  */
-const bridge = () => (window as unknown as {
+// `typeof window === 'undefined'` guard: this module only ever actually RUNS
+// in the renderer (where `window` always exists) — the guard exists purely so
+// a persisted store's mutating actions don't crash the process (an unhandled
+// promise rejection from a synchronous ReferenceError) when unit-tested under
+// this project's `testEnvironment: 'node'` jest config, which has no `window`.
+const bridge = () => (typeof window === 'undefined' ? undefined : (window as unknown as {
     frequencyManager?: {
         storageGet?: <T = unknown>(key: string, fallback?: T) => Promise<T>;
         storageSet?: (key: string, value: unknown) => Promise<boolean>;
         storageDelete?: (key: string) => Promise<boolean>;
     };
-}).frequencyManager;
+}).frequencyManager);
 
 export const userStorage: StateStorage = {
     getItem: async (name) => {
