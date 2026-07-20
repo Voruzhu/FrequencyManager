@@ -766,12 +766,18 @@ export const WW_ECHO_ITEM_ICONS: Record<string, string> = {
  * half is added below — the team-ATK half has no home in this schema (this
  * table models wielder-only self-buffs; echoes have no team-buff mechanism
  * the way weapons do), so it's left unmodeled rather than misrepresented.
+ *
+ * UPDATE 2026-07-21 (Task 7, full cost-4 main-slot sourcing pass, below):
+ * directly read every cost-4 echo's real Skill.DescriptionEx from
+ * api.encore.moe/en/echo/<id>, resolving 3 of this paragraph's open
+ * questions — Bell-Borne Geochelone, Hyvatia, and Impermanence Heron ARE
+ * real triggered effects (confirmed, not just estimated), but each benefits
+ * someone OTHER than the wielder (a team shield, "the next Resonator using
+ * Intro Skill", etc.), so none of them fit this table's wielder-only
+ * self-buff schema regardless of confirmation status — correctly left
+ * unmodeled, not a gap.
  */
 export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = {
-    'Lady of the Sea': [
-        { stat: 'elemDmg', label: 'Aero DMG Bonus (Echo Skill)', value: 12, conditional: true },
-        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Echo Skill)', value: 12, conditional: true, appliesTo: ['ult'] },
-    ],
     'Fallacy of No Return': [
         { stat: 'energyRegen', label: 'Energy Regen (Echo Skill)', value: 10, conditional: true },
     ],
@@ -787,5 +793,158 @@ export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: str
     // Lucy/Rebecca only).
     'Reminiscence - Nightmare: Adam Smasher': [
         { stat: 'critRate', label: 'Crit. Rate (Main Slot)', value: 15, conditional: false, restrictedToCharacters: ['Lucy', 'Rebecca'] },
+    ],
+
+    // ---- Task 7 (2026-07-21): full cost-4 "main slot" sourcing pass. ----
+    // Every entry below is a passive bonus active merely from having the
+    // echo equipped in the cost-4 main slot — NOT a cast-triggered buff like
+    // Fallacy/Jué above (a different, separately-modeled mechanic). Primary
+    // source api.encore.moe/en/echo/<id> Skill.DescriptionEx for all 53
+    // remaining cost-4 catalog entries, cross-checked against wuthering.gg
+    // for every entry added here. 27 of the 53 had no main-slot bonus text
+    // at all (plain stat sticks or cast-triggered-only effects) and are
+    // correctly absent — see the Task 7 completion report for the full list.
+    //
+    // Elemental bonuses below are tagged with the REAL per-element key
+    // (`elemKey('Electro')` = 'electroDmg', etc.), not the generic always-
+    // applies `elemDmg` slot — same fix already established for Set Bonuses
+    // in `shared/game-data/derive.ts` (see its "REAL element key" comment
+    // and `tests/shared/derive-set-bonuses.test.ts`): these echoes are
+    // equippable by ANY character regardless of element, and a bare
+    // `elemDmg` buff bypasses computeBuildStats's same-element check,
+    // wrongly applying to a mismatched wearer. Tagging with the specific
+    // key makes it correctly inert off-element, exactly like a mismatched
+    // gear sub-stat already behaves.
+    'Nightmare: Thundering Mephis': [
+        { stat: 'electroDmg', label: 'Electro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Nightmare: Inferno Rider': [
+        { stat: 'fusionDmg', label: 'Fusion DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Res. Skill DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['skill'] },
+    ],
+    'Nightmare: Crownless': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Basic Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['basic'] },
+    ],
+    'Nightmare: Mourning Aix': [
+        { stat: 'spectroDmg', label: 'Spectro DMG Bonus (Main Slot)', value: 12, conditional: false },
+    ],
+    'Nightmare: Impermanence Heron': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    'Nightmare: Feilian Beringal': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    // Hecate: a real, sourced main-slot bonus exists (api.encore.moe/en/
+    // echo/6000085 Skill.DescriptionEx: "The Resonator with this Echo
+    // equipped in the main slot has their Coordinated Attack DMG increased
+    // by 40.00%," cross-checked wuthering.gg/echos/hecate) but is entirely
+    // omitted here — `appliesTo` has no recognized "Coordinated Attack"
+    // category anywhere in the damage engine (see this app's Youhu-outro
+    // comment in adapters/game-definitions/wuthering-waves/bundle.ts for the
+    // identical, earlier-established precedent), so an entry would silently
+    // no-op rather than actually apply. Needs an engine change first.
+    'Dragon of Dirge': [
+        { stat: 'fusionDmg', label: 'Fusion DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Basic Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['basic'] },
+    ],
+    'Lorelei': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Basic Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['basic'] },
+    ],
+    'Lioness of Glory': [
+        { stat: 'fusionDmg', label: 'Fusion DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Sigillum': [
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 25, conditional: false, appliesTo: ['ult'], restrictedToCharacters: ['Aemeath'] },
+    ],
+    // Main-slot stat portion only — this echo ALSO deals bonus proc damage
+    // ("the False Sovereign is also summoned to deal 405.00% Electro DMG")
+    // when the wielder casts their Intro Skill; that's echo-sourced proc
+    // damage, not a wielder stat, so it's left out of this table's scope.
+    'The False Sovereign': [
+        { stat: 'electroDmg', label: 'Electro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    // Corrected 2026-07-21 (Task 7): re-verified directly against
+    // api.encore.moe/en/echo/6000160's Skill.DescriptionEx, which reads "The
+    // Resonator with this Echo equipped in the main slot gains 12.00% Aero
+    // DMG Bonus and 12.00% Resonance Liberation DMG Bonus" — an always-on
+    // main-slot passive, not a cast-triggered Echo Skill buff. The original
+    // 2026-07-16 game8.co-sourced entry (conditional: true, "(Echo Skill)",
+    // bare `elemDmg`) mismodeled both the trigger condition AND the stat key
+    // (bare `elemDmg` would wrongly grant Aero DMG to any off-element
+    // wearer too); replaced here to match the Adam Smasher main-slot pattern
+    // and the `aeroDmg`-tagging discipline described above. Cross-checked
+    // wuthering.gg/echos/lady-of-the-sea (matches exactly).
+    'Lady of the Sea': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Nightmare: Hecate': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Echo Skill DMG Bonus (Main Slot)', value: 20, conditional: false, appliesTo: ['echo'] },
+    ],
+    'Thousand-Puppet Pavilion': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    // Stat portion only — also grants a proc: "Switching out the Resonator
+    // with Outro Skill summons Nightmare: Kelpie to deal 405.00% Aero DMG,"
+    // which is echo-sourced proc damage, not a wielder stat, left unmodeled
+    // (same reasoning as The False Sovereign above).
+    'Nightmare: Kelpie': [
+        { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+    ],
+    // Only the Glacio DMG half is modeled — this echo's main-slot bonus ALSO
+    // grants "30.00% more Coordinated Attack DMG" (api.encore.moe/en/echo/
+    // 6000105, cross-checked wuthering.gg), omitted for the same "no
+    // recognized Coordinated Attack appliesTo category" reason as Hecate above.
+    'Nightmare: Lampylumen Myriad': [
+        { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
+    ],
+    'Nightmare: Tempest Mephis': [
+        { stat: 'electroDmg', label: 'Electro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Res. Skill DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['skill'] },
+    ],
+    'Myriad Snare: Rustfire Chassis': [
+        { stat: 'fusionDmg', label: 'Fusion DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    'Reminiscence: Threnodian - Voidborne Construct': [
+        { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Reminiscence: Fenrico': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    // 2nd (restricted) tier's source text is "If this Resonator is Rover:
+    // Aero or Cartethyia, grant another 10.00% Aero DMG Bonus" (encore.moe +
+    // wuthering.gg agree) — "Rover: Aero" is this roster's `Rover (Aero)`
+    // entry, not a broader "any Aero character" category.
+    'Reminiscence: Fleurdelys': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 10, conditional: false },
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot, Rover: Aero/Cartethyia)', value: 10, conditional: false, restrictedToCharacters: ['Rover (Aero)', 'Cartethyia'] },
+    ],
+    'Reminiscence: Threnodian - Leviathan': [
+        { stat: 'havocDmg', label: 'Havoc DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Nameless Explorer': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Echo Skill DMG Bonus (Main Slot)', value: 20, conditional: false, appliesTo: ['echo'] },
+    ],
+    'Reactor Husk': [
+        { stat: 'energyRegen', label: 'Energy Regen (Main Slot)', value: 10, conditional: false },
+    ],
+    'Sentry Construct': [
+        { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Res. Skill DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['skill'] },
     ],
 };
