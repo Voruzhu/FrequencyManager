@@ -75,3 +75,58 @@ export function isAutoBuffActiveAtStep(
     }
     return false;
 }
+
+/** One enemy target in a rotation's Wave/Boss config. `hp` optional — when
+ * unset, this wave never triggers an overflow/transition (damage just
+ * applies with nothing to discard against), same as today's plain
+ * single-target behavior. */
+export interface WaveConfig {
+    enemyId: string;
+    hp?: number;
+}
+
+/**
+ * Per-step-granularity overflow simulation (a stated, permanent
+ * simplification — see this feature's spec, Section 4 — NOT per
+ * individual hit within a multi-hit skill). Each step's total damage is
+ * applied to the current wave's remaining HP; if it would go negative,
+ * the excess is discarded and the next wave starts fresh. A step that
+ * lands the killing blow is attributed to the wave IT KILLED, not the
+ * next one — its own excess is what carries no further.
+ */
+export function simulateWaves(stepDamages: number[], waves: WaveConfig[]): { waveIndexForStep: number[]; damageByWave: number[]; overflowDiscarded: number } {
+    const waveIndexForStep: number[] = [];
+    const damageByWave: number[] = waves.map(() => 0);
+    let overflowDiscarded = 0;
+    let currentWave = 0;
+    let remaining = waves[0]?.hp;
+
+    for (const dmg of stepDamages) {
+        waveIndexForStep.push(currentWave);
+        if (remaining == null) {
+            // No HP tracked for this wave — apply in full, nothing to discard.
+            damageByWave[currentWave] += dmg;
+            continue;
+        }
+        if (dmg <= remaining) {
+            damageByWave[currentWave] += dmg;
+            remaining -= dmg;
+            continue;
+        }
+        // Overkill this step.
+        damageByWave[currentWave] += remaining;
+        const overflow = dmg - remaining;
+        const nextWave = currentWave + 1;
+        if (nextWave < waves.length) {
+            currentWave = nextWave;
+            remaining = waves[currentWave]?.hp;
+            // The overflow does NOT carry to the next wave — it's simply lost, not re-applied.
+            overflowDiscarded += overflow;
+        } else {
+            // No next wave — nothing left to discard into; the excess just never counts.
+            overflowDiscarded += overflow;
+            remaining = undefined; // no further tracking for any remaining steps
+        }
+    }
+    return { waveIndexForStep, damageByWave, overflowDiscarded };
+}

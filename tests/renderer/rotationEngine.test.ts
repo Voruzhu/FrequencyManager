@@ -1,4 +1,4 @@
-import { elapsedTimes, cooldownWarningFor, isAutoBuffActiveAtStep } from '../../src/renderer/src/lib/rotationEngine';
+import { elapsedTimes, cooldownWarningFor, isAutoBuffActiveAtStep, simulateWaves, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
 import type { RotationStepSpec } from '../../src/renderer/src/types';
 
 const step = (characterId: string, skillId: string, duration: number): RotationStepSpec =>
@@ -73,5 +73,51 @@ describe('isAutoBuffActiveAtStep', () => {
     it('a team-wide buff (no restrictToCharacterId) counts any character\'s trigger cast', () => {
         const steps = [step('b', 'skill', 2), step('a', 'ult', 1)];
         expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 1, trigger)).toBe(true);
+    });
+});
+
+describe('simulateWaves', () => {
+    it('single wave, no HP set — behaves like today, no tracking, all damage counted', () => {
+        const waves: WaveConfig[] = [{ enemyId: 'boss-1' }];
+        const result = simulateWaves([100, 200, 300], waves);
+        expect(result.waveIndexForStep).toEqual([0, 0, 0]);
+        expect(result.damageByWave).toEqual([600]);
+        expect(result.overflowDiscarded).toBe(0);
+    });
+
+    it('single wave with HP, damage never exceeds it — no overflow', () => {
+        const waves: WaveConfig[] = [{ enemyId: 'boss-1', hp: 1000 }];
+        const result = simulateWaves([100, 200, 300], waves);
+        expect(result.waveIndexForStep).toEqual([0, 0, 0]);
+        expect(result.damageByWave).toEqual([600]);
+        expect(result.overflowDiscarded).toBe(0);
+    });
+
+    it('two waves, a step overkills wave 1 — overflow discarded, wave advances', () => {
+        const waves: WaveConfig[] = [{ enemyId: 'mob-1', hp: 150 }, { enemyId: 'mob-2', hp: 500 }];
+        // step0: 100 dmg -> wave0 remaining 150-100=50. step1: 200 dmg > 50 remaining ->
+        // wave0 gets only its last 50 (total wave0 = 100+50 = 150, exactly its own HP,
+        // never more), overflow = 200-50 = 150 discarded, wave advances. step2: 300 dmg,
+        // well within wave1's 500 HP -> wave1 gets the full 300.
+        const result = simulateWaves([100, 200, 300], waves);
+        expect(result.waveIndexForStep).toEqual([0, 0, 1]); // step1 is the killing blow, STILL attributed to wave 0 (the wave it killed); step2 is wave 1
+        expect(result.overflowDiscarded).toBe(150);
+        expect(result.damageByWave).toEqual([150, 300]); // wave0 capped at exactly its own HP (150); wave1 got step2's 300
+        // Invariant worth re-checking on any future change to this function:
+        // damageByWave.reduce(sum) + overflowDiscarded === stepDamages.reduce(sum).
+        // Here: (150+300) + 150 === 100+200+300 === 600.
+    });
+
+    it('last wave exhausted — remaining steps still deal (uncapped) damage, just no further wave-transition tracking', () => {
+        // Per this feature's spec (Section 4): "If no next wave exists, remaining
+        // steps just deal full damage with no further tracking" — the damage still
+        // COUNTS (toward the last wave's total, since there's no next wave to move
+        // to), it just stops being capped/discarded against anything from here on.
+        const waves: WaveConfig[] = [{ enemyId: 'mob-1', hp: 50 }];
+        const result = simulateWaves([100, 200], waves);
+        expect(result.waveIndexForStep).toEqual([0, 0]); // currentWave never advances past the last real wave
+        expect(result.damageByWave).toEqual([250]); // 50 (capped portion of step0) + 200 (step1, uncapped post-exhaustion) = 250
+        expect(result.overflowDiscarded).toBe(50); // ONLY step0's actual overkill (100-50); step1 has nothing left to overflow against, so all of it counts
+        // Invariant: (250) + 50 === 100+200 === 300.
     });
 });
