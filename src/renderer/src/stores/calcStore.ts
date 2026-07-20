@@ -175,6 +175,12 @@ export const useCalcStore = create<CalcState>()(
             if (gd.gearKind === 'artifact' && incoming?.slot) {
                 gearIds = gearIds.filter((gid) => resolve(gid)?.slot !== incoming.slot);
             }
+            // WuWa cost-4 echoes are one-per-character: Slot 1 (the only slot that
+            // can hold one) is the "main slot" — equipping a 2nd cost-4 echo
+            // auto-unequips the first, mirroring the GI artifact-slot rule above.
+            if (gd.gearKind === 'echo' && incoming?.cost === 4) {
+                gearIds = gearIds.filter((gid) => resolve(gid)?.cost !== 4);
+            }
             const equipped = { ...s.equipped, gearIds: [...gearIds, id].slice(-maxGear) };
             useLoadoutStore.getState().setLoadout(gameId, s.characterId, equipped);
             return { equipped };
