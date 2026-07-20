@@ -205,7 +205,7 @@ export function RotationScreen() {
             characters: members.map((m) => ({ id: m.character.id, label: m.character.name })),
             skills: Object.fromEntries(members.map((m) => [
                 m.character.id,
-                m.character.skills.map((s) => ({ id: s.id, label: s.name, type: coarseSkillType(s.type), stackMax: s.stackMax })),
+                m.character.skills.map((s) => ({ id: s.id, label: s.name, type: coarseSkillType(s.type), stackMax: s.stackMax, cooldown: s.cooldown })),
             ])),
             maxRotationLength: 60,
             showEnergy: false,

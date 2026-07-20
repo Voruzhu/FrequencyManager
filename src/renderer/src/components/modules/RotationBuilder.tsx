@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWindowStore } from '../../stores/windowStore';
 import { RotationCharacterPickerWindow } from '../CharacterWindows';
+import { elapsedTimes, cooldownWarningFor } from '../../lib/rotationEngine';
 import type { FieldSpec, RotationStepSpec } from '../../types';
 
 interface RotationBuilderProps {
@@ -117,6 +118,10 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
         return skills[characterId] || [];
     };
 
+    const elapsed = elapsedTimes(value);
+    const cooldownsBySkillId: Record<string, number> = {};
+    for (const list of Object.values(skills)) for (const s of list) if (s.cooldown != null) cooldownsBySkillId[s.id] = s.cooldown;
+
     return (
         <div className="space-y-4">
             {/* Header with summary */}
@@ -206,6 +211,7 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
                             isExpanded={expandedStep === index}
                             character={characters.find(c => c.id === step.characterId)}
                             availableSkills={getSkillsForCharacter(step.characterId)}
+                            cooldownWarning={cooldownWarningFor(value, elapsed, index, cooldownsBySkillId)}
                             onToggleExpand={() => setExpandedStep(expandedStep === index ? null : index)}
                             onUpdate={(updates) => handleUpdateStep(index, updates)}
                             onRemove={() => handleRemoveStep(index)}
@@ -239,6 +245,7 @@ interface RotationStepCardProps {
     isExpanded: boolean;
     character?: { id: string; label: string; icon?: string };
     availableSkills: Array<{ id: string; label: string; type: string; energyCost?: number; cooldown?: number; stackMax?: number }>;
+    cooldownWarning?: string;
     onToggleExpand: () => void;
     onUpdate: (updates: Partial<RotationStepSpec>) => void;
     onRemove: () => void;
@@ -248,7 +255,7 @@ interface RotationStepCardProps {
 }
 
 function RotationStepCard({
-    index, step, isExpanded, character, availableSkills,
+    index, step, isExpanded, character, availableSkills, cooldownWarning,
     onToggleExpand, onUpdate, onRemove, onMoveUp, onMoveDown, disabled
 }: RotationStepCardProps) {
     const actionTypeLabels: Record<string, string> = {
@@ -261,6 +268,7 @@ function RotationStepCard({
     };
 
     const selectedSkillStackMax = availableSkills.find((s) => s.id === step.skillId)?.stackMax;
+    const selectedSkillCooldown = availableSkills.find((s) => s.id === step.skillId)?.cooldown;
 
     const actionTypeColors: Record<string, string> = {
         basic: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -289,6 +297,12 @@ function RotationStepCard({
                 </span>
                 {step.skillLabel && (
                     <span className="text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{step.skillLabel}</span>
+                )}
+                {selectedSkillCooldown != null && (
+                    <span className="text-xs text-muted-foreground">CD {selectedSkillCooldown}s</span>
+                )}
+                {cooldownWarning && (
+                    <span className="text-xs text-yellow-400" title={cooldownWarning}>{cooldownWarning}</span>
                 )}
                 <span className="font-mono text-sm text-muted w-16 text-right">
                     {(step.duration || 0).toFixed(1)}s
