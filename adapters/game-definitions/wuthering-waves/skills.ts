@@ -37,15 +37,15 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.6538, 0.7074, 0.7609, 0.836, 0.8895, 0.9513, 1.037, 1.1228, 1.2085, 1.2995] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.3343, 0.3618, 0.3892, 0.4275, 0.455, 0.4865, 0.5303, 0.5742, 0.6181, 0.6647] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 3,
             multipliers: [0.7831, 0.8477, 0.9118, 1.0015, 1.0656, 1.1397, 1.2423, 1.3453, 1.4478, 1.5568] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 24,
             multipliers: [8.38, 9.0673, 9.7544, 10.7165, 11.4036, 12.1939, 13.2933, 14.3927, 15.4922, 16.6603] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [0.4458, 0.4823, 0.5189, 0.57, 0.6066, 0.6486, 0.7071, 0.7656, 0.8241, 0.8862] },
-            { id: 'skillOverflowingRadiance', name: 'Overflowing Radiance', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Spectro',
+            { id: 'skillOverflowingRadiance', name: 'Overflowing Radiance', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 12,
             multipliers: [0.9920, 1.0739, 1.1554, 1.2690, 1.3500, 1.4439, 1.5740, 1.7040, 1.8340, 1.9729] },
-        { id: 'skillCrescentDivinity', name: 'Crescent Divinity', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skillCrescentDivinity', name: 'Crescent Divinity', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 10,
             multipliers: [2.5340, 2.7419, 2.9498, 3.2406, 3.4485, 3.6874, 4.0199, 4.3524, 4.6848, 5.0380] },
 
         { id: 'basic-2', name: 'Basic Attack (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Spectro',
@@ -66,13 +66,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     camellya: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.3145, 0.3403, 0.3661, 0.4022, 0.428, 0.4577, 0.4989, 0.5402, 0.5815, 0.6253] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 4,
             multipliers: [1.143, 1.2368, 1.3306, 1.4618, 1.5554, 1.6632, 1.8132, 1.9632, 2.1132, 2.2724] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 25,
             multipliers: [6.05, 6.5461, 7.0422, 7.7368, 8.2329, 8.8034, 9.5972, 10.3909, 11.1847, 12.0281] },
         // "Considered Basic Attack DMG" (wuthering.gg, confirmed 2026-07-16) — scope
         // override so Basic-Attack-scoped buffs (incl. her own Inherent II/Seq 4) reach it.
-        { id: 'forte', name: 'Ephemeral', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Havoc',
+        { id: 'forte', name: 'Ephemeral', type: 'Forte', scope: 'Basic', scaling: 'atk', element: 'Havoc', cooldown: 25,
             multipliers: [6.35, 6.8707, 7.3914, 8.1204, 8.6411, 9.2399, 10.0731, 10.9062, 11.7393, 12.6245] },
         // Resonance Skill "Valse of Bloom and Blight" replaces various inputs
         // (Dodge Counter, Jump, basic-attack chain) with these 4 distinctly-
@@ -110,7 +110,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.2968, 0.321, 0.3454, 0.3794, 0.4038, 0.4318, 0.4706, 0.5096, 0.5486, 0.5898] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [2.0594, 2.2284, 2.397, 2.6335, 2.8024, 2.9965, 3.2669, 3.5369, 3.807, 4.094] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 20,
             multipliers: [6.1, 6.6002, 7.1004, 7.8007, 8.3009, 8.8762, 9.6765, 10.4768, 11.2771, 12.1275] },
         // "Considered as Resonance Skill DMG" (wuthering.gg + game8.co, confirmed 2026-07-16) —
         // scope override so skill-scoped buffs (e.g. Changli's own Sequence 2/etc) reach this move.
@@ -152,9 +152,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.321, 0.3474, 0.3737, 0.4105, 0.4369, 0.4671, 0.5093, 0.5514, 0.5935, 0.6382] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.1904, 0.2061, 0.2217, 0.2435, 0.2591, 0.2771, 0.3021, 0.327, 0.352, 0.3786] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 12,
             multipliers: [0.9, 0.974, 1.0479, 1.151, 1.2249, 1.3099, 1.4279, 1.5459, 1.664, 1.7895] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [1, 1.082, 1.164, 1.2788, 1.3608, 1.4551, 1.5863, 1.7175, 1.8487, 1.9881] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [0.3402, 0.3681, 0.396, 0.4351, 0.463, 0.4951, 0.5397, 0.5843, 0.629, 0.6764] },
@@ -193,9 +193,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     yinlin: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.1449, 0.1568, 0.1687, 0.1853, 0.1972, 0.2109, 0.2299, 0.2489, 0.2679, 0.2881] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 12,
             multipliers: [0.9, 0.9738, 1.0476, 1.1511, 1.2249, 1.3098, 1.4277, 1.5459, 1.6641, 1.7895] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 16,
             multipliers: [4.1041, 4.4408, 4.7775, 5.2486, 5.5853, 5.9724, 6.5107, 7.049, 7.5873, 8.1592] },
             { id: 'forte', name: 'Chameleon Cipher', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [1.8000, 1.9476, 2.0952, 2.3020, 2.4496, 2.6192, 2.8554, 3.0916, 3.3278, 3.5786] },
@@ -233,7 +233,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.372, 0.4026, 0.4331, 0.4758, 0.5063, 0.5413, 0.5902, 0.639, 0.6878, 0.7396] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.1599, 0.173, 0.1861, 0.2045, 0.2176, 0.2326, 0.2536, 0.2746, 0.2955, 0.3178] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 16,
             multipliers: [0.1575, 0.1704, 0.1833, 0.2014, 0.2143, 0.2291, 0.2498, 0.2705, 0.2911, 0.3131] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [0.1876, 0.2029, 0.2183, 0.2399, 0.2552, 0.2729, 0.2975, 0.3221, 0.3467, 0.3729] },
@@ -264,9 +264,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     sanhua: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.245, 0.2651, 0.2852, 0.3134, 0.3334, 0.3565, 0.3887, 0.4208, 0.453, 0.4871] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 10,
             multipliers: [1.81, 1.9585, 2.1069, 2.3147, 2.4631, 2.6338, 2.8713, 3.1087, 3.3462, 3.5985] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 16,
             multipliers: [4.0716, 4.4055, 4.7394, 5.2068, 5.5407, 5.9246, 6.4588, 6.993, 7.5272, 8.0948] },
             { id: 'forte', name: 'Detonate', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [1.8740, 2.0278, 2.1814, 2.3966, 2.5502, 2.7270, 2.9728, 3.2186, 3.4646, 3.7258] },
@@ -301,9 +301,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     mortefi: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.2429, 0.2629, 0.2828, 0.3107, 0.3306, 0.3535, 0.3854, 0.4172, 0.4491, 0.483] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 14,
             multipliers: [1.05, 1.1361, 1.2222, 1.3428, 1.4289, 1.5279, 1.6657, 1.8034, 1.9412, 2.0876] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 20,
             multipliers: [0.8, 0.8656, 0.9312, 1.0231, 1.0887, 1.1641, 1.2691, 1.374, 1.479, 1.5905] },
             { id: 'forte', name: 'Fury Fugue', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [1.6400, 1.7745, 1.9090, 2.0973, 2.2318, 2.3864, 2.6016, 2.8167, 3.0319, 3.2605] },
@@ -333,9 +333,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     zhezhi: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.42, 0.4546, 0.489, 0.5372, 0.5716, 0.6112, 0.6664, 0.7214, 0.7766, 0.8352] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 6,
             multipliers: [1.485, 1.6068, 1.7286, 1.8993, 2.0208, 2.1609, 2.3559, 2.5506, 2.7456, 2.9526] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [0.328, 0.3549, 0.3818, 0.4195, 0.4464, 0.4773, 0.5204, 0.5634, 0.6064, 0.6521] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [1.2525, 1.3554, 1.458, 1.6017, 1.7046, 1.8228, 1.9869, 2.1513, 2.3157, 2.4903] },
@@ -367,14 +367,14 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.368, 0.3981, 0.4283, 0.4705, 0.5007, 0.5354, 0.5837, 0.632, 0.6803, 0.7316] },
         { id: 'heavy', name: 'Windqueller (Heavy)', type: 'Heavy', scaling: 'atk', element: 'Aero',
             multipliers: [0.6696, 0.7248, 0.7794, 0.8562, 0.9114, 0.9744, 1.0626, 1.1502, 1.2384, 1.332] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 7,
             multipliers: [2.14, 2.3152, 2.4908, 2.7364, 2.912, 3.1136, 3.3944, 3.6752, 3.956, 4.2544] },
         // Casting Emerald Storm: Prelude deals NO damage itself — every real
         // Aero hit comes through the 3 Lance-of-Qingloong stages below.
         // Multipliers here were byte-identical to forteLanceQingloongS1
         // (copy-paste artifact, confirmed 2026-07-16), which double-counted
         // damage if a rotation used both this move and Lance Stage 1. Zeroed.
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 16,
             multipliers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
             { id: 'forteLanceQingloongS1', name: 'Lance of Qingloong (Stage 1)', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [2.6360, 2.8528, 3.0688, 3.3712, 3.5872, 3.8360, 4.1824, 4.5280, 4.8744, 5.2416] },
@@ -404,9 +404,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     calcharo: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.46, 0.4978, 0.5356, 0.5884, 0.626, 0.6694, 0.7298, 0.7902, 0.8506, 0.9146] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 10,
             multipliers: [0.8647, 0.9356, 1.0066, 1.1057, 1.1767, 1.2583, 1.3717, 1.485, 1.5986, 1.719] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 20,
             multipliers: [3, 3.246, 3.492, 3.8364, 4.0824, 4.3653, 4.7589, 5.1525, 5.5461, 5.9643] },
             { id: 'forteMercy', name: 'Heavy Attack: Mercy', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [1.9670, 2.1289, 2.2900, 2.5159, 2.6770, 2.8629, 3.1209, 3.3789, 3.6369, 3.9110] },
@@ -446,9 +446,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     encore: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.28, 0.3029, 0.3259, 0.358, 0.381, 0.4074, 0.4441, 0.4809, 0.5176, 0.5566] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 10,
             multipliers: [3.0824, 3.3352, 3.588, 3.9424, 4.1952, 4.4856, 4.8904, 5.2944, 5.6992, 6.1288] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 16,
             multipliers: [0.9072, 0.9816, 1.056, 1.1602, 1.2346, 1.3202, 1.4392, 1.5582, 1.6772, 1.8036] },
             // "Angry Cosmos" Inherent I ("During Cosmos Rave, DMG dealt is
             // increased by 10%") covers the WHOLE altered state, not just the
@@ -461,7 +461,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [3.8918, 4.2107, 4.5301, 4.9769, 5.2957, 5.6626, 6.1736, 6.6840, 7.1950, 7.7373] },
         { id: 'skill2', name: 'Energetic Welcome', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [1.7060, 1.8458, 1.9857, 2.1816, 2.3215, 2.4824, 2.7062, 2.9300, 3.1538, 3.3916] },
-        { id: 'ultSkill', name: 'Cosmos Rampage', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ultSkill', name: 'Cosmos Rampage', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 4,
             multipliers: [1.2740, 1.3784, 1.4828, 1.6288, 1.7336, 1.8536, 2.0208, 2.1880, 2.3552, 2.5328] },
 
         { id: 'basic2', name: 'Basic Attack Stage 2', type: 'Basic', scaling: 'atk', element: 'Fusion',
@@ -491,9 +491,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // (no per-level source available beyond level 1).
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.272, 0.2943, 0.3166, 0.3479, 0.3702, 0.3958, 0.4315, 0.4672, 0.5029, 0.5408] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 14,
             multipliers: [1.4498, 1.5686, 1.6874, 1.8538, 1.9728, 2.1094, 2.2996, 2.4898, 2.68, 2.8822] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [2.0256, 2.1917, 2.3578, 2.5903, 2.7564, 2.9474, 3.2132, 3.4789, 3.7447, 4.0271] },
         { id: 'forte', name: 'Imminent Oblivion', type: 'Forte', scope: 'Skill', scaling: 'atk', element: 'Glacio',
             multipliers: [4.2021, 4.5468, 4.8910, 5.3734, 5.7182, 6.1144, 6.6657, 7.2169, 7.7682, 8.3536] },
@@ -527,9 +527,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     roccia: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.3681, 0.3983, 0.4285, 0.4707, 0.5009, 0.5356, 0.5839, 0.6322, 0.6805, 0.7318] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 10,
             multipliers: [2.4736, 2.6768, 2.8792, 3.1632, 3.3656, 3.5992, 3.924, 4.248, 4.5728, 4.9176] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 20,
             multipliers: [4.2, 4.5444, 4.8888, 5.3712, 5.7156, 6.1116, 6.6627, 7.2135, 7.7646, 8.3502] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [1.62, 1.7529, 1.8857, 2.0717, 2.2045, 2.3573, 2.5699, 2.7824, 2.9949, 3.2208] },
@@ -563,13 +563,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.528, 0.5714, 0.6147, 0.6753, 0.7187, 0.7684, 0.8377, 0.907, 0.9762, 1.0498] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.4, 0.4328, 0.4656, 0.5116, 0.5444, 0.5821, 0.6346, 0.687, 0.7395, 0.7953] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 6,
             multipliers: [0.7404, 0.8012, 0.862, 0.947, 1.0076, 1.0774, 1.1746, 1.2718, 1.3688, 1.472] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 25,
             multipliers: [1.8913, 2.0464, 2.2015, 2.4186, 2.5737, 2.752, 3.0001, 3.2483, 3.4964, 3.76] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.5331, 0.5769, 0.6207, 0.6819, 0.7254, 0.7758, 0.8457, 0.9156, 0.9855, 1.0599] },
-            { id: 'flickering-reverie', name: 'Flickering Reverie', type: 'Skill', scaling: 'atk', element: 'Havoc',
+            { id: 'flickering-reverie', name: 'Flickering Reverie', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 12,
             multipliers: [0.9870, 1.0680, 1.1489, 1.2622, 1.3432, 1.4362, 1.5657, 1.6952, 1.8247, 1.9623] },
         { id: 'jolt', name: 'Jolt', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [1.0000, 1.0820, 1.1640, 1.2788, 1.3608, 1.4551, 1.5863, 1.7175, 1.8487, 1.9881] },
@@ -579,7 +579,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.6330, 0.6850, 0.7370, 0.8096, 0.8614, 0.9212, 1.0042, 1.0872, 1.1704, 1.2586] },
         { id: 'phantom-sting-3', name: 'Basic Attack - Phantom Sting (Stage 3)', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [1.3000, 1.4068, 1.5132, 1.6628, 1.7692, 1.8920, 2.0624, 2.2328, 2.4036, 2.5848] },
-        { id: 'perception-drain', name: 'Perception Drain', type: 'Basic', scaling: 'atk', element: 'Havoc',
+        { id: 'perception-drain', name: 'Perception Drain', type: 'Basic', scaling: 'atk', element: 'Havoc', cooldown: 18,
             multipliers: [6.7200, 7.2710, 7.8220, 8.5934, 9.1444, 9.7782, 10.6598, 11.5414, 12.4230, 13.3598] },
         // A 21-hit AoE burst tied to the Resonance Liberation, entirely
         // uncaptured by any existing entry (confirmed 2026-07-14 via
@@ -616,7 +616,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.288, 0.3117, 0.3353, 0.3683, 0.392, 0.4191, 0.4569, 0.4947, 0.5325, 0.5726] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [0.384, 0.4156, 0.447, 0.4912, 0.5226, 0.5588, 0.6092, 0.6596, 0.71, 0.7636] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 16,
             multipliers: [1.9752, 2.1376, 2.2992, 2.5264, 2.688, 2.8744, 3.1336, 3.3928, 3.6512, 3.9272] },
             { id: 'skill2', name: 'Crimson Erosion', type: 'Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [1.2480, 1.3504, 1.4528, 1.5962, 1.6984, 1.8162, 1.9798, 2.1436, 2.3074, 2.4814] },
@@ -658,9 +658,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     yangyang: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.225, 0.2434, 0.2618, 0.2877, 0.3061, 0.3273, 0.3569, 0.3864, 0.4159, 0.4473] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 10,
             multipliers: [1.737, 1.8792, 2.0215, 2.2211, 2.3634, 2.5273, 2.7552, 2.9831, 3.2111, 3.4531] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 16,
             multipliers: [4.6862, 5.0703, 5.4545, 5.9925, 6.3766, 6.8186, 7.4341, 8.0485, 8.664, 9.3166] },
             { id: 'forte', name: 'Heavy Attack: Stormy Strike', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [0.3824, 0.4138, 0.4452, 0.4890, 0.5204, 0.5564, 0.6066, 0.6568, 0.7070, 0.7604] },
@@ -700,7 +700,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.3, 0.3246, 0.3492, 0.3837, 0.4083, 0.4366, 0.4759, 0.5153, 0.5547, 0.5965] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
             multipliers: [0.667, 0.7217, 0.7764, 0.853, 0.9077, 0.9706, 1.0581, 1.1456, 1.2331, 1.3261] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 20,
             multipliers: [2, 2.164, 2.328, 2.5576, 2.7216, 2.9102, 3.1726, 3.435, 3.6974, 3.9762] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [1.46, 1.5799, 1.6996, 1.8673, 1.987, 2.1246, 2.316, 2.5077, 2.6993, 2.9027] },
@@ -745,9 +745,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     chixia: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.333, 0.3604, 0.3877, 0.4259, 0.4532, 0.4846, 0.5283, 0.572, 0.6157, 0.6621] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 9,
             multipliers: [1.28, 1.3856, 1.4904, 1.6376, 1.7424, 1.8632, 2.0312, 2.1984, 2.3664, 2.5448] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 20,
             multipliers: [8.001, 8.6564, 9.3129, 10.2314, 10.8868, 11.6419, 12.6908, 13.7407, 14.7907, 15.9053] },
             { id: 'forte', name: 'Boom Boom', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [2.2000, 2.3804, 2.5608, 2.8134, 2.9938, 3.2013, 3.4899, 3.7785, 4.0672, 4.3739] },
@@ -786,9 +786,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // damage sources by roughly 7x. 'def' scaling was already supported
         // by the shared skill-def type but wired up for zero characters
         // before this fix.
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'def', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'def', element: 'Havoc', cooldown: 15,
             multipliers: [0.6786, 0.7343, 0.7899, 0.8678, 0.9235, 0.9875, 1.0765, 1.1655, 1.2546, 1.3492] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Havoc', cooldown: 16,
             multipliers: [2.262, 2.4475, 2.633, 2.8927, 3.0782, 3.2915, 3.5883, 3.885, 4.1818, 4.4971] },
         // FIXED 2026-07-14 — these 3 were mistagged element: 'Glacio' (a
         // copy-paste leftover) despite Taoqi being a Havoc character per
@@ -821,13 +821,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     baizhi: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.3294, 0.3564, 0.3834, 0.4212, 0.4482, 0.4793, 0.5225, 0.5657, 0.6089, 0.6548] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 16,
             multipliers: [0.0802, 0.0868, 0.0934, 0.1026, 0.1091, 0.1167, 0.1272, 0.1377, 0.1482, 0.1594] },
         // Her entire Resonance Liberation ("Momentary Union") had NO entry at
         // all — confirmed 2026-07-14 via encore.moe SkillId 1000403's
         // "Remnant Entities Damage" (her Forte Circuit has zero damage
         // attributes, correctly left unmodeled — pure healer).
-        { id: 'remnant-entities', name: 'Remnant Entities', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'remnant-entities', name: 'Remnant Entities', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [0.0205, 0.0222, 0.0239, 0.0262, 0.0279, 0.0298, 0.0325, 0.0352, 0.0379, 0.0407] },
     
         { id: 'basic-stage-2', name: 'Basic Attack (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Glacio',
@@ -849,9 +849,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     aalto: [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.16, 0.1732, 0.1863, 0.2047, 0.2178, 0.2329, 0.2539, 0.2748, 0.2958, 0.3181] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 10,
             multipliers: [0.3, 0.3246, 0.3492, 0.3837, 0.4083, 0.4366, 0.4759, 0.5153, 0.5547, 0.5965] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 20,
             multipliers: [2, 2.164, 2.328, 2.5576, 2.7216, 2.9102, 3.1726, 3.435, 3.6974, 3.9762] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [0.3, 0.3246, 0.3492, 0.3837, 0.4083, 0.4366, 0.4759, 0.5153, 0.5547, 0.5965] },
@@ -882,15 +882,15 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.1, 1.1906, 1.2808, 1.407, 1.497, 1.6008, 1.745, 1.8896, 2.0338, 2.187] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.333, 0.3604, 0.3878, 0.426, 0.4532, 0.4846, 0.5284, 0.572, 0.6158, 0.6622] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 5,
             multipliers: [1, 1.082, 1.164, 1.2788, 1.3608, 1.4551, 1.5863, 1.7175, 1.8487, 1.9881] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 25,
             multipliers: [7.3742, 7.9789, 8.5835, 9.4301, 10.0348, 10.7302, 11.6976, 12.6651, 13.6326, 14.6606] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [2.001, 2.1651, 2.3292, 2.5589, 2.723, 2.9117, 3.1742, 3.4368, 3.6993, 3.9782] },
             { id: 'skill-decipher', name: 'Decipher', type: 'Ultimate', scaling: 'atk', element: 'Electro',
             multipliers: [2.0010, 2.1651, 2.3292, 2.5589, 2.7230, 2.9117, 3.1742, 3.4368, 3.6993, 3.9782] },
-        { id: 'skill-divergence', name: 'Divergence', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill-divergence', name: 'Divergence', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 7,
             multipliers: [2.4940, 2.6987, 2.9034, 3.1896, 3.3940, 3.6294, 3.9565, 4.2838, 4.6109, 4.9587] },
         { id: 'skill-law-of-reigns', name: 'Law of Reigns', type: 'Ultimate', scaling: 'atk', element: 'Electro',
             multipliers: [3.2100, 3.4733, 3.7366, 4.1052, 4.3685, 4.6712, 5.0925, 5.5133, 5.9346, 6.3820] },
@@ -925,9 +925,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.2, 0.2164, 0.2328, 0.2558, 0.2722, 0.2911, 0.3173, 0.3435, 0.3698, 0.3977] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.2975, 0.3219, 0.3463, 0.3805, 0.4049, 0.4329, 0.472, 0.511, 0.55, 0.5915] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 6,
             multipliers: [1.188, 1.2855, 1.3829, 1.5193, 1.6167, 1.7287, 1.8846, 2.0404, 2.1963, 2.3619] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 20,
             multipliers: [4.4, 4.7608, 5.1216, 5.6268, 5.9876, 6.4025, 6.9798, 7.557, 8.1343, 8.7477] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [1.2986, 1.405, 1.5116, 1.6606, 1.767, 1.8896, 2.06, 2.2302, 2.4006, 2.5816] },
@@ -977,9 +977,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.156, 0.1688, 0.1816, 0.1995, 0.2123, 0.227, 0.2475, 0.268, 0.2884, 0.3102] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.247, 0.2673, 0.2876, 0.3159, 0.3362, 0.3595, 0.3919, 0.4243, 0.4567, 0.4911] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'def', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'def', element: 'Electro', cooldown: 3,
             multipliers: [0.12, 0.1299, 0.1397, 0.1535, 0.1633, 0.1747, 0.1904, 0.2061, 0.2219, 0.2386] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Electro', cooldown: 20,
             multipliers: [1.76, 1.9044, 2.0488, 2.2508, 2.3952, 2.561, 2.792, 3.0228, 3.2538, 3.4992] },
         { id: 'basic-lightning-infused-1', name: 'Lightning Infused (Basic Stage 1)', type: 'Forte', scope: 'Basic', scaling: 'def', element: 'Electro',
             multipliers: [0.1235, 0.1337, 0.1438, 0.158, 0.1681, 0.1798, 0.196, 0.2122, 0.2284, 0.2456] },
@@ -1040,7 +1040,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.456, 0.4934, 0.5308, 0.5832, 0.6206, 0.6636, 0.7234, 0.7832, 0.8431, 0.9066] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
             multipliers: [0.912, 0.9868, 1.0616, 1.1663, 1.2411, 1.3271, 1.4468, 1.5664, 1.6861, 1.8132] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 20,
             multipliers: [4.8, 5.1936, 5.5872, 6.1383, 6.5319, 6.9845, 7.6143, 8.244, 8.8738, 9.5429] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [0.41, 0.4437, 0.4773, 0.5244, 0.558, 0.5966, 0.6504, 0.7042, 0.758, 0.8152] },
@@ -1073,9 +1073,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'youhu': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.2383, 0.2579, 0.2774, 0.3048, 0.3243, 0.3468, 0.378, 0.4093, 0.4405, 0.4738] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 15,
             multipliers: [0.787, 0.8516, 0.9161, 1.0064, 1.071, 1.1452, 1.2484, 1.3517, 1.4549, 1.5646] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [1.6458, 1.7807, 1.9157, 2.1046, 2.2395, 2.3947, 2.6106, 2.8266, 3.0425, 3.2719] },
             { id: 'forte', name: 'Poetic Essence', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [1.8720, 2.0260, 2.1790, 2.3940, 2.5470, 2.7240, 2.9690, 3.2150, 3.4600, 3.7210] },
@@ -1111,9 +1111,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'brant': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.2542, 0.275, 0.2959, 0.3251, 0.3459, 0.3699, 0.4032, 0.4366, 0.4699, 0.5053] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 4,
             multipliers: [1.6795, 1.8173, 1.955, 2.1478, 2.2855, 2.444, 2.6643, 2.8847, 3.105, 3.3392] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 24,
             multipliers: [3.4224, 3.7032, 3.9839, 4.3767, 4.6575, 4.98, 5.4293, 5.8782, 6.3271, 6.8045] },
             { id: 'forte', name: 'Returned from Ashes', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [9.5000, 10.2791, 11.0581, 12.1490, 12.9278, 13.8237, 15.0700, 16.3167, 17.5629, 18.8871] },
@@ -1161,9 +1161,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'phoebe': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.1485, 0.1607, 0.1729, 0.19, 0.2021, 0.2161, 0.2356, 0.2551, 0.2746, 0.2953] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 12,
             multipliers: [0.63, 0.6818, 0.7334, 0.8058, 0.8574, 0.9168, 0.9994, 1.0822, 1.1648, 1.2526] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [2.02, 2.1857, 2.3513, 2.5832, 2.7489, 2.9394, 3.2044, 3.4694, 3.7344, 4.016] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [1.2477, 1.35, 1.4523, 1.5957, 1.698, 1.8156, 1.9794, 2.1429, 2.3067, 2.4807] },
@@ -1211,9 +1211,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [3.1595, 3.4191, 3.6776, 4.0399, 4.2994, 4.5974, 5.0116, 5.4258, 5.8411, 6.2813] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.287, 0.3106, 0.3341, 0.3671, 0.3906, 0.4177, 0.4553, 0.493, 0.5306, 0.5706] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 10,
             multipliers: [0.8128, 0.8792, 0.946, 1.0392, 1.106, 1.1824, 1.2892, 1.3956, 1.5024, 1.6156] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 20,
             multipliers: [5.535, 5.9889, 6.4428, 7.0782, 7.5321, 8.054, 8.7802, 9.5064, 10.2326, 11.0042] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scope: 'Heavy', scaling: 'atk', element: 'Aero',
             multipliers: [1.58, 1.71, 1.839, 2.02, 2.15, 2.299, 2.506, 2.713, 2.921, 3.141] },
@@ -1265,9 +1265,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1, 1.082, 1.164, 1.2788, 1.3608, 1.4551, 1.5863, 1.7175, 1.8487, 1.9881] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.296, 0.3203, 0.3446, 0.3786, 0.4028, 0.4308, 0.4696, 0.5084, 0.5473, 0.5885] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 5,
             multipliers: [0.3216, 0.348, 0.3744, 0.4113, 0.4377, 0.468, 0.5102, 0.5524, 0.5946, 0.6394] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [1.6022, 1.7335, 1.8649, 2.0488, 2.1802, 2.3313, 2.5415, 2.7517, 2.9619, 3.1852] },
             { id: 'crisis-response', name: 'Crisis Response Protocol', type: 'Skill', scaling: 'atk', element: 'Spectro',
             multipliers: [1.4450, 1.5636, 1.6819, 1.8480, 1.9666, 2.1027, 2.2924, 2.4817, 2.6716, 2.8729] },
@@ -1309,9 +1309,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [2.818, 3.049, 3.2799, 3.6036, 3.8345, 4.1, 4.47, 4.8396, 5.2091, 5.6021] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.4532, 0.4904, 0.5275, 0.5795, 0.6167, 0.6595, 0.7188, 0.7783, 0.8376, 0.9008] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 12,
             multipliers: [1.5774, 1.7068, 1.8361, 2.0172, 2.1466, 2.2953, 2.5023, 2.7092, 2.9162, 3.1361] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 20,
             multipliers: [1.5314, 1.657, 1.7826, 1.9584, 2.084, 2.2284, 2.4293, 2.6302, 2.8311, 3.0446] },
             { id: 'skillBase', name: "Shewolf's Hunt (Base)", type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [0.7081, 0.7662, 0.8242, 0.9055, 0.9636, 1.0303, 1.1232, 1.2161, 1.3090, 1.4077] },
@@ -1358,7 +1358,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'phrolova': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.5376, 0.5818, 0.6258, 0.6876, 0.7316, 0.7824, 0.8528, 0.9234, 0.994, 1.069] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 12,
             multipliers: [1.066, 1.1536, 1.241, 1.3634, 1.4508, 1.5512, 1.691, 1.831, 1.9708, 2.1194] },
         // 'ult' and the 3 "Enhanced Attack - Hecate" hits below are all
         // "considered Echo Skill DMG" per encore.moe (her Maestro/Hecate-
@@ -1442,9 +1442,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.0459, 0.0495, 0.0534, 0.0584, 0.062, 0.0665, 0.0724, 0.0784, 0.0844, 0.0909] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'hp', element: 'Aero',
             multipliers: [0.0241, 0.026, 0.028, 0.0308, 0.0327, 0.035, 0.0382, 0.0413, 0.0445, 0.0478] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 14,
             multipliers: [0.1487, 0.1608, 0.173, 0.19, 0.2021, 0.216, 0.2357, 0.2551, 0.2748, 0.2953] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 25,
             multipliers: [0.462, 0.4998, 0.5376, 0.5908, 0.6286, 0.6727, 0.7329, 0.7938, 0.854, 0.9184] },
         // Fixed 2026-07-17: this is Fleurdelys's Basic Attack Stage 1
         // (multiplier matches exactly — 3.27% at lvl1) mislabeled as generic
@@ -1477,9 +1477,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'augusta': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.289, 0.3127, 0.3364, 0.3696, 0.3933, 0.4206, 0.4585, 0.4964, 0.5343, 0.5746] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 15,
             multipliers: [3.3, 3.5706, 3.8412, 4.2201, 4.4907, 4.8021, 5.235, 5.6679, 6.1008, 6.561] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 25,
             multipliers: [5.53, 5.9841, 6.4375, 7.0723, 7.5257, 8.0474, 8.7725, 9.4983, 10.2234, 10.9948] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [1.4, 1.5148, 1.6296, 1.7904, 1.9052, 2.0372, 2.221, 2.4046, 2.5882, 2.7834] },
@@ -1488,7 +1488,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             // DMG" via wuthering.gg + WebSearch aggregation.
             { id: 'sublime-sunborne', name: 'Sublime is the Sun - Sunborne', type: 'Ultimate', scope: 'Heavy', scaling: 'atk', element: 'Electro',
             multipliers: [0.6000, 0.6492, 0.6984, 0.7673, 0.8165, 0.8731, 0.9518, 1.0305, 1.1093, 1.1929] },
-        { id: 'sublime-everbright', name: 'Sublime is the Sun - Everbright Protector', type: 'Ultimate', scope: 'Heavy', scaling: 'atk', element: 'Electro',
+        { id: 'sublime-everbright', name: 'Sublime is the Sun - Everbright Protector', type: 'Ultimate', scope: 'Heavy', scaling: 'atk', element: 'Electro', cooldown: 3,
             multipliers: [6.0000, 6.4924, 6.9848, 7.6732, 8.1656, 8.7312, 9.5180, 10.3058, 11.0927, 11.9293] },
         // Fixed 2026-07-17: also wrongly tagged Fusion (audit missed these
         // two, caught independently) — confirmed Electro DMG via WebSearch.
@@ -1544,20 +1544,20 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.26, 1.3634, 1.4667, 1.6113, 1.7147, 1.8335, 1.9988, 2.1641, 2.3294, 2.5051] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.441, 0.4772, 0.5134, 0.564, 0.6002, 0.6417, 0.6996, 0.7575, 0.8153, 0.8768] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 6,
             multipliers: [1.3131, 1.4209, 1.5286, 1.6796, 1.7873, 1.9108, 2.0831, 2.2553, 2.4275, 2.6107] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 25,
             multipliers: [5.5, 5.951, 6.402, 7.0334, 7.4844, 8.0031, 8.7247, 9.4463, 10.1679, 10.9346] },
         // Resonance Skill "Foresight Fugue" has 2 more distinctly-named
         // damage instances beyond "Pulse of Origins" (existing 'skill'), and
         // its Forte-empowered variant (confirmed 2026-07-14 via encore.moe
         // SkillIds 1003802/1003807). "Closing Refrain"/"Unfinished Refrain"
         // share byte-identical values — reported once under one id.
-        { id: 'closing-refrain', name: 'Closing Refrain', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'closing-refrain', name: 'Closing Refrain', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 8,
             multipliers: [2.1451, 2.321, 2.497, 2.7431, 2.9191, 3.1213, 3.4027, 3.6842, 3.9657, 4.2646] },
         // Fixed 2026-07-17: both confirmed "considered Resonance Liberation
         // DMG" (wuthering.wiki + WebSearch) — was missing scope override.
-        { id: 'arc-beyond-edge', name: 'Arc Beyond the Edge', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'arc-beyond-edge', name: 'Arc Beyond the Edge', type: 'Skill', scope: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 10,
             multipliers: [2.211, 2.3924, 2.5738, 2.8276, 3.0088, 3.2174, 3.5074, 3.7974, 4.0876, 4.3958] },
         { id: 'enhanced-arc-beyond-edge', name: 'Enhanced Arc Beyond the Edge', type: 'Forte', scope: 'Ultimate', scaling: 'atk', element: 'Aero',
             multipliers: [3.211, 3.4744, 3.7378, 4.1064, 4.3696, 4.6724, 5.0938, 5.515, 5.9362, 6.3838] },
@@ -1584,9 +1584,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'buling': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.2086, 0.2256, 0.2428, 0.2668, 0.2838, 0.3034, 0.3308, 0.3582, 0.3856, 0.4146] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 15,
             multipliers: [0.2937, 0.3178, 0.3419, 0.3756, 0.3997, 0.4274, 0.4659, 0.5045, 0.543, 0.584] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 24,
             multipliers: [1.8, 1.9476, 2.0952, 2.3019, 2.4495, 2.6192, 2.8554, 3.0915, 3.3277, 3.5786] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scope: 'Ultimate', scaling: 'atk', element: 'Electro',
             multipliers: [2.7, 2.9214, 3.1428, 3.4528, 3.6742, 3.9288, 4.2831, 4.6373, 4.9915, 5.3679] },
@@ -1639,9 +1639,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.2967, 0.3211, 0.3454, 0.3795, 0.4038, 0.4318, 0.4707, 0.5096, 0.5486, 0.5899] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.2977, 0.3221, 0.3465, 0.3807, 0.4051, 0.4331, 0.4722, 0.5112, 0.5503, 0.5918] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 5,
             multipliers: [0.18, 0.1948, 0.2095, 0.2302, 0.2449, 0.2619, 0.2855, 0.3092, 0.3327, 0.3578] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 25,
             multipliers: [5.5783, 6.0365, 6.4936, 7.1341, 7.5912, 8.1168, 8.8489, 9.581, 10.3131, 11.0904] },
             { id: 'forte', name: 'Seraphic Execution (Finisher)', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [1.1280, 1.2206, 1.3130, 1.4426, 1.5350, 1.6415, 1.7895, 1.9375, 2.0855, 2.2427] },
@@ -1649,7 +1649,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // (confirmed 2026-07-14 via encore.moe SkillId 1004002's "Resonance
         // Skill - Ascent of Malice DMG"), distinct from Encroach/Ravage
         // (already covered by 'skill').
-        { id: 'ascent-of-malice', name: 'Resonance Skill - Ascent of Malice', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'ascent-of-malice', name: 'Resonance Skill - Ascent of Malice', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 13,
             multipliers: [0.5188, 0.5614, 0.604, 0.6634, 0.706, 0.755, 0.823, 0.891, 0.9592, 1.0314] },
 
         { id: 'basic-2', name: 'Basic Attack Stage 2', type: 'Basic', scaling: 'atk', element: 'Fusion',
@@ -1711,9 +1711,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.3468, 0.375, 0.4038, 0.4434, 0.4716, 0.5046, 0.5502, 0.5952, 0.6408, 0.6894] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.168, 0.1818, 0.1956, 0.215, 0.2288, 0.2446, 0.2666, 0.2886, 0.3106, 0.3342] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 12,
             multipliers: [0.18, 0.1948, 0.2096, 0.2302, 0.245, 0.262, 0.2856, 0.3092, 0.3328, 0.3579] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 25,
             multipliers: [4.8, 5.1936, 5.5872, 6.1383, 6.5319, 6.9845, 7.6143, 8.244, 8.8738, 9.5429] },
             { id: 'skill2', name: 'Serrated Loop', type: 'Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [0.7024, 0.7600, 0.8176, 0.8976, 0.9552, 1.0216, 1.1136, 1.2056, 1.2976, 1.3960] },
@@ -1775,9 +1775,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // Skill) and "Sundering Strike" (Resonance Liberation) are all
         // "considered Echo Skill DMG" per encore.moe — added 2026-07-16
         // alongside the new 'echo' scope (see optimizer.ts's canonScope()).
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scope: 'echo', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scope: 'echo', scaling: 'atk', element: 'Aero', cooldown: 14,
             multipliers: [1.0842, 1.173, 1.2618, 1.3863, 1.4754, 1.5774, 1.7196, 1.8618, 2.004, 2.1552] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scope: 'echo', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scope: 'echo', scaling: 'atk', element: 'Aero', cooldown: 25,
             multipliers: [4, 4.328, 4.656, 5.1152, 5.4432, 5.8204, 6.3452, 6.87, 7.3948, 7.9524] },
             { id: 'skill2', name: 'Undaunted Wayfarer', type: 'Skill', scope: 'echo', scaling: 'atk', element: 'Aero',
             multipliers: [1.0840, 1.1732, 1.2620, 1.3865, 1.4753, 1.5774, 1.7199, 1.8620, 2.0040, 2.1553] },
@@ -1802,19 +1802,19 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [9.46, 10.2358, 11.0115, 12.0975, 12.8732, 13.7653, 15.0064, 16.2476, 17.4888, 18.8075] },
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.4335, 0.4691, 0.5046, 0.5544, 0.59, 0.6308, 0.6877, 0.7446, 0.8015, 0.8619] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 6,
             multipliers: [1.4016, 1.5166, 1.6314, 1.7922, 1.9073, 2.0394, 2.2234, 2.4071, 2.5912, 2.7863] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [4.4, 4.761, 5.122, 5.627, 5.988, 6.403, 6.98, 7.557, 8.135, 8.748] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [1.53, 1.6555, 1.781, 1.9566, 2.0821, 2.2264, 2.4271, 2.6278, 2.8286, 3.0418] },
-            { id: 'forte2', name: 'Basic Attack - Visual Impact', type: 'Forte', scaling: 'atk', element: 'Spectro',
+            { id: 'forte2', name: 'Basic Attack - Visual Impact', type: 'Forte', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [6.1200, 6.6219, 7.1237, 7.8263, 8.3281, 8.9053, 9.7082, 10.5111, 11.3141, 12.1672] },
         // Additive Color (Resonance Skill) and 4 more distinctly-named
         // damage instances inside the same Forte Circuit block as 'forte'/
         // 'forte2' (confirmed 2026-07-14 via encore.moe SkillIds
         // 1004502/1004503/1004507).
-        { id: 'additive-color', name: 'Additive Color', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'additive-color', name: 'Additive Color', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 6,
             multipliers: [1.17, 1.266, 1.362, 1.4962, 1.5922, 1.7026, 1.856, 2.0096, 2.163, 2.3262] },
         { id: 'vivid-tomorrow', name: 'Basic Attack - To a Vivid Tomorrow!', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
             multipliers: [1.0124, 1.0942, 1.1782, 1.2938, 1.3756, 1.4716, 1.6036, 1.7368, 1.8698, 2.0106] },
@@ -1854,7 +1854,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // guess). Only her Ultimate scales DEF — Skill/Basic/Heavy stay ATK.
         { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'def', element: 'Fusion',
             multipliers: [2.6273, 2.8427, 3.0582, 3.3598, 3.5752, 3.823, 4.1677, 4.5124, 4.857, 5.2233] },
-            { id: 'skill2', name: 'Distributed Array', type: 'Skill', scaling: 'atk', element: 'Fusion',
+            { id: 'skill2', name: 'Distributed Array', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 16,
             multipliers: [0.8000, 0.8656, 0.9312, 1.0232, 1.0888, 1.1644, 1.2692, 1.3740, 1.4792, 1.5908] },
         { id: 'forte', name: 'Heavy Attack - Geopotential Shift', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [0.7201, 0.7791, 0.8381, 0.9208, 0.9799, 1.0477, 1.1423, 1.2367, 1.3311, 1.4316] },
@@ -1881,9 +1881,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             // the stored value was only capturing one term, missing half the real damage.
             // Resolved via direct RoleInfo->SkillTree->Skill->SkillDescription datamine join.
             multipliers: [0.408, 0.4416, 0.475, 0.5218, 0.5554, 0.5938, 0.6474, 0.7008, 0.7544, 0.8112] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 8,
             multipliers: [1.012, 1.095, 1.178, 1.2942, 1.3772, 1.4726, 1.6054, 1.7382, 1.8709, 2.012] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [3.75, 4.0575, 4.365, 4.7955, 5.103, 5.4567, 5.9487, 6.4407, 6.9327, 7.4554], stackMax: 5, stackMultipliers: [0.25, 0.2705, 0.291, 0.3197, 0.3402, 0.3638, 0.3966, 0.4294, 0.4622, 0.4971] },
             { id: 'forte', name: 'Gavel of Earthshaker', type: 'Forte', scaling: 'atk', element: 'Spectro',
             multipliers: [1.5437, 1.6703, 1.7968, 1.9741, 2.1006, 2.2462, 2.4487, 2.6512, 2.8538, 3.0690] },
@@ -1942,11 +1942,11 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.2331, 0.2523, 0.2714, 0.2981, 0.3173, 0.3392, 0.3698, 0.4004, 0.431, 0.4635] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [0.677, 0.7326, 0.788, 0.8658, 0.9213, 0.985, 1.0739, 1.1627, 1.2515, 1.3459] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 25,
             multipliers: [5.0501, 5.4642, 5.8785, 6.4582, 6.8723, 7.3485, 8.0111, 8.6734, 9.336, 10.0402] },
             { id: 'skill_call_of_dawn', name: 'Sync Strike: Call of Dawn', type: 'Skill', scaling: 'atk', element: 'Fusion',
             multipliers: [0.8214, 0.8887, 0.9559, 1.0504, 1.1176, 1.1949, 1.3027, 1.4105, 1.5180, 1.6327] },
-        { id: 'ult_finale', name: 'Heavenfall Edict: Finale', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult_finale', name: 'Heavenfall Edict: Finale', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 25,
             multipliers: [9.0000, 9.7380, 10.4760, 11.5092, 12.2472, 13.0959, 14.2767, 15.4575, 16.6383, 17.8929] },
         { id: 'forte_overture', name: 'Seraphic Duet: Overture', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [1.8000, 1.9481, 2.0953, 2.3027, 2.4499, 2.6201, 2.8557, 3.0922, 3.3284, 3.5795] },
@@ -1988,9 +1988,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'denia': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Fusion',
             multipliers: [0.1644, 0.1779, 0.1914, 0.2103, 0.2238, 0.2393, 0.2608, 0.2824, 0.304, 0.3269] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 20,
             multipliers: [0.5256, 0.5688, 0.6119, 0.6724, 0.7156, 0.765, 0.8339, 0.9029, 0.9719, 1.0451] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 25,
             multipliers: [2, 2.164, 2.328, 2.5576, 2.7216, 2.9102, 3.1726, 3.435, 3.6974, 3.9762] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Fusion',
             multipliers: [0.6858, 0.742, 0.7982, 0.8769, 0.9332, 0.9978, 1.0878, 1.1778, 1.2677, 1.3633] },
@@ -1998,13 +1998,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // Stagecraft Form was captured above. Breakdown Form's Skill/
         // Liberation entirely missing (confirmed 2026-07-14 via encore.moe
         // SkillIds 1005302/1005303).
-        { id: 'skill_beckon_breakdown', name: 'Beckon - Breakdown Form', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill_beckon_breakdown', name: 'Beckon - Breakdown Form', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 4,
             multipliers: [0.5215, 0.5643, 0.6071, 0.6671, 0.7099, 0.7592, 0.8272, 0.8957, 0.9642, 1.037] },
-        { id: 'skill_banish_breakdown_1', name: 'Banish - Breakdown Form Stage 1', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill_banish_breakdown_1', name: 'Banish - Breakdown Form Stage 1', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 4,
             multipliers: [0.5232, 0.5664, 0.6093, 0.6693, 0.7122, 0.7614, 0.8301, 0.8988, 0.9675, 1.0404] },
-        { id: 'skill_banish_breakdown_2', name: 'Banish - Breakdown Form Stage 2', type: 'Skill', scaling: 'atk', element: 'Fusion',
+        { id: 'skill_banish_breakdown_2', name: 'Banish - Breakdown Form Stage 2', type: 'Skill', scaling: 'atk', element: 'Fusion', cooldown: 4,
             multipliers: [0.5634, 0.6096, 0.6558, 0.7205, 0.7667, 0.8199, 0.8938, 0.9677, 1.0416, 1.1201] },
-        { id: 'ult_breakdown', name: 'Final Act - Breakdown Form', type: 'Ultimate', scaling: 'atk', element: 'Fusion',
+        { id: 'ult_breakdown', name: 'Final Act - Breakdown Form', type: 'Ultimate', scaling: 'atk', element: 'Fusion', cooldown: 25,
             multipliers: [4.0, 4.328, 4.656, 5.1152, 5.4432, 5.8204, 6.3452, 6.87, 7.3948, 7.9524] },
     
         { id: 'basic-stagecraft-2', name: 'Basic Attack - Stagecraft Form (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Fusion',
@@ -2041,9 +2041,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'hiyuki': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.3794, 0.4106, 0.4418, 0.4852, 0.5164, 0.5522, 0.602, 0.6518, 0.7014, 0.7544] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 20,
             multipliers: [0.9856, 1.0669, 1.1477, 1.2606, 1.3415, 1.4343, 1.5638, 1.6928, 1.8223, 1.9598] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [2, 2.164, 2.328, 2.5576, 2.7216, 2.9102, 3.1726, 3.435, 3.6974, 3.9762] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [2.3796, 2.5747, 2.7698, 3.0428, 3.2379, 3.4625, 3.7746, 4.0867, 4.3988, 4.7306] },
@@ -2056,11 +2056,11 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // one aggregate figure (no per-stack table) — reported as a flat sum
         // per the established convention rather than fabricating a stack
         // model.
-        { id: 'skillJadeCleave', name: 'Frostblight: Jade Cleave', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skillJadeCleave', name: 'Frostblight: Jade Cleave', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 12,
             multipliers: [1.328, 1.4372, 1.546, 1.6984, 1.8072, 1.9324, 2.1068, 2.2812, 2.4552, 2.6404] },
-        { id: 'skillPetalfall', name: 'Frostblight: Petalfall', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skillPetalfall', name: 'Frostblight: Petalfall', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 12,
             multipliers: [1.61, 1.7425, 1.8745, 2.059, 2.191, 2.343, 2.554, 2.7655, 2.9765, 3.201] },
-        { id: 'ultBladeLiberation', name: 'Foreclaiming: Blade Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ultBladeLiberation', name: 'Foreclaiming: Blade Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [5.0, 5.41, 5.82, 6.394, 6.804, 7.2755, 7.9315, 8.5875, 9.2435, 9.9405] },
     
         { id: 'basic-present-2', name: 'Basic Attack - Present Self (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Glacio',
@@ -2101,9 +2101,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'jianxin': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.3494, 0.378, 0.4067, 0.4468, 0.4754, 0.5084, 0.5542, 0.6001, 0.6459, 0.6946] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 12,
             multipliers: [1.683, 1.8211, 1.9591, 2.1523, 2.2903, 2.449, 2.6698, 2.8906, 3.1114, 3.346] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 20,
             multipliers: [0.15, 0.1623, 0.1746, 0.1919, 0.2042, 0.2183, 0.238, 0.2577, 0.2774, 0.2983] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [1.25, 1.3525, 1.455, 1.5985, 1.701, 1.8189, 1.9829, 2.1469, 2.3109, 2.4852] },
@@ -2146,7 +2146,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'lucilla': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.2982, 0.3227, 0.3472, 0.3814, 0.4058, 0.434, 0.4731, 0.5122, 0.5513, 0.5929] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 16,
             multipliers: [0.2001, 0.2166, 0.2328, 0.2559, 0.2724, 0.2913, 0.3174, 0.3435, 0.3699, 0.3978] },
         // NOT-YET-RESOLVED (2026-07-16): 'ult'/'ultLettingItGo' (and a Forte-
         // tier "Oblivion" hit, currently missing from this file entirely) are
@@ -2159,7 +2159,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // Sigrika above, since `scope` is a single static value and this
         // needs to flip with a stance/mode toggle the engine doesn't have.
         // Left unchanged pending a design decision on a mode-switch primitive.
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [0.718, 0.7769, 0.8357, 0.9182, 0.977, 1.0447, 1.1389, 1.2331, 1.3273, 1.4274] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [1.4359, 1.5537, 1.6714, 1.8363, 1.954, 2.0894, 2.2778, 2.4662, 2.6546, 2.8548] },
@@ -2191,7 +2191,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'lucy': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Spectro',
             multipliers: [0.611, 0.6617, 0.7117, 0.7818, 0.8318, 0.8897, 0.9697, 1.0498, 1.1299, 1.2149] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Spectro', cooldown: 15,
             multipliers: [0.1512, 0.1637, 0.1761, 0.1935, 0.2058, 0.2201, 0.2399, 0.2598, 0.2796, 0.3008] },
         // Liberation is a drone/program deploy that independently triggers
         // 5 separately-named, separately-scaling damage instances (confirmed
@@ -2201,7 +2201,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // ever capturing the first of these, silently dropping the other 4
         // (including the single BIGGEST hit, Old Net Deep Dive, at nearly
         // double Netrunner's own multiplier).
-        { id: 'ult', name: 'Resonance Liberation - Netrunner: Override', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
+        { id: 'ult', name: 'Resonance Liberation - Netrunner: Override', type: 'Ultimate', scaling: 'atk', element: 'Spectro', cooldown: 25,
             multipliers: [4.5, 4.869, 5.238, 5.7546, 6.1236, 6.548, 7.1384, 7.7288, 8.3192, 8.9465] },
         { id: 'ultSpoofingPing', name: 'Spoofing Program: Ping', type: 'Ultimate', scaling: 'atk', element: 'Spectro',
             multipliers: [0.4, 0.4328, 0.4656, 0.5116, 0.5444, 0.5821, 0.6346, 0.687, 0.7395, 0.7953] },
@@ -2256,9 +2256,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'rebecca': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.3698, 0.4002, 0.4304, 0.473, 0.5032, 0.5382, 0.5866, 0.6352, 0.6836, 0.7352] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 1,
             multipliers: [1.19, 1.288, 1.3856, 1.522, 1.62, 1.732, 1.888, 2.044, 2.2, 2.366] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 25,
             multipliers: [0.1223, 0.1323, 0.1423, 0.1563, 0.1664, 0.1779, 0.1939, 0.21, 0.226, 0.243] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro',
             multipliers: [2, 2.164, 2.328, 2.5577, 2.7217, 2.9106, 3.1729, 3.4352, 3.6976, 3.9766] },
@@ -2320,9 +2320,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'sigrika': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.2664, 0.2883, 0.3101, 0.3407, 0.3626, 0.3877, 0.4226, 0.4576, 0.4925, 0.5297] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 10,
             multipliers: [0.72, 0.7794, 0.8384, 0.9209, 0.98, 1.0479, 1.1424, 1.2369, 1.3314, 1.4315] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 25,
             multipliers: [4.3329, 4.6882, 5.0435, 5.541, 5.8963, 6.3049, 6.8733, 7.4418, 8.0103, 8.6143] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [0.6665, 0.7212, 0.7759, 0.8524, 0.907, 0.9699, 1.0573, 1.1448, 1.2322, 1.3251] },
@@ -2340,7 +2340,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.9999, 2.1638, 2.328, 2.5574, 2.7213, 2.9098, 3.1721, 3.4344, 3.6967, 3.9758] },
         { id: 'forteRunicSoliskin', name: 'Runic Soliskin', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [1.9999, 2.1639, 2.3279, 2.5572, 2.7212, 2.9099, 3.172, 3.4346, 3.6967, 3.9778] },
-        { id: 'forteLearnMyTrueName', name: 'Forte Circuit - Learn My True Name', type: 'Forte', scaling: 'atk', element: 'Aero',
+        { id: 'forteLearnMyTrueName', name: 'Forte Circuit - Learn My True Name', type: 'Forte', scaling: 'atk', element: 'Aero', cooldown: 25,
             multipliers: [6.0938, 6.5934, 7.0931, 7.7926, 8.2923, 8.867, 9.6664, 10.4659, 11.2654, 12.1148] },
     
         { id: 'basicStage2', name: 'Basic Attack Stage 2', type: 'Basic', scaling: 'atk', element: 'Aero',
@@ -2370,7 +2370,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'suisui': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Glacio',
             multipliers: [0.3176, 0.3437, 0.3697, 0.4062, 0.4322, 0.4622, 0.5039, 0.5455, 0.5872, 0.6315] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 6,
             multipliers: [0.72, 0.7794, 0.8382, 0.921, 0.9798, 1.0482, 1.1424, 1.2366, 1.3314, 1.4316] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [0.3936, 0.426, 0.4584, 0.5036, 0.536, 0.5728, 0.6244, 0.6764, 0.728, 0.7828] },
@@ -2386,7 +2386,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // below. A 2nd-source build guide's "scales off ATK" prose was
         // describing the skill's other hits, not this one — resolved via
         // the raw API field, not a real source conflict).
-        { id: 'skillAwakeningSpring', name: 'Awakening Spring', type: 'Skill', scaling: 'hp', element: 'Glacio',
+        { id: 'skillAwakeningSpring', name: 'Awakening Spring', type: 'Skill', scaling: 'hp', element: 'Glacio', cooldown: 15,
             multipliers: [0.144, 0.1559, 0.1677, 0.1842, 0.196, 0.2096, 0.2285, 0.2474, 0.2663, 0.2863] },
         { id: 'forteIlluminatingDew', name: 'Illuminating Dew', type: 'Forte', scaling: 'atk', element: 'Glacio',
             multipliers: [0.528, 0.5713, 0.6146, 0.6753, 0.7186, 0.7683, 0.8376, 0.9069, 0.9762, 1.0498] },
@@ -2415,16 +2415,16 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'rover-aero': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
             multipliers: [0.1776, 0.1922, 0.2068, 0.2272, 0.2417, 0.2585, 0.2818, 0.3051, 0.3284, 0.3531] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 3,
             multipliers: [0.8355, 0.904, 0.9725, 1.0685, 1.137, 1.2157, 1.3254, 1.435, 1.5445, 1.661] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 24,
             multipliers: [2.7, 2.9214, 3.1428, 3.4528, 3.6742, 3.9288, 4.2831, 4.6373, 4.9915, 5.3679] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [0.6479, 0.701, 0.7541, 0.8285, 0.8816, 0.9427, 1.0277, 1.1127, 1.1977, 1.288] },
         // "Skyfall Severance" (Resonance Skill) and 2 more named Forte hits
         // beyond "Cloudburst Dance Stage 1" (confirmed 2026-07-14 via
         // encore.moe SkillIds 1003202/1003207).
-        { id: 'skillSkyfallSeverance', name: 'Skyfall Severance', type: 'Skill', scaling: 'atk', element: 'Aero',
+        { id: 'skillSkyfallSeverance', name: 'Skyfall Severance', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 12,
             multipliers: [0.8817, 0.9539, 1.0264, 1.1273, 1.1997, 1.2829, 1.3985, 1.5141, 1.6297, 1.7526] },
         { id: 'forteCloudburstDanceStage2', name: 'Cloudburst Dance Stage 2', type: 'Forte', scaling: 'atk', element: 'Aero',
             multipliers: [0.7116, 0.7699, 0.8283, 0.91, 0.9683, 1.0354, 1.1288, 1.2221, 1.3155, 1.4147] },
@@ -2453,9 +2453,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'rover-havoc': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Havoc',
             multipliers: [0.285, 0.3084, 0.3318, 0.3645, 0.3879, 0.4148, 0.4521, 0.4895, 0.5269, 0.5667] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Havoc', cooldown: 12,
             multipliers: [2.88, 3.1162, 3.3524, 3.683, 3.9192, 4.1908, 4.5686, 4.9464, 5.3244, 5.7258] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 16,
             multipliers: [7.65, 8.2773, 8.9046, 9.7829, 10.4102, 11.1316, 12.1352, 13.1389, 14.1426, 15.209] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [1.1475, 1.2416, 1.3357, 1.4675, 1.5616, 1.6698, 1.8203, 1.9709, 2.1214, 2.2814] },
@@ -2463,7 +2463,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // 2026-07-14 via encore.moe SkillId 1001707).
         { id: 'forteThwackblade', name: 'Umbra: Thwackblade', type: 'Forte', scaling: 'atk', element: 'Havoc',
             multipliers: [0.837, 0.9057, 0.9743, 1.0706, 1.1393, 1.2181, 1.3281, 1.4377, 1.5477, 1.6645] },
-        { id: 'forteLifetaker', name: 'Umbra: Lifetaker', type: 'Forte', scaling: 'atk', element: 'Havoc',
+        { id: 'forteLifetaker', name: 'Umbra: Lifetaker', type: 'Forte', scaling: 'atk', element: 'Havoc', cooldown: 12,
             multipliers: [2.98, 3.2244, 3.4688, 3.8112, 4.0556, 4.3364, 4.7276, 5.1184, 5.5094, 5.925] },
     
         { id: 'basicStage2', name: 'Basic Attack Stage 2', type: 'Basic', scaling: 'atk', element: 'Havoc',
@@ -2486,11 +2486,11 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     'rover-electro': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
             multipliers: [0.2569, 0.278, 0.2991, 0.3286, 0.3496, 0.3739, 0.4076, 0.4413, 0.475, 0.5108] },
-        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro',
+        { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Electro', cooldown: 10,
             multipliers: [1.008, 1.0906, 1.1734, 1.289, 1.3718, 1.4668, 1.599, 1.7312, 1.8634, 2.004] },
-        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro',
+        { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Electro', cooldown: 25,
             multipliers: [6, 6.492, 6.984, 7.6728, 8.1648, 8.7306, 9.5178, 10.305, 11.0922, 11.9286] },
-        { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro',
+        { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Electro', cooldown: 25,
             multipliers: [7.105, 7.6877, 8.2704, 9.086, 9.6687, 10.3388, 11.2711, 12.2036, 13.1354, 14.1258] },
         // A Resonance-Skill-triggered follow-up (found under the Resonance
         // Skill SkillId, not the Normal Attack one, despite its "Basic
@@ -2587,7 +2587,7 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.3519, 0.3807, 0.4096, 0.45, 0.4788, 0.512, 0.5582, 0.6043, 0.6505, 0.6995] },
         { id: 'skillBonus', name: "Resonance Skill - Wraith of Sound", type: 'Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [0.0782, 0.0846, 0.0911, 0.1, 0.1064, 0.1138, 0.1241, 0.1343, 0.1446, 0.1555] },
-        { id: 'ult', name: "Resonance Liberation - Hush of a Thousand Voices", type: 'Ultimate', scaling: 'atk', element: 'Havoc',
+        { id: 'ult', name: "Resonance Liberation - Hush of a Thousand Voices", type: 'Ultimate', scaling: 'atk', element: 'Havoc', cooldown: 25,
             multipliers: [10, 10.82, 11.64, 12.788, 13.608, 14.551, 15.863, 17.175, 18.487, 19.881] },
         { id: 'ultBonus', name: "Resonance Liberation - Shadow Copy", type: 'Ultimate', scaling: 'atk', element: 'Havoc',
             multipliers: [1.7, 1.8394, 1.9788, 2.174, 2.3134, 2.4737, 2.6968, 2.9198, 3.1428, 3.3798] },
