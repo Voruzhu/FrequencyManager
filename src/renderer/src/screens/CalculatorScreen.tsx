@@ -461,7 +461,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     // actual damage calc — see `setBonusBuffEntries`), so this preview never
     // silently disagrees with the real "calculate current" numbers below.
     const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
-    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear)];
+    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear, {}, c.name)];
     const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
     // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
     // same reasoning as the set-bonus buffs above, keeps this preview honest.

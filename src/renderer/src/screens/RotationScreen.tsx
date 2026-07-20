@@ -43,7 +43,7 @@ function conditionalBuffCandidates(member: PartyMemberResolved, catalog: Paramet
         ...conditionalWeaponBuffs(member.weapon, member.character, member.gear, catalog, {}, memberRefineMultiplier(member, gameId)),
         ...conditionalCharacterBuffs(member.character, member.gear, member.weapon, catalog),
         ...conditionalConstellationBuffs(member.character, member.sequence ?? 0, member.gear, member.weapon, catalog),
-        ...conditionalGearBuffs(member.gear),
+        ...conditionalGearBuffs(member.gear, {}, member.character.name),
     ];
 }
 
@@ -76,7 +76,7 @@ function computeStepDamage(
         ...weaponAutoBuffs(member.weapon, member.character, member.gear, catalog, {}, memberRefineMultiplier(member, gameId)),
         ...constellationAutoBuffs(member.character, member.sequence ?? 0, member.gear, member.weapon, catalog),
         ...characterAutoBuffs(member.character, member.gear, member.weapon, catalog),
-        ...gearAutoBuffs(member.gear),
+        ...gearAutoBuffs(member.gear, {}, member.character.name),
         ...enabledSelfBuffs,
     ];
     const stats = computeBuildStats(member.character, member.gear, buffs, member.weapon, catalog);
