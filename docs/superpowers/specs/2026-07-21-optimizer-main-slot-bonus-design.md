@@ -100,12 +100,23 @@ import { WW_ECHO_SELF_BUFFS } from '../game-data/echo-set-names';
  * `OptimizeConfig` as a generic parameter — this matches the renderer's own
  * existing `gearSelfBuffs` (`src/renderer/src/data/gameData.ts`), which
  * hardcodes the same WW-only table rather than generalizing it; GI has no
- * equivalent mechanic (see the original feature's spec, "Out of scope").
+ * equivalent mechanic (see the original feature's spec, "Out of scope"),
+ * so there's no second game's table to justify a real parameter the way
+ * `setBonusBuffEntries`'s `setBonuses` parameter is justified (GI and WW
+ * genuinely have different `SetBonusEntry[]` data). The 3rd parameter below
+ * exists purely so tests can inject a small synthetic table instead of
+ * depending on real, large, evolving game data — every real call site
+ * omits it and gets the real table, matching this codebase's existing
+ * default-parameter convention (e.g. `gearAutoBuffs`'s `stacks` parameter).
  */
-export function mainSlotEchoBuffs(gear: GearEntry[], characterName?: string): BuffEntry[] {
+export function mainSlotEchoBuffs(
+    gear: GearEntry[],
+    characterName?: string,
+    selfBuffs: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = WW_ECHO_SELF_BUFFS,
+): BuffEntry[] {
     const mainSlot = gear.find((g) => g.cost === 4);
     if (!mainSlot) return [];
-    return (WW_ECHO_SELF_BUFFS[mainSlot.name] ?? [])
+    return (selfBuffs[mainSlot.name] ?? [])
         .filter((sb) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
         .map((sb, i) => ({
             id: `gear-${mainSlot.id}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`,
@@ -188,13 +199,26 @@ handled by widening the one shared function.
 - `withinCostBudget`: a combo with 2 cost-4 pieces is rejected regardless
   of total cost; a combo with exactly 1 cost-4 piece and a valid total is
   accepted; a GI-style combo (no piece has a `cost` field) is unaffected
-  by the new check.
+  by the new check. **One existing case in this same `describe` block
+  needs correcting, not just leaving alone**: "undefined cap (GI, no cost
+  concept) never rejects anything" (`tests/shared/optimizer.test.ts:129`)
+  constructs 5 cost-4 pieces and asserts `true` — that assertion becomes
+  false once the new slot-shape check ships, since it's independent of
+  `maxTotalCost`. Fix by changing the test's data to exercise its actual
+  intent (no *sum-based* rejection when the cap is undefined) without
+  tripping the new rule — e.g. one cost-4 piece plus four cost-3 pieces
+  (sum 16, still no sum-cap rejection since `maxTotalCost` is undefined,
+  but only one cost-4 piece so the new rule doesn't reject it either) —
+  and rename the test to describe what it now actually verifies.
 - `mainSlotEchoBuffs`: returns the cost-4 piece's unconditional buff when
   present; returns `[]` when no cost-4 piece is in the combo; excludes a
   `restrictedToCharacters`-gated buff for a non-qualifying `characterName`
   and includes it for a qualifying one; excludes a `conditional:true`
   entry (e.g. a Jué-shaped stub) since those are out of this function's
-  scope by design.
+  scope by design. All cases use the function's 3rd (test-only) parameter
+  to inject a small synthetic table — real echo names from
+  `WW_ECHO_SELF_BUFFS` are never referenced directly in tests, so this
+  suite doesn't silently break the next time that table is re-sourced.
 - `computeBaseLoadouts` (or a focused integration case): a combo containing
   a main-slot-bonus-bearing echo produces higher relevant stats than an
   otherwise-identical combo without one, confirming the buff actually
