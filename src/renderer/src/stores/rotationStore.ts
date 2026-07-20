@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { userStorage } from '../lib/userStorage';
 import type { RotationStepSpec } from '../types';
+import type { WaveConfig } from '../lib/rotationEngine';
 
 /** A named, saved rotation — the active character's steps plus which conditional self-buffs were toggled on per party member. */
 export interface SavedRotation {
@@ -15,6 +16,12 @@ export interface SavedRotation {
     steps: RotationStepSpec[];
     /** characterId -> enabled conditional self-buff ids for that member. */
     enabledSelfBuffIds: Record<string, string[]>;
+    /** 'boss' = single WaveConfig entry (HP optional). 'waves' = 2+ entries.
+     * Undefined for a rotation saved before this field existed — treated as
+     * 'boss' mode with no enemy config (falls back to the plain single-target
+     * behavior every rotation had before this feature). */
+    mode?: 'boss' | 'waves';
+    waves?: WaveConfig[];
 }
 
 /** Saved rotations, keyed by game then rotation id — same shape convention as `loadoutStore`. */
