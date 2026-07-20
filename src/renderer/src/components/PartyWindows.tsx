@@ -18,7 +18,10 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
     const nameOf = (characterId: string) => data.characters.find((c) => c.id === characterId)?.name ?? characterId;
 
     const pick = (id: string) => { onSelect(id); closeWindow(); };
-    const openCreate = () => useWindowStore.getState().openWindow('Create Party', <CreatePartyWindow />);
+    // Creating a party also selects it — the new party is what the user was
+    // building this rotation around, not just an addition to a list they now
+    // have to reopen and pick from separately.
+    const openCreate = () => useWindowStore.getState().openWindow('Create Party', <CreatePartyWindow onCreated={onSelect} />);
 
     return (
         <div className="space-y-3">
@@ -51,7 +54,7 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
  * window (no cross-window state lifting: `useWindowStore` only holds ONE
  * window's content at a time, so a nested picker would replace this form
  * and lose its state; an inline search list avoids that entirely). */
-export function CreatePartyWindow() {
+export function CreatePartyWindow({ onCreated }: { onCreated?: (partyId: string) => void }) {
     const gameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(gameId);
     const closeWindow = useWindowStore((s) => s.closeWindow);
@@ -71,7 +74,9 @@ export function CreatePartyWindow() {
     const save = () => {
         const trimmed = name.trim();
         if (!trimmed || memberIds.length === 0) return;
-        useNamedPartyStore.getState().save(gameId, { id: nextPartyId(), name: trimmed, memberCharacterIds: memberIds, disabled: [] });
+        const id = nextPartyId();
+        useNamedPartyStore.getState().save(gameId, { id, name: trimmed, memberCharacterIds: memberIds, disabled: [] });
+        onCreated?.(id);
         closeWindow();
     };
 
