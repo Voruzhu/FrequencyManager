@@ -31,7 +31,7 @@ export function GearStatsList({ g }: { g: GearData }) {
  * Equip/Unequip in the gear picker, Remove in the Inventory screen).
  */
 export function GearCard({
-    g, gameId, expanded, onToggleExpand, onClick, actions, highlight,
+    g, gameId, expanded, onToggleExpand, onClick, actions, highlight, mainSlot,
 }: {
     g: GearData;
     gameId: string;
@@ -42,6 +42,8 @@ export function GearCard({
     actions?: React.ReactNode;
     /** Highlight ring, e.g. "currently equipped". */
     highlight?: boolean;
+    /** WW only — true when this is the character's equipped cost-4 "main slot" echo. */
+    mainSlot?: boolean;
 }) {
     const data = useGameData(gameId);
     return (
@@ -64,6 +66,7 @@ export function GearCard({
                             {g.name !== g.setName && <span className="truncate">{g.setName}</span>}
                             <span className="truncate">{g.mainStat.label} {formatGearStat(g.mainStat)}</span>
                             {g.cost != null ? <Badge variant="outline">Cost {g.cost}</Badge> : g.slot ? <Badge variant="outline">{g.slot}</Badge> : null}
+                            {mainSlot && <Badge variant="secondary">Main Slot</Badge>}
                             <Badge variant="outline">{g.rarity}★</Badge>
                         </div>
                     </div>
