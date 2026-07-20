@@ -7,8 +7,11 @@ import type { RotationStepSpec } from '../types';
 export interface SavedRotation {
     id: string;
     name: string;
-    /** Whose party this rotation was built against — informational, the steps carry their own characterId. */
-    anchorCharacterId: string;
+    /** Which named party (`namedPartyStore.ts`) this rotation's turn-picker is
+     * restricted to. Undefined for a rotation saved before this field existed,
+     * or one never assigned a party — it still loads fine, just without a
+     * turn-picker restriction until a party is explicitly selected. */
+    partyId?: string;
     steps: RotationStepSpec[];
     /** characterId -> enabled conditional self-buff ids for that member. */
     enabledSelfBuffIds: Record<string, string[]>;

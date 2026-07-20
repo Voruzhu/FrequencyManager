@@ -28,7 +28,7 @@ function seed() {
     useLoadoutStore.setState({ byGame: { [GAME]: { jinhsi: { weaponId: 'w1', gearIds: ['g1'] } }, [OTHER_GAME]: { x: { gearIds: [] } } } });
     useSequenceStore.setState({ byGame: { [GAME]: { jinhsi: 2 }, [OTHER_GAME]: { x: 0 } } });
     usePartyStore.setState({ byGame: { [GAME]: { jinhsi: { teammates: [], disabled: [] } }, [OTHER_GAME]: {} } });
-    useRotationStore.setState({ byGame: { [GAME]: { r1: { id: 'r1', name: 'Rot', anchorCharacterId: 'jinhsi', steps: [], enabledSelfBuffIds: {} } }, [OTHER_GAME]: {} } });
+    useRotationStore.setState({ byGame: { [GAME]: { r1: { id: 'r1', name: 'Rot', partyId: 'p1', steps: [], enabledSelfBuffIds: {} } }, [OTHER_GAME]: {} } });
     useCalcStore.setState({ characterId: 'jinhsi', equipped: { weaponId: 'w1', gearIds: ['g1'] }, results: [{}] as never });
 }
 

@@ -6,12 +6,14 @@ import { RotationBuilder } from '../components/modules/RotationBuilder';
 import { useGameStore } from '../stores/gameStore';
 import { useCalcStore } from '../stores/calcStore';
 import { useOwnedInventory } from '../stores/inventoryStore';
-import { usePartyStore } from '../stores/partyStore';
+import { useNamedPartyStore } from '../stores/namedPartyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { useRotationStore, type SavedRotation } from '../stores/rotationStore';
 import { useGameData } from '../data/gameData';
-import { resolveParty, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
+import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberResolved } from '@/lib/party';
+import { PartyPickerWindow } from '../components/PartyWindows';
+import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
@@ -101,28 +103,30 @@ export function RotationScreen() {
     const data = useGameData(activeGameId);
     const owned = useOwnedInventory(activeGameId);
     const calc = useCalcStore();
-    const activeChar = data.characters.find((c) => c.id === calc.characterId) ?? null;
 
-    const partyTeammates = usePartyStore((s) => (activeChar ? s.byGame[activeGameId]?.[activeChar.id]?.teammates.length ?? 0 : 0));
-    // Re-resolve whenever the active character, their party, or owned gear changes.
+    const [activePartyId, setActivePartyId] = useState<string | undefined>(undefined);
+    const partyMemberCount = useNamedPartyStore((s) => (activePartyId ? s.byGame[activeGameId]?.[activePartyId]?.memberCharacterIds.length ?? 0 : 0));
+    // Re-resolve whenever the selected party or owned gear changes. No longer
+    // depends on the Calculator's active character at all — a named party has
+    // no anchor slot (see `resolveNamedParty`).
     const { partyMembers, partyDisabled } = useMemo(() => {
-        if (!activeChar) return { partyMembers: [] as PartyMemberResolved[], partyDisabled: [] as string[] };
-        const equippedGear = calc.equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as typeof owned.gear;
-        const party = usePartyStore.getState().getParty(activeGameId, activeChar.id);
+        if (!activePartyId) return { partyMembers: [] as PartyMemberResolved[], partyDisabled: [] as string[] };
+        const party = useNamedPartyStore.getState().byGame[activeGameId]?.[activePartyId];
+        if (!party) return { partyMembers: [] as PartyMemberResolved[], partyDisabled: [] as string[] };
         const getLoadout = (charId: string) => useLoadoutStore.getState().getLoadout(activeGameId, charId);
         const getSequence = (charId: string) => useSequenceStore.getState().getSequence(activeGameId, charId);
-        const resolved = resolveParty(data, party, activeChar, equippedGear, calc.equipped.weaponId, owned.gear, getLoadout, calc.sequence, getSequence, calc.targetStatuses);
+        const resolved = resolveNamedParty(data, party, owned.gear, getLoadout, getSequence, calc.targetStatuses);
         return { partyMembers: resolved.members, partyDisabled: party.disabled };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeChar, activeGameId, calc.equipped.gearIds, calc.equipped.weaponId, calc.sequence, owned.gear, partyTeammates, data, calc.targetStatuses]);
+    }, [activePartyId, activeGameId, owned.gear, partyMemberCount, data, calc.targetStatuses]);
 
     const [steps, setSteps] = useState<RotationStepSpec[]>([]);
 
-    // The rotation isn't limited to the configured party — any character can be
-    // added via the "Add Character" picker. Once a step references a character
-    // outside the party, resolve them the same way `resolveParty` resolves a
-    // teammate: from THEIR OWN persisted loadout/sequence, never a separate
-    // hand-picked build.
+    // A step can reference a character outside the currently-selected party —
+    // either no party is selected yet (full-roster picker still active) or a
+    // saved rotation's steps predate the party it's now attached to. Resolve
+    // them the same way `resolveNamedParty` resolves a party member: from
+    // THEIR OWN persisted loadout/sequence, never a separate hand-picked build.
     const extraMembers = useMemo(() => {
         const partyIds = new Set(partyMembers.map((m) => m.character.id));
         const extraIds = [...new Set(steps.map((s) => s.characterId))].filter((id) => !partyIds.has(id));
@@ -163,11 +167,11 @@ export function RotationScreen() {
     const [loadedRotationId, setLoadedRotationId] = useState<string | null>(null);
 
     const handleSave = () => {
-        if (!activeChar || steps.length === 0) return;
+        if (steps.length === 0) return;
         const name = rotationName.trim();
         if (!name) return;
         const id = loadedRotationId ?? nextRotationId();
-        const rotation: SavedRotation = { id, name, anchorCharacterId: activeChar.id, steps, enabledSelfBuffIds };
+        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, enabledSelfBuffIds };
         useRotationStore.getState().save(activeGameId, rotation);
         setLoadedRotationId(id);
         toast.success(`Saved "${name}"`);
@@ -177,6 +181,7 @@ export function RotationScreen() {
         setEnabledSelfBuffIds(r.enabledSelfBuffIds);
         setRotationName(r.name);
         setLoadedRotationId(r.id);
+        setActivePartyId(r.partyId);
     };
     const handleDelete = (r: SavedRotation) => {
         useRotationStore.getState().remove(activeGameId, r.id);
@@ -233,16 +238,20 @@ export function RotationScreen() {
 
     return (
         <div className="mx-auto max-w-5xl space-y-6 p-6">
-            <PageHeader title="Rotation Builder" description="Sequence character actions from your party — or add any character — and see real damage totals." />
-            {!activeChar ? (
-                <EmptyState icon={TargetIcon} title="Select a character in the Calculator first" description="The rotation builder sequences whatever party you've already set up for your active Calculator character." />
+            <PageHeader
+                title="Rotation Builder"
+                description="Pick a party, sequence turns, and see real damage totals."
+                actions={<Button variant="secondary" onClick={() => useWindowStore.getState().openWindow('Party', <PartyPickerWindow onSelect={setActivePartyId} />)}>Party{activePartyId ? ` (${partyMembers.length}/3)` : ''}</Button>}
+            />
+            {!activePartyId ? (
+                <EmptyState icon={TargetIcon} title="Select a party" description="Pick a saved party (or create one) to start building a rotation." />
             ) : members.length === 0 ? (
-                <EmptyState icon={TargetIcon} title="No party members resolved" description="Something went wrong resolving your active character — try reselecting it in the Calculator." />
+                <EmptyState icon={TargetIcon} title="No party members resolved" description="This party has no members left, or they couldn't be resolved — check it in the Party picker." />
             ) : (
                 <>
                     <Card>
                         <CardContent className="p-4">
-                            <RotationBuilder field={field} value={steps} onChange={setSteps} />
+                            <RotationBuilder field={field} value={steps} onChange={setSteps} restrictToCharacterIds={activePartyId ? partyMembers.map((m) => m.character.id) : undefined} />
                         </CardContent>
                     </Card>
 

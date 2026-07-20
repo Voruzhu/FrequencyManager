@@ -8,6 +8,9 @@ interface RotationBuilderProps {
     value: RotationStepSpec[];
     onChange: (value: RotationStepSpec[]) => void;
     disabled?: boolean;
+    /** When set, "Add Character" only offers these — no full-roster search
+     * override. Undefined = today's full-roster picker (no party selected yet). */
+    restrictToCharacterIds?: string[];
 }
 
 /**
@@ -27,7 +30,7 @@ interface RotationBuilderProps {
  * - Total time / energy summary
  * - Action buttons (clear, reset, copy)
  */
-export function RotationBuilder({ field, value, onChange, disabled }: RotationBuilderProps) {
+export function RotationBuilder({ field, value, onChange, disabled, restrictToCharacterIds }: RotationBuilderProps) {
     const config = field.rotationConfig;
 
     // Hooks must run unconditionally on every render (Rules of Hooks) — the
@@ -150,19 +153,38 @@ export function RotationBuilder({ field, value, onChange, disabled }: RotationBu
                 </div>
             </div>
 
-            {/* Add Character — opens a searchable/filterable picker over the FULL game
-                roster (not just the current party), so any character can get a step. */}
+            {/* Add Character — restricted to the selected party's members when
+                one is set; otherwise a searchable/filterable picker over the
+                FULL game roster (no party selected yet, nothing to restrict to). */}
             <div>
-                <button
-                    onClick={() => useWindowStore.getState().openWindow('Add Character', <RotationCharacterPickerWindow onPick={handleAddStep} />)}
-                    disabled={disabled || totalTime >= maxTime}
-                    className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span className="text-sm text-fg">Add Character</span>
-                </button>
+                {restrictToCharacterIds && restrictToCharacterIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                        {restrictToCharacterIds.map((id) => {
+                            const c = characters.find((ch) => ch.id === id);
+                            return (
+                                <button
+                                    key={id}
+                                    onClick={() => handleAddStep(id)}
+                                    disabled={disabled || totalTime >= maxTime}
+                                    className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {c?.label ?? id}
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => useWindowStore.getState().openWindow('Add Character', <RotationCharacterPickerWindow onPick={handleAddStep} />)}
+                        disabled={disabled || totalTime >= maxTime}
+                        className="flex items-center gap-2 px-3 py-2 bg-surface border border-border rounded-lg hover:bg-surface-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-sm text-fg">Add Character</span>
+                    </button>
+                )}
             </div>
 
             {/* Timeline / Rotation steps */}
