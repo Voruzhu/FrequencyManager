@@ -153,25 +153,34 @@ export function conditionalConstellationBuffs(character: CharacterData | null, s
 export const gearBuffId = (gearId: string, sb: { stat: string; appliesTo?: string[] }, i: number) =>
     `gear-${gearId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
-/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. */
-export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}) {
+/** The character's single "main slot" echo id, if any — WW's cost-4 pieces are the only ones that can occupy Slot 1, and only Slot 1 unlocks an echo's main-slot bonus. `calcStore`'s equip-time exclusivity (Task 4) keeps at most one cost-4 piece equipped going forward; this guards stale/imported loadouts that somehow have more than one, by treating only the first as active. */
+function mainSlotEchoId(gear: GearData[]): string | undefined {
+    return gear.find((g) => g.cost === 4)?.id;
+}
+
+/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot (cost-4) bonus, so a cost-4 piece that isn't the (single) main-slot one is skipped entirely. */
+export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string) {
     const out: Array<{ id: string; name: string; source: string; stat: string; value: number; appliesTo?: string[] }> = [];
+    const mainSlotId = mainSlotEchoId(gear);
     for (const g of gear) {
+        if (g.cost === 4 && g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
-            .filter(({ sb }) => sb.conditional === false)
+            .filter(({ sb }) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
             .forEach(({ sb, i }) => { const id = gearBuffId(g.id, sb, i); out.push({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, value: resolveStackedValue(id, { value: sb.value }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }); });
     }
     return out;
 }
 
-/** Conditional (opt-in) self-buffs from specific named equipped gear pieces' own "Echo Skill" — mirrors `gearAutoBuffs`. */
-export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, number> = {}) {
+/** Conditional (opt-in) self-buffs from specific named equipped gear pieces' own "Echo Skill" — mirrors `gearAutoBuffs`, including the same main-slot exclusivity guard. `characterName` gates entries with `restrictedToCharacters`. */
+export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string) {
     const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> = [];
+    const mainSlotId = mainSlotEchoId(gear);
     for (const g of gear) {
+        if (g.cost === 4 && g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
-            .filter(({ sb }) => sb.conditional !== false)
+            .filter(({ sb }) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
             .forEach(({ sb, i }) => { const id = gearBuffId(g.id, sb, i); const autoTrigger = (sb as { autoTrigger?: { skillIds: string[]; durationSeconds: number } }).autoTrigger; out.push({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, label: sb.label, value: resolveStackedValue(id, { value: sb.value }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}), ...(autoTrigger ? { autoTrigger } : {}) }); });
     }
     return out;
