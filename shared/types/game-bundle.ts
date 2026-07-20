@@ -37,6 +37,8 @@ export interface SkillDef {
     scaling?: 'atk' | 'hp' | 'def' | 'em';
     /** Damage element (for reactions/element bonus). Defaults to the character's element. */
     element?: string;
+    /** Reuse timer in seconds — see `CharacterSkill.cooldown` for the full doc. */
+    cooldown?: number;
     /**
      * Talent-level multiplier table, indexed by (talentLevel - 1). When present,
      * the engine uses `multipliers[level-1]` instead of `multiplier`.

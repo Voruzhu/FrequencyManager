@@ -120,6 +120,7 @@ function characterSkills(skills: CharacterSkill[], element: string): SkillDef[] 
             multiplier: ref,
             scaling: s.scaling ?? 'atk',
             element: s.element ?? element,
+            cooldown: s.cooldown,
             multipliers: s.multipliers,
             stackMax: s.stackMax,
             stackMultiplier: s.stackMultiplier,

@@ -141,6 +141,8 @@ export interface CharacterSkill {
     scaling?: 'atk' | 'hp' | 'def' | 'em';
     /** Damage element. Defaults to the character's element. */
     element?: string;
+    /** Reuse timer in seconds — how long before this skill can be cast again, NOT how long casting it takes (no cast-time data exists anywhere in this project's sources). Undefined for skills with no real cooldown (most Basic Attacks). */
+    cooldown?: number;
     /** Multiplier per talent level, indexed by (level - 1). Preferred. */
     multipliers?: number[];
     /** Single multiplier fallback when no per-level table is provided. */
