@@ -154,7 +154,7 @@ export const gearBuffId = (gearId: string, sb: { stat: string; appliesTo?: strin
     `gear-${gearId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
 /** The character's single "main slot" echo id, if any — WW's cost-4 pieces are the only ones that can occupy Slot 1, and only Slot 1 unlocks an echo's main-slot bonus. `calcStore`'s equip-time exclusivity (Task 4) keeps at most one cost-4 piece equipped going forward; this guards stale/imported loadouts that somehow have more than one, by treating only the first as active. */
-function mainSlotEchoId(gear: GearData[]): string | undefined {
+export function mainSlotEchoId(gear: GearData[]): string | undefined {
     return gear.find((g) => g.cost === 4)?.id;
 }
 

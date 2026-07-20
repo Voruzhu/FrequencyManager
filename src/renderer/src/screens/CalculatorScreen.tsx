@@ -18,7 +18,7 @@ import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
-import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
+import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue, mainSlotEchoId } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
@@ -613,7 +613,8 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                             </div>
                         )}
                         {(() => {
-                            const gearWithBuffs = gear.filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false));
+                            const mainSlotId = mainSlotEchoId(gear);
+                            const gearWithBuffs = gear.filter((g) => g.cost !== 4 || g.id === mainSlotId).filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name))));
                             if (gearWithBuffs.length === 0) return null;
                             return (
                                 <div>
@@ -622,7 +623,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                         {gearWithBuffs.flatMap((g) =>
                                             gearSelfBuffs(g)
                                                 .map((sb, i) => ({ sb, i }))
-                                                .filter(({ sb }) => sb.conditional !== false)
+                                                .filter(({ sb }) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name)))
                                                 .map(({ sb, i }) => {
                                                     const id = gearBuffId(g.id, sb, i);
                                                     const on = hasBuff(id);
