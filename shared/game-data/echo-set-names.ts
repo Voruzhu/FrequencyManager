@@ -781,8 +781,10 @@ export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: str
     // Main-slot bonus only — this echo ALSO unlocks a brand-new castable
     // Echo Skill move for Lucy/Rebecca specifically; that portion is a
     // separate, larger feature (a new skill, not a buff) and is
-    // intentionally not modeled here. Source: api.encore.moe/en/echo/6000201
-    // Skill.DescriptionEx.
+    // intentionally not modeled here. Sources: api.encore.moe/en/echo/6000201
+    // Skill.DescriptionEx, cross-checked against wuthering.gg/echos/
+    // reminiscence---nightmare-adam-smasher (both agree: 15% Crit Rate,
+    // Lucy/Rebecca only).
     'Reminiscence - Nightmare: Adam Smasher': [
         { stat: 'critRate', label: 'Crit. Rate (Main Slot)', value: 15, conditional: false, restrictedToCharacters: ['Lucy', 'Rebecca'] },
     ],
