@@ -152,7 +152,7 @@ export interface ConstellationNode {
      */
     selfBuffs?: ConditionalSelfBuff[];
     /** PARTY-WIDE buffs this node deploys (support characters), same shape as `WeaponEntry.buffs`. */
-    buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
 }
 
 export interface CharacterEntry {
@@ -206,7 +206,7 @@ export interface WeaponEntry {
      * `appliesTo` scopes a DMG% bonus to specific attack types (per-member, applied
      * the same way as a scoped BuffEntry — see `appliesTo` above).
      */
-    buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
     /**
      * SELF buffs the weapon passive grants the wielder (best-effort, R1). Surfaced
      * as opt-in toggles in the Calculator (default OFF, since many are conditional);
