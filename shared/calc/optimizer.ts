@@ -24,6 +24,7 @@ import type {
     EnemyEntry,
     SetBonusEntry,
 } from '../types/game-bundle';
+import { WW_ECHO_SELF_BUFFS } from '../game-data/echo-set-names';
 
 const GEAR_SLOTS = 5;
 
@@ -398,6 +399,51 @@ export function setBonusBuffEntries(gear: GearEntry[], setBonuses: SetBonusEntry
         sb.buffs.map((b, i) => ({ id: `setbonus-${sb.name}-${sb.tier}-${i}`, name: `${sb.name} (${sb.tier === 'full' ? 'full' : '2pc'})`, source: sb.name, stat: b.stat, value: b.value, ...(b.appliesTo ? { appliesTo: b.appliesTo } : {}) })));
 }
 
+/**
+ * A gear combo's main-slot echo bonus (WW only) — the UNCONDITIONAL
+ * (`conditional:false`) portion of `WW_ECHO_SELF_BUFFS` for whichever cost-4
+ * echo is in this combo, gated by `restrictedToCharacters`. Conditional
+ * (opt-in) entries are NOT included here — those already reach the
+ * Optimizer via the caller's own manually-toggled buff list
+ * (`OptimizeConfig.buffs`), the same way conditional weapon/character
+ * buffs do.
+ *
+ * Must be computed PER COMBO (unlike kit/weapon buffs, which are the same
+ * across every combo during a search) since which echo (if any) occupies
+ * the combo's own cost-4 slot varies per combo — see `computeBaseLoadouts`,
+ * the one caller. `withinCostBudget`'s at-most-one-cost-4-piece rule
+ * guarantees `gear.find` below resolves at most one match, so no separate
+ * "which one is the real main slot" tie-break is needed here (contrast the
+ * renderer's `mainSlotEchoId` in `src/renderer/src/lib/selfBuffs.ts`, which
+ * defends against stale/imported data that predates that constraint).
+ *
+ * Directly imports `WW_ECHO_SELF_BUFFS` rather than threading it through
+ * `OptimizeConfig` as a generic parameter — GI has no equivalent mechanic,
+ * so there's no second game's table to justify genericity here the way
+ * `setBonusBuffEntries`'s `setBonuses` parameter is justified. The 3rd
+ * parameter below exists purely so tests can inject a small synthetic
+ * table instead of depending on real, evolving game data; every real call
+ * site omits it and gets the real table.
+ */
+export function mainSlotEchoBuffs(
+    gear: GearEntry[],
+    characterName?: string,
+    selfBuffs: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = WW_ECHO_SELF_BUFFS,
+): BuffEntry[] {
+    const mainSlot = gear.find((g) => g.cost === 4);
+    if (!mainSlot) return [];
+    return (selfBuffs[mainSlot.name] ?? [])
+        .filter((sb) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
+        .map((sb, i) => ({
+            id: `gear-${mainSlot.id}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`,
+            name: `${mainSlot.name} (Main Slot)`,
+            source: mainSlot.name,
+            stat: sb.stat,
+            value: sb.value,
+            ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}),
+        }));
+}
+
 /** Multiplier for a skill at a talent level (uses the table when present). */
 export function skillMultiplierAt(skill: SkillDef, level: number): number {
     const table = skill.multipliers;
@@ -761,12 +807,16 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         // be derived per combo, same reason as `gearScopedBuffs` below, not
         // assumed once upfront from a caller's "intended sets" hint.
         const comboSetBuffs = config.setBonuses ? setBonusBuffEntries(gear, config.setBonuses, c.name) : [];
-        const allBuffs = [...config.buffs, ...comboSetBuffs];
+        // Main-slot echo bonus (WW only) — same "depends on this combo's own
+        // real gear" reasoning as comboSetBuffs above; withinCostBudget
+        // guarantees at most one cost-4 piece ever reaches a scored combo.
+        const comboGearBuffs = mainSlotEchoBuffs(gear, c.name);
+        const allBuffs = [...config.buffs, ...comboSetBuffs, ...comboGearBuffs];
         const stats = computeBuildStats(c, gear, allBuffs, config.weapon, config.catalog);
         // Per-attack-type DMG% sub-stats (e.g. WW's "Basic Attack DMG Bonus")
         // vary per combo, unlike kit/weapon buffs — must be recomputed here,
         // not folded into `kitScopedBuffs` above (see `gearScopedBuffs`).
-        const comboScopedBuffs = [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)];
+        const comboScopedBuffs = [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...comboGearBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)];
         const ctx: SkillContext = { ...baseCtx, scopedBuffs: comboScopedBuffs };
         // Surface the TOTAL Basic/Heavy/Skill/Liberation DMG Bonus (kit +
         // weapon + gear) as plain stats too — display + Optimizer targets,

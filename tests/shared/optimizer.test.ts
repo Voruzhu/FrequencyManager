@@ -1,7 +1,7 @@
 import {
     combinations, subtreeSize, totalCombinations, gearSlotsFor,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
-    enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs, activeSetBonuses, setBonusBuffEntries,
+    enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs, activeSetBonuses, setBonusBuffEntries, mainSlotEchoBuffs,
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
 import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry, SetBonusEntry } from '../../shared/types/game-bundle';
@@ -154,6 +154,107 @@ describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes
     it('a GI-style combo (no piece has a cost field) is unaffected by the slot-shape rule', () => {
         const combo = [gear(1), gear(1), gear(1), gear(1), gear(1)];
         expect(withinCostBudget(combo, undefined)).toBe(true);
+    });
+});
+
+describe('mainSlotEchoBuffs — WuWa cost-4 echo main-slot bonus, derived per combo', () => {
+    const SELF_BUFFS: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = {
+        'Test Main Slot Echo': [
+            { stat: 'critRate', value: 15, conditional: false },
+        ],
+        'Test Restricted Echo': [
+            { stat: 'critRate', value: 15, conditional: false, restrictedToCharacters: ['Rebecca'] },
+        ],
+        'Test Conditional Echo': [
+            { stat: 'atk', value: 100, conditional: true },
+        ],
+    };
+    function echo(name: string, id: string, cost?: number): GearEntry {
+        return { kind: 'echo', id, name, setName: name, rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [], ...(cost != null ? { cost } : {}) };
+    }
+
+    it('returns the cost-4 piece\'s unconditional buff when present', () => {
+        const gear = [echo('Test Main Slot Echo', 'a', 4), echo('Filler', 'b', 1)];
+        const result = mainSlotEchoBuffs(gear, undefined, SELF_BUFFS);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('critRate');
+        expect(result[0].value).toBe(15);
+    });
+
+    it('returns an empty array when no cost-4 piece is in the combo', () => {
+        const gear = [echo('Filler', 'a', 1), echo('Filler2', 'b', 3)];
+        expect(mainSlotEchoBuffs(gear, undefined, SELF_BUFFS)).toEqual([]);
+    });
+
+    it('returns an empty array when the cost-4 piece has no WW_ECHO_SELF_BUFFS entry', () => {
+        const gear = [echo('No Bonus Echo', 'a', 4)];
+        expect(mainSlotEchoBuffs(gear, undefined, SELF_BUFFS)).toEqual([]);
+    });
+
+    it('excludes a restrictedToCharacters-gated buff for a non-qualifying character', () => {
+        const gear = [echo('Test Restricted Echo', 'a', 4)];
+        expect(mainSlotEchoBuffs(gear, 'Jinhsi', SELF_BUFFS)).toEqual([]);
+    });
+
+    it('includes a restrictedToCharacters-gated buff for a qualifying character', () => {
+        const gear = [echo('Test Restricted Echo', 'a', 4)];
+        const result = mainSlotEchoBuffs(gear, 'Rebecca', SELF_BUFFS);
+        expect(result).toHaveLength(1);
+        expect(result[0].value).toBe(15);
+    });
+
+    it('excludes a conditional:true entry (out of scope — reaches the optimizer via OptimizeConfig.buffs instead)', () => {
+        const gear = [echo('Test Conditional Echo', 'a', 4)];
+        expect(mainSlotEchoBuffs(gear, undefined, SELF_BUFFS)).toEqual([]);
+    });
+
+    it('defaults to the real WW_ECHO_SELF_BUFFS table when no 3rd argument is passed', () => {
+        expect(() => mainSlotEchoBuffs([echo('Anything', 'a', 4)])).not.toThrow();
+    });
+});
+
+describe('computeBaseLoadouts — main-slot echo bonus is derived PER COMBO, reaches actual damage', () => {
+    function charFor(): CharacterEntry {
+        return {
+            kind: 'character', id: 'c1', name: 'Rebecca', element: 'Spectro', weaponType: 'Sword', rarity: 5,
+            stats: { atk: 1000, critRate: 5, critDmg: 50 },
+            skills: [{ id: 'basic', name: 'Basic Attack', type: 'Basic', description: '', multiplier: 1, scaling: 'atk' }],
+            equipped: { gearIds: [] },
+        };
+    }
+    const CATALOG: StatDef[] = [{ key: 'atk', label: 'ATK' }, { key: 'critRate', label: 'Crit Rate', percent: true }, { key: 'critDmg', label: 'Crit DMG', percent: true }];
+    function echo(name: string, id: string, cost?: number): GearEntry {
+        return { kind: 'echo', id, name, setName: name, rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [], ...(cost != null ? { cost } : {}) };
+    }
+
+    it('a combo with a main-slot-bonus-bearing cost-4 echo does more damage than an otherwise-identical combo without one', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            // 'average' mode, not 'always' — critMultiplier('always') is
+            // `1 + critDmg/100` and completely ignores critRate, so it would
+            // never detect Adam Smasher's +15% Crit Rate bonus at all. Only
+            // 'average' (`1 + (critRate/100)*(critDmg/100)`) and a nonzero
+            // critDmg make a Crit-Rate-only buff show up as a damage delta.
+            targets: [], buffs: [], critMode: 'average',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG, topN: 5,
+        };
+        const combos = [
+            [echo('Reminiscence - Nightmare: Adam Smasher', 'a', 4)], // real seeded entry, +15% Crit Rate for Lucy/Rebecca
+            [echo('Plain Filler Echo', 'b', 4)], // no main-slot bonus text at all
+        ];
+        const results = computeBaseLoadouts(c, combos, config);
+        expect(results[0].skillDamage.basic).toBeGreaterThan(results[1].skillDamage.basic);
+    });
+
+    it('a combo with no cost-4 piece at all does not crash and applies no main-slot bonus', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG, topN: 5,
+        };
+        expect(() => computeBaseLoadouts(c, [[echo('Filler', 'a', 1)]], config)).not.toThrow();
     });
 });
 
