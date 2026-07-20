@@ -29,7 +29,7 @@ export interface PartyEffect {
     source: string;
     category: EffectCategory;
     /** Concrete stat buffs this effect grants. `appliesTo` scopes a per-attack-type DMG% buff. */
-    buffs: Array<{ stat: string; label?: string; value: number; appliesTo?: string[]; requiresTargetStatus?: string[] }>;
+    buffs: Array<{ stat: string; label?: string; value: number; appliesTo?: string[]; requiresTargetStatus?: string[]; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
     description?: string;
 }
 
@@ -186,6 +186,7 @@ export function enabledPartyBuffs(effects: PartyEffect[], disabled: string[], ta
     for (const e of effects) {
         if (off.has(e.id)) continue;
         e.buffs.forEach((b, i) => {
+            if (b.autoTrigger) return; // windowed — resolved separately by rotationEngine's team-wide resolver, never always-on
             if (!statusMet(b.requiresTargetStatus)) return;
             out.push({ id: `${e.id}#${i}`, name: e.name, source: e.source, stat: b.stat, value: b.value, appliesTo: b.appliesTo });
         });
@@ -239,6 +240,35 @@ export function resolveParty(
         const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
         members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, sequence: getSequence?.(t.characterId) });
     }
+    const effects = partyEffects(data, members);
+    return { members, effects, enabledBuffs: enabledPartyBuffs(effects, party.disabled, targetStatuses) };
+}
+
+/**
+ * Resolve a `NamedParty` (Rotation Builder's reusable party — see
+ * `namedPartyStore.ts`) into the same `{members, effects, enabledBuffs}`
+ * shape `resolveParty` produces for the Calculator, but WITHOUT an implicit
+ * "active character" slot — every member is resolved uniformly, since a
+ * named party has no anchor character, just up to 3 equal members.
+ */
+export function resolveNamedParty(
+    data: Pick<GameBundle, 'id' | 'characters' | 'weapons' | 'buffs' | 'setBonuses' | 'statCatalog'>,
+    party: { memberCharacterIds: string[]; disabled: string[] },
+    ownedGear: GearEntry[],
+    getLoadout: (characterId: string) => ResolvedLoadout,
+    getSequence?: (characterId: string) => number,
+    targetStatuses?: Record<string, boolean>,
+): { members: PartyMemberResolved[]; effects: PartyEffect[]; enabledBuffs: BuffEntry[] } {
+    const weaponOf = (id?: string) => (id ? data.weapons.find((w) => w.id === id) : undefined);
+    const members: PartyMemberResolved[] = party.memberCharacterIds
+        .map((characterId, i): PartyMemberResolved | null => {
+            const c = data.characters.find((x) => x.id === characterId);
+            if (!c) return null;
+            const loadout = getLoadout(characterId);
+            const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
+            return { id: `member-${i}`, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, sequence: getSequence?.(characterId) };
+        })
+        .filter((m): m is PartyMemberResolved => m != null);
     const effects = partyEffects(data, members);
     return { members, effects, enabledBuffs: enabledPartyBuffs(effects, party.disabled, targetStatuses) };
 }

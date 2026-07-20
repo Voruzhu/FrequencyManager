@@ -1,5 +1,5 @@
-import { activeSetName, enabledPartyBuffs, type PartyEffect } from '../../src/renderer/src/lib/party';
-import type { GearEntry } from '../../shared/types/game-bundle';
+import { activeSetName, enabledPartyBuffs, resolveNamedParty, type PartyEffect } from '../../src/renderer/src/lib/party';
+import type { CharacterEntry, GearEntry, WeaponEntry } from '../../shared/types/game-bundle';
 
 const setBonuses = [
     { name: 'Void Thunder', pieces: 2, buffs: [], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
@@ -118,5 +118,51 @@ describe('enabledPartyBuffs — requiresTargetStatus gating (real Cartethyia/Hiy
     it('the manual disabled-effect override still applies independently of target status', () => {
         const out = enabledPartyBuffs([effectWith(['chafe'])], ['kit-active-cb-ww-test'], { chafe: true });
         expect(out).toHaveLength(0);
+    });
+});
+
+describe('enabledPartyBuffs — autoTrigger exclusion', () => {
+    it('excludes a buff carrying autoTrigger from the always-on flatten', () => {
+        const effects: PartyEffect[] = [{
+            id: 'eff-1', name: 'Test', source: 'Char', category: 'kit',
+            buffs: [{ stat: 'atkPct', value: 20, autoTrigger: { skillIds: ['skill'], durationSeconds: 14 } }],
+        }];
+        expect(enabledPartyBuffs(effects, [])).toEqual([]);
+    });
+
+    it('still includes a buff with no autoTrigger, unchanged', () => {
+        const effects: PartyEffect[] = [{ id: 'eff-1', name: 'Test', source: 'Char', category: 'kit', buffs: [{ stat: 'atkPct', value: 20 }] }];
+        expect(enabledPartyBuffs(effects, [])).toHaveLength(1);
+    });
+});
+
+function makeChar(id: string): CharacterEntry {
+    return {
+        kind: 'character', id, name: id, element: 'Spectro', weaponType: 'Sword', rarity: 5,
+        stats: { atk: 100 }, skills: [], equipped: { gearIds: [] },
+    };
+}
+
+describe('resolveNamedParty', () => {
+    const data = { id: 'wuthering-waves', characters: [makeChar('a'), makeChar('b'), makeChar('c')], weapons: [] as WeaponEntry[], buffs: { basic: [], character: [] }, setBonuses: [], statCatalog: [] };
+    const getLoadout = () => ({ gearIds: [] });
+
+    it('resolves every member uniformly, no special-cased first slot', () => {
+        const party = { id: 'p1', name: 'Trio', memberCharacterIds: ['a', 'b', 'c'], disabled: [] };
+        const { members } = resolveNamedParty(data, party, [] as GearEntry[], getLoadout);
+        expect(members.map((m) => m.character.id)).toEqual(['a', 'b', 'c']);
+        expect(members.every((m) => m.isActive === undefined)).toBe(true);
+    });
+
+    it('skips a memberCharacterId that no longer resolves to a real character', () => {
+        const party = { id: 'p1', name: 'Trio', memberCharacterIds: ['a', 'ghost', 'c'], disabled: [] };
+        const { members } = resolveNamedParty(data, party, [] as GearEntry[], getLoadout);
+        expect(members.map((m) => m.character.id)).toEqual(['a', 'c']);
+    });
+
+    it('resolves a 1-member party fine', () => {
+        const party = { id: 'p1', name: 'Solo', memberCharacterIds: ['a'], disabled: [] };
+        const { members } = resolveNamedParty(data, party, [] as GearEntry[], getLoadout);
+        expect(members.length).toBe(1);
     });
 });
