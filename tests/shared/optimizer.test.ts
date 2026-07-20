@@ -267,9 +267,17 @@ describe('optimize — never recommends a loadout exceeding the real total-cost 
     });
 
     it('with no maxTotalCost set (GI), an over-12 combo is still allowed — no constraint applies', () => {
-        const pool = Array.from({ length: 5 }, (_, i) => gear(100 + i)); // GI-style: no cost field; sum is irrelevant without maxTotalCost
+        // Pool with one cost-4 piece and four cost-3 pieces: sum = 4+3+3+3+3 = 16 (over 12).
+        // Respects the slot-shape rule (at most 1 cost-4 per combo).
+        // Without maxTotalCost, the cost budget constraint does not apply.
+        const pool = [
+            gear(100, 4), gear(101, 3), gear(102, 3), gear(103, 3), gear(104, 3),
+        ];
         const result = optimize(char(), pool, baseConfig({ topN: 1 }));
         expect(result.length).toBe(1);
+        // Verify the loadout's total cost exceeds 12
+        const totalCost = result[0].gear.reduce((sum, g) => sum + (g.cost ?? 0), 0);
+        expect(totalCost).toBe(16);
     });
 });
 
