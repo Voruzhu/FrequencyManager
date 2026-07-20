@@ -9,7 +9,7 @@
 
 import type { BuffEntry } from '@shared/types/game-bundle';
 
-export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: string; description: string; selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; stacksMax?: number }>; buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; stacksMax?: number; requiresTargetStatus?: string[]; scaleOff?: BuffEntry['scaleOff'] }> }>> = {
+export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: string; description: string; selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>; buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; stacksMax?: number; requiresTargetStatus?: string[]; scaleOff?: BuffEntry['scaleOff']; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> }>> = {
     // rover-spectro ADDED 2026-07-11 — the Dimbreath datamine's ResonantChain.json
     // has ZERO entries for Rover-Spectro at all (confirmed absent, not a parser gap);
     // sourced from api.encore.moe instead, which does carry this data. See

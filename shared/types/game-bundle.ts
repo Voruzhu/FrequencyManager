@@ -104,6 +104,32 @@ export interface SkillDef {
     stackMultipliers2?: number[];
 }
 
+/**
+ * A self-buff entry that may be unconditional (`conditional:false`, auto-
+ * applies) or opt-in (`conditional:true`, a manual Calculator/Rotation
+ * Builder toggle) — shared shape used by `ConstellationNode.selfBuffs`,
+ * `CharacterEntry.selfBuffs`, `WeaponEntry.selfBuffs`, and
+ * `GearEntry.selfBuffs`.
+ */
+export interface ConditionalSelfBuff {
+    stat: string;
+    label: string;
+    value: number;
+    conditional?: boolean;
+    appliesTo?: string[];
+    scaleOff?: BuffEntry['scaleOff'];
+    stacksMax?: number;
+    /**
+     * Present ONLY for the clean "N seconds after casting skill X" pattern —
+     * lets the Rotation Builder auto-compute this buff's uptime instead of
+     * requiring a manual toggle. Absent for stance/stack/HP-threshold-gated
+     * buffs (permanently manual-toggle-only, not a placeholder — see
+     * `docs/superpowers/specs/2026-07-19-rotation-builder-overhaul-design.md`
+     * Section 3 for the full scoping rationale).
+     */
+    autoTrigger?: { skillIds: string[]; durationSeconds: number };
+}
+
 /** One Constellation (GI) / Sequence (WW) node — read-only flavor + effect text. */
 export interface ConstellationNode {
     /** 1-6. */
@@ -124,7 +150,7 @@ export interface ConstellationNode {
      * conditional are opt-in Calculator toggles, same two-tier model as
      * `WeaponEntry.selfBuffs`. `appliesTo` scopes a DMG% buff to attack types.
      */
-    selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    selfBuffs?: ConditionalSelfBuff[];
     /** PARTY-WIDE buffs this node deploys (support characters), same shape as `WeaponEntry.buffs`. */
     buffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
 }
@@ -161,7 +187,7 @@ export interface CharacterEntry {
      * always available regardless of constellation level (ascension-gated in the
      * real game, which this calc doesn't track separately).
      */
-    selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    selfBuffs?: ConditionalSelfBuff[];
 }
 
 export interface WeaponEntry {
@@ -187,7 +213,7 @@ export interface WeaponEntry {
      * in the Rotation Builder they become trigger-conditional. Unconditional entries
      * (`conditional: false`, from the game's addProps) auto-apply; conditional ones are toggles.
      */
-    selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    selfBuffs?: ConditionalSelfBuff[];
     /**
      * Stat conversions the passive grants: `to` gains `pct`% of the wielder's final
      * `from` stat (e.g. Staff of Homa ATK += 0.8% of Max HP; Scarlet Sands ATK += 52%
@@ -220,7 +246,7 @@ export interface GearEntry {
      * Calculator toggles. Present only for the specific named pieces this
      * has been sourced for — most gear has none.
      */
-    selfBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number }>;
+    selfBuffs?: ConditionalSelfBuff[];
 }
 
 export interface EnemyEntry {
