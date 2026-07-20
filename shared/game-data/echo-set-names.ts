@@ -767,7 +767,7 @@ export const WW_ECHO_ITEM_ICONS: Record<string, string> = {
  * table models wielder-only self-buffs; echoes have no team-buff mechanism
  * the way weapons do), so it's left unmodeled rather than misrepresented.
  */
-export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[] }>> = {
+export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = {
     'Lady of the Sea': [
         { stat: 'elemDmg', label: 'Aero DMG Bonus (Echo Skill)', value: 12, conditional: true },
         { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Echo Skill)', value: 12, conditional: true, appliesTo: ['ult'] },
@@ -777,5 +777,13 @@ export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: str
     ],
     'Jué': [
         { stat: 'dmgBonus', label: 'Res. Skill DMG Bonus (Echo Skill, "Blessing of Time")', value: 16, conditional: true, appliesTo: ['skill'] },
+    ],
+    // Main-slot bonus only — this echo ALSO unlocks a brand-new castable
+    // Echo Skill move for Lucy/Rebecca specifically; that portion is a
+    // separate, larger feature (a new skill, not a buff) and is
+    // intentionally not modeled here. Source: api.encore.moe/en/echo/6000201
+    // Skill.DescriptionEx.
+    'Reminiscence - Nightmare: Adam Smasher': [
+        { stat: 'critRate', label: 'Crit. Rate (Main Slot)', value: 15, conditional: false, restrictedToCharacters: ['Lucy', 'Rebecca'] },
     ],
 };

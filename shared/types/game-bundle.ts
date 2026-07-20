@@ -128,6 +128,14 @@ export interface ConditionalSelfBuff {
      * Section 3 for the full scoping rationale).
      */
     autoTrigger?: { skillIds: string[]; durationSeconds: number };
+    /**
+     * Restricts this buff to specific wielders (`CharacterEntry.name` exact
+     * match), same convention as `SetBonusEntry.restrictedToCharacters` —
+     * e.g. an echo's main-slot bonus that only applies to certain
+     * characters (WW's "Adam Smasher" echo → Lucy/Rebecca only). Absent =
+     * applies to any wielder.
+     */
+    restrictedToCharacters?: string[];
 }
 
 /** One Constellation (GI) / Sequence (WW) node — read-only flavor + effect text. */

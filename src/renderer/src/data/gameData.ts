@@ -366,7 +366,7 @@ export function gearIcon(data: GameData, g: { icon?: string; name: string; setNa
  * retroactively to already-owned pieces with no data migration needed).
  * Empty for the vast majority of gear, which has no such mechanic.
  */
-export function gearSelfBuffs(g: { name: string }): Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[] }> {
+export function gearSelfBuffs(g: { name: string }): Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }> {
     return WW_ECHO_SELF_BUFFS[g.name] ?? [];
 }
 
