@@ -15,6 +15,59 @@ export const DEFAULT_SKILL_LEVEL = 10;
 export const MAX_SKILL_LEVEL = 10;
 
 /**
+ * The single source of truth for "what does a character's `gearIds` array
+ * become after equipping `id`" — enforces GI's one-artifact-per-slot rule,
+ * WW's one-cost-4-echo ("main slot") rule, and the `maxGear` cap. Every
+ * equip path in the app (the Calculator's `equipGear` action below, and the
+ * OCR scanner's post-scan "Equip to character" flow in `ScanWindows.tsx`)
+ * MUST go through this — a second, ad-hoc reimplementation is exactly how a
+ * scanned echo can end up equipped alongside an existing cost-4/same-slot
+ * piece, an impossible-in-game state.
+ */
+export function computeEquippedGearIds(gameId: string, currentGearIds: string[], id: string): string[] {
+    const gd = getGameData(gameId);
+    const maxGear = gd.maxGear ?? DEFAULT_MAX_GEAR;
+    const owned = useInventoryStore.getState().getInventory(gameId).gear;
+    const resolve = (gid: string) => owned.find((g) => g.id === gid) ?? gd.gear.find((g) => g.id === gid);
+    let gearIds = currentGearIds;
+    // GI artifacts are one-per-slot: equipping a piece unequips whatever else
+    // occupies the same slot (Flower/Plume/Sands/Goblet/Circlet). WuWa echoes
+    // have no per-slot exclusivity (cost-budget), so this only applies to artifacts.
+    const incoming = resolve(id);
+    if (gd.gearKind === 'artifact' && incoming?.slot) {
+        gearIds = gearIds.filter((gid) => resolve(gid)?.slot !== incoming.slot);
+    }
+    // WuWa cost-4 echoes are one-per-character: Slot 1 (the only slot that
+    // can hold one) is the "main slot" — equipping a 2nd cost-4 echo
+    // auto-unequips the first, mirroring the GI artifact-slot rule above.
+    if (gd.gearKind === 'echo' && incoming?.cost === 4) {
+        gearIds = gearIds.filter((gid) => resolve(gid)?.cost !== 4);
+    }
+    // At capacity with no exclusivity rule having freed a slot for this
+    // piece — refuse the equip rather than silently evicting whichever
+    // piece happened to be oldest by array order (real data loss the user
+    // never asked for and was never told about). Callers with UI access
+    // should check `isGearAtCapacity` first and disable the equip control
+    // instead of relying on this silent no-op.
+    if (gearIds.length >= maxGear) return currentGearIds;
+    return [...gearIds, id];
+}
+
+/**
+ * Whether equipping `id` (a piece not already equipped) would hit
+ * `computeEquippedGearIds`'s capacity refusal — lets UI disable the control
+ * instead of letting the click silently no-op. A successful equip (whether
+ * a plain add, or a legal same-slot/cost-4 swap that frees a slot first)
+ * always ends with `id` present in the result; only a genuine refusal
+ * leaves the array unchanged, so checking for `id`'s absence — not just
+ * comparing lengths — is what actually distinguishes "refused" from "a
+ * swap that happens to net the same length as before".
+ */
+export function isGearAtCapacity(gameId: string, currentGearIds: string[], id: string): boolean {
+    return !computeEquippedGearIds(gameId, currentGearIds, id).includes(id);
+}
+
+/**
  * The calculator's working build. Lives in a store (not component state) so it
  * survives switching categories, and so the Inspector's gear/buff pickers can
  * mutate the same build the Calculator screen reads.
@@ -163,25 +216,8 @@ export const useCalcStore = create<CalcState>()(
         set((s) => {
             if (s.equipped.gearIds.includes(id)) return s;
             const gameId = useGameStore.getState().activeGameId;
-            const gd = getGameData(gameId);
-            const maxGear = gd.maxGear ?? DEFAULT_MAX_GEAR;
-            const owned = useInventoryStore.getState().getInventory(gameId).gear;
-            const resolve = (gid: string) => owned.find((g) => g.id === gid) ?? gd.gear.find((g) => g.id === gid);
-            let gearIds = s.equipped.gearIds;
-            // GI artifacts are one-per-slot: equipping a piece unequips whatever else
-            // occupies the same slot (Flower/Plume/Sands/Goblet/Circlet). WuWa echoes
-            // have no per-slot exclusivity (cost-budget), so this only applies to artifacts.
-            const incoming = resolve(id);
-            if (gd.gearKind === 'artifact' && incoming?.slot) {
-                gearIds = gearIds.filter((gid) => resolve(gid)?.slot !== incoming.slot);
-            }
-            // WuWa cost-4 echoes are one-per-character: Slot 1 (the only slot that
-            // can hold one) is the "main slot" — equipping a 2nd cost-4 echo
-            // auto-unequips the first, mirroring the GI artifact-slot rule above.
-            if (gd.gearKind === 'echo' && incoming?.cost === 4) {
-                gearIds = gearIds.filter((gid) => resolve(gid)?.cost !== 4);
-            }
-            const equipped = { ...s.equipped, gearIds: [...gearIds, id].slice(-maxGear) };
+            const gearIds = computeEquippedGearIds(gameId, s.equipped.gearIds, id);
+            const equipped = { ...s.equipped, gearIds };
             useLoadoutStore.getState().setLoadout(gameId, s.characterId, equipped);
             return { equipped };
         }),

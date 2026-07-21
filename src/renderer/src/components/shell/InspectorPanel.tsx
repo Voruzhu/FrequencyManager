@@ -9,7 +9,7 @@ import { iconSrc } from '@/lib/icons';
 import { useGearFilters } from '@/lib/gearFilters';
 import { resolveParty, scopeLabel } from '@/lib/party';
 import { useSelectionStore, type SelectedItem } from '../../stores/selectionStore';
-import { useCalcStore } from '../../stores/calcStore';
+import { useCalcStore, isGearAtCapacity } from '../../stores/calcStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useWindowStore } from '../../stores/windowStore';
 import { useOwnedInventory } from '../../stores/inventoryStore';
@@ -393,6 +393,7 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
                 {ordered.map((g) => {
                     const here = equipped.gearIds.includes(g.id);
                     const owners = here ? [] : ownersOf(g.id);
+                    const atCapacity = !here && isGearAtCapacity(activeGameId, equipped.gearIds, g.id);
                     return (
                         <GearCard
                             key={g.id}
@@ -412,6 +413,8 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
                                     >
                                         <AlertTriangle className="h-3.5 w-3.5" /> Already equipped
                                     </Button>
+                                ) : atCapacity ? (
+                                    <Button size="sm" variant="outline" disabled title={`Already at the ${data.maxGear}-piece cap — unequip something first`}>At capacity</Button>
                                 ) : (
                                     <Button size="sm" variant="default" onClick={() => equipGear(g.id)}>Equip</Button>
                                 )

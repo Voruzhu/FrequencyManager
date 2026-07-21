@@ -6,6 +6,7 @@ import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
 import { useOwnedInventory, useInventoryStore } from '../stores/inventoryStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
+import { computeEquippedGearIds, useCalcStore } from '../stores/calcStore';
 import { AddGearWindow } from './InventoryWindows';
 import { mapScannedEchoToGearDraft } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
@@ -136,7 +137,22 @@ export function EquipScannedGearWindow({ characterId, characterName, gearId }: {
         if (!isOwned) addCharacter(gameId, characterId);
         const current = useLoadoutStore.getState().getLoadout(gameId, characterId);
         if (!current.gearIds.includes(gearId)) {
-            useLoadoutStore.getState().setLoadout(gameId, characterId, { ...current, gearIds: [...current.gearIds, gearId] });
+            // Routes through the same exclusivity rules as the Calculator's
+            // own equip action (one-cost-4-echo, one-artifact-per-slot,
+            // maxGear cap) — see computeEquippedGearIds's doc comment.
+            const gearIds = computeEquippedGearIds(gameId, current.gearIds, gearId);
+            const equipped = { ...current, gearIds };
+            useLoadoutStore.getState().setLoadout(gameId, characterId, equipped);
+            // loadoutStore is per-character persisted state; the Calculator
+            // screen reads its OWN separate `calcStore.equipped` snapshot,
+            // only re-hydrated from loadoutStore when a character is
+            // (re)selected (`pickCharacter`). If this scanned character
+            // happens to already be the active one, sync it directly too —
+            // otherwise the Calculator would keep showing the build without
+            // this piece until the user reselects the character.
+            if (useCalcStore.getState().characterId === characterId) {
+                useCalcStore.setState({ equipped });
+            }
         }
         closeWindow();
     };
