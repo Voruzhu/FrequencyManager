@@ -68,6 +68,17 @@ describe('isRegexSafe', () => {
         expect(isRegexSafe('([a-z]+)+$')).toBe(false);
     });
 
+    it('rejects the same nested-quantifier shape wrapped in a named capture group (regression: bypassed the old check entirely)', () => {
+        expect(isRegexSafe('(?<x>a+)+$')).toBe(false);
+    });
+
+    it('rejects the same nested-quantifier shape wrapped in a lookaround (regression: bypassed the old check entirely)', () => {
+        expect(isRegexSafe('(?=a+)+$')).toBe(false);
+        expect(isRegexSafe('(?!a+)+$')).toBe(false);
+        expect(isRegexSafe('(?<=a+)+$')).toBe(false);
+        expect(isRegexSafe('(?<!a+)+$')).toBe(false);
+    });
+
     it('does NOT flag a safe compound group that merely ends in a quantifier (regression: WuWa\'s real namePattern, which handles names like "Xiangli Yao"/"Rover: Spectro")', () => {
         // A REQUIRED leading punctuation character before the repeated letters
         // means each iteration's start is unambiguous — not the classic

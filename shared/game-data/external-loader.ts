@@ -92,7 +92,13 @@ export interface ExternalLoadResult {
 // (a much harder, unsolved-in-general problem) — a community module with a
 // rejected-but-actually-fine single-atom pattern can simply add another atom
 // to the group (e.g. an explicit anchor) to change its shape.
-const NESTED_QUANTIFIER = /\(\??:?\s*(?:\[[^\]]*\]|\\.|.)[+*]\s*\)[+*]/;
+// The group-opening prefix must cover every real `(...)` variant — plain
+// `(`, non-capture `(?:`, named `(?<name>`, and both lookaround forms
+// (`(?=`/`(?!`/`(?<=`/`(?<!`) — not just `(`/`(?:`. A named group or
+// lookaround wrapping a nested quantifier (e.g. `(?<x>a+)+`, `(?=a+)+`) is
+// exactly as exponential as `(a+)+`; missing these left two whole syntax
+// classes able to bypass this check entirely.
+const NESTED_QUANTIFIER = /\((?:\?(?:<[a-zA-Z_$][\w$]*>|<[=!]|[:=!])?)?\s*(?:\[[^\]]*\]|\\.|.)[+*]\s*\)[+*]/;
 const MAX_PATTERN_LENGTH = 500;
 
 export function isRegexSafe(source: string): boolean {
