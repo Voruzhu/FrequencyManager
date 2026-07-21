@@ -108,6 +108,18 @@ describe('simulateWaves', () => {
         // Here: (150+300) + 150 === 100+200+300 === 600.
     });
 
+    it('regression: an EXACT-lethal hit (dmg === remaining HP) advances the wave immediately, not on the next step', () => {
+        // Before the fix, an exact kill left `remaining` at 0 without advancing
+        // `currentWave` — the NEXT step then computed `overflow = dmg - 0 = dmg`
+        // against the already-dead wave and discarded the ENTIRE next step's
+        // damage instead of crediting it to the following wave.
+        const waves: WaveConfig[] = [{ enemyId: 'mob-1', hp: 100 }, { enemyId: 'mob-2', hp: 200 }];
+        const result = simulateWaves([100, 50], waves);
+        expect(result.waveIndexForStep).toEqual([0, 1]);
+        expect(result.damageByWave).toEqual([100, 50]);
+        expect(result.overflowDiscarded).toBe(0);
+    });
+
     it('last wave exhausted — remaining steps still deal (uncapped) damage, just no further wave-transition tracking', () => {
         // Per this feature's spec (Section 4): "If no next wave exists, remaining
         // steps just deal full damage with no further tracking" — the damage still

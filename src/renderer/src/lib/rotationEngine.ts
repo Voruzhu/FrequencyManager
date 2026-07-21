@@ -108,12 +108,19 @@ export function simulateWaves(stepDamages: number[], waves: WaveConfig[]): { wav
             damageByWave[currentWave] += dmg;
             continue;
         }
-        if (dmg <= remaining) {
+        // Strictly LESS than, not <=: an EXACT-lethal hit (dmg === remaining)
+        // must fall through to the overkill branch below so the wave
+        // transition happens THIS step. Deferring it to "next step notices
+        // remaining is already 0" (the old `<=` here) meant the very next
+        // step's entire damage got computed as `overflow = dmg - 0 = dmg`
+        // against the already-dead wave and silently discarded, instead of
+        // landing on the wave that should already be current.
+        if (dmg < remaining) {
             damageByWave[currentWave] += dmg;
             remaining -= dmg;
             continue;
         }
-        // Overkill this step.
+        // Overkill (or an exact kill, overflow = 0) this step.
         damageByWave[currentWave] += remaining;
         const overflow = dmg - remaining;
         const nextWave = currentWave + 1;
