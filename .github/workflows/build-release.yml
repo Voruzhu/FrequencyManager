@@ -38,6 +38,8 @@ jobs:
           name: FrequencyManager-Windows
           path: |
             dist/installer/*.exe
+            dist/installer/latest.yml
+            dist/installer/*.blockmap
             dist/game-packages/*.zip
           if-no-files-found: error
 
@@ -47,19 +49,18 @@ jobs:
         with:
           files: |
             dist/installer/*.exe
+            dist/installer/latest.yml
+            dist/installer/*.blockmap
             dist/game-packages/*.zip
           body: |
             ## FrequencyManager Release
 
-            Download the `.exe` below to run FrequencyManager on your Windows PC.
-            
-            **What's included:**
-            - **Portable Executable** — runs directly without installing.
-            - **NSIS Installer** — traditional setup wizard with desktop shortcut.
+            Download the `Setup` .exe below to run FrequencyManager on your Windows PC.
 
             **How to use:**
-            1. **Portable:** Download the `Portable` .exe, double-click, and go.
-            2. **Installer:** Download the `Setup` .exe, run it, and follow the wizard.
+            1. Download the `Setup` .exe.
+            2. Run it and follow the install wizard.
+            3. The app checks for updates automatically after that.
           draft: false
           prerelease: false
         env:
