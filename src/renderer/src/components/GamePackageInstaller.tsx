@@ -44,7 +44,7 @@ export function GamePackageInstaller() {
     // release tag fetched here should always match the running app's own
     // version. Surfacing both side by side lets the user catch it if they've
     // pointed this at a stale/different release (or a fork) before installing.
-    const versionsMatch = releaseTag != null && appVersion !== '' && releaseTag.replace(/^v/, '') === appVersion;
+    const versionsMatch = releaseTag != null && appVersion !== '' && releaseTag.replace(/^v/i, '') === appVersion;
 
     const fetchPackages = async () => {
         const bridge = gamePackageBridge();
