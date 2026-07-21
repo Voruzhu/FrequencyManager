@@ -544,7 +544,7 @@ function setupGamePackageInstaller(): void {
             if (path.relative(gameModulesDir, targetDir).startsWith('..')) return { error: `Invalid package id "${id}"` };
 
             // Extract into a STAGING directory and validate it BEFORE
-            // deleting anything already installed. Previously this deleted
+            // touching anything already installed. Previously this deleted
             // targetDir first and extracted straight into it — if the
             // download was truncated or corrupt, AdmZip doesn't throw on a
             // zero-entry zip, it just silently extracts nothing, so a single
@@ -552,7 +552,9 @@ function setupGamePackageInstaller(): void {
             // with neither the old nor the new package (and no error either,
             // since nothing here actually threw).
             const stagingDir = path.join(gameModulesDir, `.staging-${id}`);
+            const backupDir = path.join(gameModulesDir, `.backup-${id}`);
             fs.rmSync(stagingDir, { recursive: true, force: true });
+            fs.rmSync(backupDir, { recursive: true, force: true });
             try {
                 const zip = new AdmZip(buf);
                 const entries = zip.getEntries();
@@ -580,9 +582,31 @@ function setupGamePackageInstaller(): void {
                 const valid = stagedJsonFiles.some((f) => readModuleDefinitionId(path.join(stagedRoot, f)) === id);
                 if (!valid) return { error: 'Downloaded package does not contain a valid module.json for this game' };
 
-                // Validated — only now is it safe to remove the old install
-                // and move the new one into place.
-                fs.rmSync(targetDir, { recursive: true, force: true });
+                // Validated — swap the new content in without ever leaving a
+                // window where NEITHER install exists: rename the existing
+                // install ASIDE first (cheap, same-volume rename — not a
+                // delete), move the new one into targetDir, and only THEN
+                // remove the old one. If the second rename throws for any
+                // reason (a locked file, a full disk, ...), put the old
+                // install back before re-throwing, so a mid-swap failure
+                // never destroys a working install.
+                //
+                // `stagedRoot` must be moved out from under `stagingDir`
+                // BEFORE any stale-duplicate scan below — `stagingDir` itself
+                // sits directly in `gameModulesDir` alongside every real game
+                // folder, and for an UNWRAPPED package `stagedRoot IS
+                // stagingDir`, so a scan that ran first would see its
+                // module.json declare this exact id and delete the very
+                // staging content just validated, right before this rename.
+                const hadExisting = fs.existsSync(targetDir);
+                if (hadExisting) fs.renameSync(targetDir, backupDir);
+                try {
+                    fs.renameSync(stagedRoot, targetDir);
+                } catch (renameErr) {
+                    if (hadExisting) fs.renameSync(backupDir, targetDir);
+                    throw renameErr;
+                }
+                if (hadExisting) fs.rmSync(backupDir, { recursive: true, force: true });
                 // `initExternalGameModules`'s loader scans EVERY subdirectory
                 // (and every loose top-level .json file) in gameModulesDir
                 // regardless of its name, reading each one's own
@@ -595,13 +619,14 @@ function setupGamePackageInstaller(): void {
                 // install) where the loader's registration order picks ONE of
                 // the two arbitrarily and silently skips the other as a
                 // "duplicate," so a fresh reinstall can appear to do nothing
-                // if the stale copy happens to win that race. Remove every
-                // other stale entry for this same game id before moving the
-                // new one in.
+                // if the stale copy happens to win that race. Runs AFTER the
+                // swap above (see the ordering note there) and targetDir now
+                // holds the new content, so this only ever removes genuinely
+                // OTHER stale copies, never the one just installed.
                 removeStaleGameModuleEntries(gameModulesDir, id, targetDir);
-                fs.renameSync(stagedRoot, targetDir);
             } finally {
                 fs.rmSync(stagingDir, { recursive: true, force: true });
+                fs.rmSync(backupDir, { recursive: true, force: true });
             }
 
             if (!wasInstalled) {
