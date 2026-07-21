@@ -340,19 +340,27 @@ async function initializeKernel(): Promise<void> {
             if (!kernel) throw new Error('Kernel not initialized');
             const correlationId = `ipc-${Date.now()}`;
             return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Damage calculation timeout')), 30000);
-                kernel!.eventBus.subscribe('damage:calculated', (msg) => {
-                    if (msg.correlationId === correlationId) {
-                        clearTimeout(timeout);
-                        resolve(msg.payload);
-                    }
-                }, { once: true });
-                kernel!.eventBus.subscribe('damage:calculation-failed', (msg) => {
-                    if (msg.correlationId === correlationId) {
-                        clearTimeout(timeout);
-                        reject(new Error((msg.payload as { error: string }).error));
-                    }
-                }, { once: true });
+                const timeout = setTimeout(() => {
+                    okSub.unsubscribe();
+                    failSub.unsubscribe();
+                    reject(new Error('Damage calculation timeout'));
+                }, 30000);
+                // `once: true` only tears down the subscription that actually
+                // matched (see the `filter` option) — the SIBLING of whichever
+                // event never fires for this correlationId would otherwise
+                // stay registered forever (nothing else will ever publish
+                // that exact correlationId again). Explicitly unsubscribe
+                // both ends, from whichever branch settles first.
+                const okSub = kernel!.eventBus.subscribe('damage:calculated', (msg) => {
+                    clearTimeout(timeout);
+                    failSub.unsubscribe();
+                    resolve(msg.payload);
+                }, { once: true, filter: (msg) => msg.correlationId === correlationId });
+                const failSub = kernel!.eventBus.subscribe('damage:calculation-failed', (msg) => {
+                    clearTimeout(timeout);
+                    okSub.unsubscribe();
+                    reject(new Error((msg.payload as { error: string }).error));
+                }, { once: true, filter: (msg) => msg.correlationId === correlationId });
                 void kernel!.eventBus.publish('damage:calculate-request', request, { source: 'electron', correlationId });
             });
         });
@@ -421,6 +429,53 @@ function parseRepo(repo: string): { owner: string; name: string } | null {
     return m ? { owner: m[1], name: m[2] } : null;
 }
 
+/** Reads a candidate module.json's `definition.id` without going through the
+ * full validation pipeline — just enough to compare against the game id
+ * being (re)installed. Returns undefined for anything unreadable/malformed;
+ * callers treat that as "not a match", never as a reason to delete it. */
+function readModuleDefinitionId(jsonPath: string): string | undefined {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf-8')) as { definition?: { id?: unknown } };
+        return typeof parsed.definition?.id === 'string' ? parsed.definition.id : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
+ * Removes every OTHER file/folder in `gameModulesDir` (besides `keepDir`,
+ * already freshly cleared by the caller) whose own module.json declares the
+ * same internal game `id` — see the call site's comment for why this matters:
+ * `loadExternalGameBundles` scans every entry regardless of its name, so a
+ * stale differently-named copy of the same game can silently win the
+ * registration race against a fresh install and never get cleaned up
+ * otherwise.
+ */
+function removeStaleGameModuleEntries(gameModulesDir: string, id: string, keepDir: string): void {
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.existsSync(gameModulesDir) ? fs.readdirSync(gameModulesDir, { withFileTypes: true }) : [];
+    } catch {
+        return;
+    }
+    for (const entry of entries) {
+        const entryPath = path.join(gameModulesDir, entry.name);
+        if (entryPath === keepDir) continue;
+        if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
+            if (readModuleDefinitionId(entryPath) === id) fs.rmSync(entryPath, { force: true });
+        } else if (entry.isDirectory()) {
+            let jsonFiles: string[];
+            try {
+                jsonFiles = fs.readdirSync(entryPath).filter((f) => f.toLowerCase().endsWith('.json'));
+            } catch {
+                continue;
+            }
+            const matches = jsonFiles.some((f) => readModuleDefinitionId(path.join(entryPath, f)) === id);
+            if (matches) fs.rmSync(entryPath, { recursive: true, force: true });
+        }
+    }
+}
+
 /**
  * Lets a user install game packages straight from a GitHub repo's releases —
  * no separate manifest.json to host. Two IPC handlers:
@@ -468,6 +523,14 @@ function setupGamePackageInstaller(): void {
 
     ipcMain.handle('game-package:install', async (_e, { id, downloadUrl }: { id: string; downloadUrl: string }) => {
         try {
+            // `id` comes from a GitHub release asset filename (untrusted — the
+            // repo isn't necessarily one we control) and is used directly to
+            // build a filesystem path that gets recursively deleted below.
+            // Reject anything but a plain module-id shape before it ever
+            // touches the filesystem, so a crafted asset name (e.g.
+            // "..\..\..\SomeFolder.zip") can't escape gameModulesDir.
+            if (!/^[a-zA-Z0-9_-]+$/.test(id)) return { error: `Invalid package id "${id}"` };
+
             const res = await fetch(downloadUrl);
             if (!res.ok) return { error: `Download HTTP ${res.status}` };
             const buf = Buffer.from(await res.arrayBuffer());
@@ -475,7 +538,25 @@ function setupGamePackageInstaller(): void {
             const wasInstalled = hasGameDefinition(id);
             const gameModulesDir = path.join(app.getPath('userData'), 'game-modules');
             const targetDir = path.join(gameModulesDir, id);
+            // Defense in depth: even with the regex above, confirm the
+            // resolved path is still really inside gameModulesDir before any
+            // destructive operation touches it.
+            if (path.relative(gameModulesDir, targetDir).startsWith('..')) return { error: `Invalid package id "${id}"` };
             fs.rmSync(targetDir, { recursive: true, force: true });
+            // `initExternalGameModules`'s loader scans EVERY subdirectory (and
+            // every loose top-level .json file) in gameModulesDir regardless
+            // of its name, reading each one's own module.json.definition.id —
+            // it does not key off the folder name. Deleting only `targetDir`
+            // (named after THIS id) leaves any OTHER differently-named
+            // folder/file that happens to declare the SAME internal game id
+            // untouched — a real, previously-hit scenario (e.g. a manually
+            // extracted or older-convention copy sitting alongside a fresh
+            // official install) where the loader's registration order picks
+            // ONE of the two arbitrarily and silently skips the other as a
+            // "duplicate," so a fresh reinstall can appear to do nothing if
+            // the stale copy happens to win that race. Remove every other
+            // stale entry for this same game id before extracting the new one.
+            removeStaleGameModuleEntries(gameModulesDir, id, targetDir);
 
             // Official package zips (build-game-package.js) deliberately wrap
             // their contents in a single "<id>/" top-level folder, so a user
@@ -557,7 +638,15 @@ function runOcrScan(imagePath: string): Promise<{ success: boolean; echo?: unkno
         // Whichever branch settles this promise is done reading `imagePath` —
         // release our half of the temp-file reference count regardless of
         // which one fires (success or failure).
+        // `once: true` only tears down the subscription that actually
+        // matched (see the `filter` option) — the SIBLING of whichever event
+        // never fires for this correlationId would otherwise stay registered
+        // forever (nothing else will ever publish that exact correlationId
+        // again). `unsubscribe()` is a safe no-op on an already-removed
+        // subscription, so settle() can unconditionally clean up both.
         const settle = (result: { success: boolean; echo?: unknown; error?: string; rawText?: string }) => {
+            scannedSub.unsubscribe();
+            failedSub.unsubscribe();
             releaseTempScanFile(imagePath);
             resolve(result);
         };
@@ -570,18 +659,14 @@ function runOcrScan(imagePath: string): Promise<{ success: boolean; echo?: unkno
         // exists; this promise just waits for a real result. If Tesseract
         // truly hangs forever, add a much longer ceiling back — not one this
         // tight.
-        kernel!.eventBus.subscribe('echo:scanned', (msg) => {
-            if (msg.correlationId === correlationId) {
-                const payload = msg.payload as { echo: unknown; source: string };
-                settle({ success: true, echo: payload.echo });
-            }
-        }, { once: true });
-        kernel!.eventBus.subscribe('echo:scan-failed', (msg) => {
-            if (msg.correlationId === correlationId) {
-                const payload = msg.payload as { error: string; rawText?: string };
-                settle({ success: false, error: payload.error, rawText: payload.rawText });
-            }
-        }, { once: true });
+        const scannedSub = kernel!.eventBus.subscribe('echo:scanned', (msg) => {
+            const payload = msg.payload as { echo: unknown; source: string };
+            settle({ success: true, echo: payload.echo });
+        }, { once: true, filter: (msg) => msg.correlationId === correlationId });
+        const failedSub = kernel!.eventBus.subscribe('echo:scan-failed', (msg) => {
+            const payload = msg.payload as { error: string; rawText?: string };
+            settle({ success: false, error: payload.error, rawText: payload.rawText });
+        }, { once: true, filter: (msg) => msg.correlationId === correlationId });
         void kernel!.eventBus.publish('ocr:scan-request', { imagePath }, { source: 'electron', correlationId });
     });
 }
@@ -1415,14 +1500,18 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-    void (async () => {
-        if (kernel) {
-            await kernel.shutdown();
-        }
-        if (process.platform !== 'darwin') {
-            app.quit();
-        }
-    })();
+    // macOS keeps the app running with no windows open (the `activate`
+    // handler above reopens a window against the SAME still-alive kernel
+    // when the dock icon is clicked) — shutting the kernel down here broke
+    // that: every `kernel.eventBus.request`-based IPC call in the reopened
+    // window failed with NO_HANDLER until a full restart, since nothing
+    // re-initializes the kernel on `activate`. `before-quit` below already
+    // shuts the kernel down exactly once for a real quit, on every
+    // platform (including this app.quit() call), so this handler doesn't
+    // need its own shutdown call at all.
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
 });
 
 app.on('before-quit', () => {
