@@ -311,16 +311,18 @@ export class ModuleRegistry implements ModuleRegistryInterface {
         this.dependencyGraph.nodes.set(moduleId, manifest);
         this.dependencyGraph.edges.set(moduleId, new Set());
 
-        // Add edges for dependencies
+        // Add edges for dependencies — directed depName -> moduleId only (the
+        // dependency must load before its dependent). A "reverse edge" used
+        // to be added here too, which turned every real dependency into a
+        // 2-node cycle: Kahn's algorithm in recalculateLoadOrder can never
+        // resolve two nodes that both point at each other, so ANY module
+        // declaring a real dependency on another registered module tripped
+        // the cycle-detection fallback (raw registration order, ignoring the
+        // manifest's actual dependency order) every time.
         for (const depName of Object.keys(manifest.dependencies)) {
             const depEdges = this.dependencyGraph.edges.get(depName) || new Set();
             depEdges.add(moduleId);
             this.dependencyGraph.edges.set(depName, depEdges);
-
-            // Also add reverse edge
-            const moduleEdges = this.dependencyGraph.edges.get(moduleId) || new Set();
-            moduleEdges.add(depName);
-            this.dependencyGraph.edges.set(moduleId, moduleEdges);
         }
 
         // Recalculate load order

@@ -132,6 +132,23 @@ describe('EventBus', () => {
             expect((handler.mock.calls[0][0] as EventMessage<number>).payload).toBe(20);
         });
 
+        it('once + filter together: a non-matching delivery does NOT consume the once slot (regression: correlationId-style usage previously teared down on any delivery)', async () => {
+            const handler = jest.fn();
+            bus.subscribe('reply', handler, { once: true, filter: (msg: EventMessage<unknown>) => msg.correlationId === 'wanted' });
+
+            await bus.publish('reply', 'other-caller', { correlationId: 'not-wanted' });
+            expect(handler).not.toHaveBeenCalled();
+            expect(bus.getSubscriptionCount('reply')).toBe(1);
+
+            await bus.publish('reply', 'mine', { correlationId: 'wanted' });
+            expect(handler).toHaveBeenCalledTimes(1);
+            expect(bus.getSubscriptionCount('reply')).toBe(0);
+
+            // A second matching-looking publish after teardown must not fire again.
+            await bus.publish('reply', 'late', { correlationId: 'wanted' });
+            expect(handler).toHaveBeenCalledTimes(1);
+        });
+
         it('priority is accepted without throwing', () => {
             // WHY: The EventBus accepts a numeric `priority` option on subscribe
             // and uses it to sort internal subscription records. We verify the
@@ -300,8 +317,18 @@ describe('EventBus', () => {
 
     describe('shutdown', () => {
         it('rejects all pending requests and clears state', async () => {
-            // Create a fake pending request by calling request without a response handler.
-            const promise = bus.request<unknown, unknown>('someone', 'no-handler', {}, 5000)
+            // A request with NO registered handler settles immediately (see
+            // "RPC pattern" > "rejects with NO_HANDLER when no handler is
+            // registered" below) — handleRequest synchronously synthesizes a
+            // NO_HANDLER response before this test ever reaches `shutdown()`,
+            // so it's already resolved and gone from pendingRequests by then
+            // (this was the test's original approach; it no longer creates a
+            // genuinely-pending request now that "no handler" responds
+            // immediately instead of hanging until timeout). Register a
+            // handler that never resolves instead, so the request stays
+            // truly pending until shutdown() rejects it.
+            bus.onRequest('slow', () => new Promise<unknown>(() => { /* never resolves */ }));
+            const promise = bus.request<unknown, unknown>('someone', 'slow', {}, 5000)
                 .catch((e: unknown) => e);
 
             await bus.shutdown();
