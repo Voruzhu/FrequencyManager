@@ -707,11 +707,29 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     chiori: [
         { id: 'na', name: 'Weaving Blade', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.55, 0.59, 0.64, 0.70, 0.74, 0.80, 0.87, 0.93, 1.00, 1.08] },
+        // KNOWN GAP, not fabricated: `multipliers` (the ATK term) is correctly
+        // 15-entry (her C3, "Four Brocade Embellishments", boosts this skill
+        // to level 13 — see constellations.generated.ts) but `multipliers2`
+        // (the DEF term) only has the base 10 levels. `skillMultiplierAt`
+        // clamps to the table's own length, so at boosted levels 11-13 the
+        // ATK term keeps scaling while the DEF term silently freezes at its
+        // level-10 value — a real under-count for C3+ Chiori. Extending
+        // multipliers2 needs the real levels 11-15 DEF-scaling values; this
+        // pass tried several sources (Fandom, KQM, hakush.in, Paimon.moe) and
+        // either couldn't reach them or got a table that didn't clearly
+        // correspond to this exact hit (Fluttering Hasode has several named
+        // sub-hits). Extrapolating from the ATK term's own ratio was
+        // considered and rejected — the DEF term's known levels 1-10 grow
+        // ~1-2 percentage points faster per level than the ATK term at the
+        // same index, so borrowing the ATK ratio isn't a safe substitute.
+        // Left as 10 entries rather than guessing.
         { id: 'skill', name: 'Fluttering Hasode', type: 'Skill', scaling: 'atk', element: 'Geo',
             multipliers: [1.4928, 1.60476, 1.71672, 1.866, 1.97796, 2.08992, 2.2392, 2.38848, 2.53776, 2.68704, 2.83632, 2.9856, 3.1722, 3.3588, 3.5454], scaling2: 'def', multipliers2: [0.54309, 0.587295, 0.6315, 0.69465, 0.738855, 0.789375, 0.85884, 0.928305, 0.99777, 1.07355] },
         { id: 'burst', name: 'Hiyoku: Twin Blades', type: 'Burst', scaling: 'atk', element: 'Geo',
             multipliers: [2.5632, 2.75544, 2.94768, 3.204, 3.39624, 3.58848, 3.8448, 4.10112, 4.35744, 4.61376, 4.87008, 5.1264, 5.4468, 5.7672, 6.0876] },
-            { id: 'skill_tamoto', name: 'Tamoto (Periodic Doll Attack)', type: 'Skill', scaling: 'atk', element: 'Geo',
+            // Same known gap as 'skill' above (multipliers2 only 10 entries,
+        // ATK term correctly 15) — same reason, not fabricated.
+        { id: 'skill_tamoto', name: 'Tamoto (Periodic Doll Attack)', type: 'Skill', scaling: 'atk', element: 'Geo',
             multipliers: [0.8208, 0.88236, 0.94392, 1.026, 1.08756, 1.14912, 1.2312, 1.31328, 1.39536, 1.47744, 1.55952, 1.6416, 1.7442, 1.8468, 1.9494],
             scaling2: 'def', multipliers2: [0.468339, 0.506459, 0.54458, 0.599038, 0.637159, 0.680725, 0.740629, 0.800533, 0.860436, 0.925786] },
 ],

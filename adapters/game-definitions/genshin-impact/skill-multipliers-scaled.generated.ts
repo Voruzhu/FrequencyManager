@@ -22,7 +22,10 @@ export const SCALED_SKILL_MULTIPLIER_OVERRIDES: Record<string, Record<string, nu
         burst: [0.1843, 0.1981, 0.212, 0.2304, 0.2442, 0.258, 0.2765, 0.2949, 0.3133, 0.3318, 0.3502, 0.3686, 0.3917, 0.4147, 0.4378],
     },
     "candace": {
-        skill: [0.12, 0.129, 0.138, 0.15, 0.159, 0.168, 0.18, 0.192, 0.204, 0.216, 0.228, 0.24, 0.255, 0.27, 0.285],
+        // Was keyed "skill" — no skill with that id exists on Candace (her
+        // real Skill-type ids are skill_tap/skill_hold), so this table never
+        // matched. First 10 values match skill_tap's real table exactly.
+        skill_tap: [0.12, 0.129, 0.138, 0.15, 0.159, 0.168, 0.18, 0.192, 0.204, 0.216, 0.228, 0.24, 0.255, 0.27, 0.285],
         burst: [0.0661, 0.0711, 0.076, 0.0826, 0.0876, 0.0925, 0.0992, 0.1058, 0.1124, 0.119, 0.1256, 0.1322, 0.1405, 0.1487, 0.157],
     },
     "layla": {

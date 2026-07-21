@@ -267,7 +267,13 @@ export const SKILL_MULTIPLIER_OVERRIDES: Record<string, Record<string, number[]>
     },
     "emilie": {
         na: [0.4856, 0.5251, 0.5647, 0.6211, 0.6607, 0.7058, 0.7679, 0.8301, 0.8922, 0.9599, 1.0277, 1.0954, 1.1632, 1.231, 1.2987],
-        skill: [0.4708, 0.5061, 0.5414, 0.5885, 0.6238, 0.6591, 0.7062, 0.7533, 0.8004, 0.8474, 0.8945, 0.9416, 1.0005, 1.0593, 1.1182],
+        // Was keyed "skill" — no skill with that id exists on Emilie (her
+        // real Skill-type ids are skill_cast/skill_case_lv1/skill_case_lv2/
+        // skill_spiritbreath), so withImportedMultipliers's `ov[s.id]` never
+        // matched and this 15-level table was silently dead. First 10 values
+        // match skill_cast's real table exactly — that's the entry this
+        // extends.
+        skill_cast: [0.4708, 0.5061, 0.5414, 0.5885, 0.6238, 0.6591, 0.7062, 0.7533, 0.8004, 0.8474, 0.8945, 0.9416, 1.0005, 1.0593, 1.1182],
     },
     "kinich": {
         na: [0.9899, 1.0704, 1.151, 1.2661, 1.3467, 1.4388, 1.5654, 1.692, 1.8186, 1.9567, 2.0948, 2.2329, 2.3711, 2.5092, 2.6473],
