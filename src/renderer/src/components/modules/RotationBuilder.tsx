@@ -207,6 +207,7 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
                         <RotationStepCard
                             key={`${step.characterId}-${index}`}
                             index={index}
+                            isLast={index === value.length - 1}
                             step={step}
                             isExpanded={expandedStep === index}
                             character={characters.find(c => c.id === step.characterId)}
@@ -241,6 +242,7 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
 // ─── Rotation Step Card ────────────────────────────────────────────────────
 interface RotationStepCardProps {
     index: number;
+    isLast: boolean;
     step: RotationStepSpec;
     isExpanded: boolean;
     character?: { id: string; label: string; icon?: string };
@@ -255,7 +257,7 @@ interface RotationStepCardProps {
 }
 
 function RotationStepCard({
-    index, step, isExpanded, character, availableSkills, cooldownWarning,
+    index, isLast, step, isExpanded, character, availableSkills, cooldownWarning,
     onToggleExpand, onUpdate, onRemove, onMoveUp, onMoveDown, disabled
 }: RotationStepCardProps) {
     const actionTypeLabels: Record<string, string> = {
@@ -469,7 +471,7 @@ function RotationStepCard({
                         </button>
                         <button
                             onClick={onMoveDown}
-                            disabled={disabled}
+                            disabled={disabled || isLast}
                             className="p-1.5 rounded hover:bg-surface-2 transition-colors disabled:opacity-50"
                             title="Move down"
                         >
