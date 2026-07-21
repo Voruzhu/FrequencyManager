@@ -1,4 +1,4 @@
-import { activeSetName, enabledPartyBuffs, resolveNamedParty, type PartyEffect } from '../../src/renderer/src/lib/party';
+import { activeSetName, enabledPartyBuffs, resolveNamedParty, partyEffects, type PartyEffect, type PartyMemberResolved } from '../../src/renderer/src/lib/party';
 import type { CharacterEntry, GearEntry, WeaponEntry } from '../../shared/types/game-bundle';
 
 const setBonuses = [
@@ -164,5 +164,22 @@ describe('resolveNamedParty', () => {
         const party = { id: 'p1', name: 'Solo', memberCharacterIds: ['a'], disabled: [] };
         const { members } = resolveNamedParty(data, party, [] as GearEntry[], getLoadout);
         expect(members.length).toBe(1);
+    });
+});
+
+describe('partyEffects — active character\'s own set bonus is not double-counted', () => {
+    const partyData = { id: 'wuthering-waves', buffs: { basic: [], character: [] }, setBonuses, statCatalog: [] };
+    const activeSetBonus = { name: 'Void Thunder', tier: 'twoPiece' as const, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 10 }] };
+
+    it('the active member\'s set bonus is excluded (already derived per-combo elsewhere)', () => {
+        const active: PartyMemberResolved = { id: 'active', character: makeChar('a'), gear: [], setBonuses: [activeSetBonus], isActive: true };
+        const effects = partyEffects(partyData, [active]);
+        expect(effects.some((e) => e.category === 'set')).toBe(false);
+    });
+
+    it('a teammate\'s set bonus is still included (no separate computation duplicates it)', () => {
+        const teammate: PartyMemberResolved = { id: 't1', character: makeChar('b'), gear: [], setBonuses: [activeSetBonus] };
+        const effects = partyEffects(partyData, [teammate]);
+        expect(effects.filter((e) => e.category === 'set')).toHaveLength(1);
     });
 });

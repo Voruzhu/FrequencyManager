@@ -123,8 +123,19 @@ export function partyEffects(data: Pick<GameBundle, 'id' | 'buffs' | 'setBonuses
             });
         }
         // Set bonus(es) this member's REAL equipped gear activates — every
-        // tier, not just one (see `PartyMemberResolved.setBonuses`).
-        for (const sb of m.setBonuses ?? []) {
+        // tier, not just one (see `PartyMemberResolved.setBonuses`). Skipped
+        // for the ACTIVE character specifically: unlike a teammate's set
+        // bonus (only ever derived here), the active character's own set
+        // bonus must be derived PER GEAR COMBO (it varies as the Optimizer
+        // searches different combos, or as "Calculate current" re-evaluates
+        // the exact equipped gear) — CalculatorScreen's `setBonusBuffEntries`
+        // call and `computeBaseLoadouts`'s per-combo `comboSetBuffs` already
+        // do that correctly. Including it here too would bake in a SECOND,
+        // stale copy (computed once from whatever's currently equipped) on
+        // top of the correct per-combo one — a real double-count for
+        // "Calculate current" and a phantom constant polluting every other
+        // candidate the Optimizer scores.
+        for (const sb of m.isActive ? [] : m.setBonuses ?? []) {
             if (sb.buffs.length === 0) continue;
             effects.push({
                 id: `set-${m.id}-${sb.name}-${sb.tier}`,
