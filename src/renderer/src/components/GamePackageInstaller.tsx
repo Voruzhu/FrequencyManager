@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Download, CheckCircle2, RefreshCw } from 'lucide-react';
-import { Input, Button, Label, toast } from './ui';
+import { Download, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Input, Button, Label, Badge, toast } from './ui';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useGameStore } from '../stores/gameStore';
+import { useAppVersion } from '@/lib/useAppVersion';
 
 interface RemotePackage {
     id: string;
@@ -30,10 +31,20 @@ const gamePackageBridge = () => (window as unknown as {
  */
 export function GamePackageInstaller() {
     const { updateAppRepo, setUpdateAppRepo } = useSettingsStore();
+    const appVersion = useAppVersion();
     const [fetching, setFetching] = useState(false);
     const [installingId, setInstallingId] = useState<string | null>(null);
     const [packages, setPackages] = useState<RemotePackage[] | null>(null);
+    const [releaseTag, setReleaseTag] = useState<string | undefined>(undefined);
     const [needsRestart, setNeedsRestart] = useState(false);
+
+    // The official game packages are built and uploaded by the SAME release
+    // workflow, from the SAME tag, as the app itself (see
+    // .github/workflows/build-release.yml) — so for the app's own repo, the
+    // release tag fetched here should always match the running app's own
+    // version. Surfacing both side by side lets the user catch it if they've
+    // pointed this at a stale/different release (or a fork) before installing.
+    const versionsMatch = releaseTag != null && appVersion !== '' && releaseTag.replace(/^v/, '') === appVersion;
 
     const fetchPackages = async () => {
         const bridge = gamePackageBridge();
@@ -44,6 +55,7 @@ export function GamePackageInstaller() {
             const res = await bridge.listGamePackagesFromRepo(updateAppRepo);
             if (res.error) { toast.error('Could not list packages', { description: res.error }); return; }
             setPackages(res.packages ?? []);
+            setReleaseTag(res.releaseTag);
             if (!res.packages || res.packages.length === 0) toast.error('No .zip game packages found on that repo\'s latest release');
         } finally {
             setFetching(false);
@@ -85,6 +97,14 @@ export function GamePackageInstaller() {
 
             {packages && packages.length > 0 && (
                 <div className="space-y-2">
+                    {releaseTag && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            Release <Badge variant="outline">{releaseTag}</Badge>
+                            {appVersion && (versionsMatch
+                                ? <Badge variant="secondary">matches your app (v{appVersion})</Badge>
+                                : <Badge variant="outline" className="border-warning/40 text-warning"><AlertTriangle className="mr-1 h-3 w-3 inline" />your app is v{appVersion}</Badge>)}
+                        </div>
+                    )}
                     {packages.map((p) => (
                         <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface p-2">
                             <div className="min-w-0 flex-1">
