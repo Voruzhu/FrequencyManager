@@ -1281,6 +1281,16 @@ function setupFileIpc(): void {
         logger.info('[captureScreen] capture display override set', { id });
     });
 
+    // Renderer sends the current setting on boot and whenever the user
+    // flips it (Settings → Updates → Application) — updates the live
+    // `autoDownload` flag immediately; the boot-time check itself is
+    // already gated by `readAutoUpdateEnabled()` in `setupAutoUpdater`.
+    ipcMain.on('settings:set-auto-update-enabled', (_event, enabled: boolean) => {
+        autoUpdateEnabled = enabled;
+        autoUpdater.autoDownload = enabled;
+        logger.info('[AutoUpdater] Auto-update setting changed', { enabled });
+    });
+
     // The running app version (for update checks + export envelopes).
     ipcMain.handle('app:get-version', () => app.getVersion());
 
@@ -1401,9 +1411,8 @@ function setupAutoUpdater(): void {
         return;
     }
 
-    const cfg = readUpdatesConfig();
-
-    autoUpdater.autoDownload = cfg.appCheckOnBoot;
+    autoUpdateEnabled = readAutoUpdateEnabled();
+    autoUpdater.autoDownload = autoUpdateEnabled;
     autoUpdater.logger = null;
 
     autoUpdater.on('checking-for-update', () => {
@@ -1458,7 +1467,7 @@ function setupAutoUpdater(): void {
         mainWindow?.webContents.send('app:update-status', { kind: 'error', message: err.message });
     });
 
-    if (cfg.appCheckOnBoot) {
+    if (autoUpdateEnabled) {
         // Fire and forget — never block app boot on a network round-trip.
         void autoUpdater.checkForUpdates().catch((err: Error) => {
             logger.warn('[AutoUpdater] Initial check failed', { error: err.message });
@@ -1466,22 +1475,35 @@ function setupAutoUpdater(): void {
     }
 }
 
+/** Whether the app should check for + download app updates on launch
+ * (Settings → Updates → Application). Live-updated by the
+ * `settings:set-auto-update-enabled` IPC handler in `setupFileIpc`. */
+let autoUpdateEnabled = true;
+
 /**
- * Read the `updates` block out of `config/default.json`. We intentionally
- * do NOT depend on the kernel here so that the updater wires up even
- * before the kernel has booted.
+ * Resolve the user's persisted "auto-update" preference straight out of the
+ * SAME JSON file the renderer's zustand `settingsStore` writes to
+ * (`storage` — see `setupStorage`) — reading it here means main knows the
+ * real preference at boot, before the renderer (and thus any IPC push from
+ * it) exists. Falls back to `config/default.json`'s `updates.appCheckOnBoot`
+ * for a first-ever launch, before the setting has ever been persisted.
  */
-function readUpdatesConfig(): { appCheckOnBoot: boolean; notifyOnUpdate: boolean } {
+function readAutoUpdateEnabled(): boolean {
+    try {
+        const raw = storage?.get<string | undefined>('fm-settings');
+        if (raw) {
+            const parsed = JSON.parse(raw) as { state?: { autoUpdateEnabled?: boolean } };
+            if (typeof parsed.state?.autoUpdateEnabled === 'boolean') return parsed.state.autoUpdateEnabled;
+        }
+    } catch {
+        // fall through to the static config default below
+    }
     try {
         const cfgPath = path.join(__dirname, '..', '..', 'config', 'default.json');
-        const raw = fs.readFileSync(cfgPath, 'utf-8');
-        const cfg = JSON.parse(raw) as { updates?: { appCheckOnBoot?: boolean; notifyOnUpdate?: boolean } };
-        return {
-            appCheckOnBoot: cfg.updates?.appCheckOnBoot ?? true,
-            notifyOnUpdate: cfg.updates?.notifyOnUpdate ?? true,
-        };
+        const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf-8')) as { updates?: { appCheckOnBoot?: boolean } };
+        return cfg.updates?.appCheckOnBoot ?? true;
     } catch {
-        return { appCheckOnBoot: true, notifyOnUpdate: true };
+        return true;
     }
 }
 

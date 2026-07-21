@@ -44,6 +44,14 @@ interface SettingsState {
      * the primary display, which may not be where the game actually runs. */
     captureDisplayId: number | null;
     setCaptureDisplayId: (id: number | null) => void;
+
+    /** Whether the app checks GitHub for a new app version on launch and
+     * downloads it in the background (Settings → Updates → Application).
+     * Main reads this straight out of the persisted store at boot (before
+     * the renderer even exists) to decide whether to call
+     * `autoUpdater.checkForUpdates()` at all. */
+    autoUpdateEnabled: boolean;
+    setAutoUpdateEnabled: (v: boolean) => void;
 }
 
 const DEFAULT_SCAN_HOTKEY = 'Alt+Shift+S';
@@ -60,6 +68,13 @@ const pushScanHotkeyToMain = (v: string) => {
 const pushCaptureDisplayToMain = (id: number | null) => {
     (window as unknown as { frequencyManager?: { setCaptureDisplay?: (id: number | null) => void } })
         .frequencyManager?.setCaptureDisplay?.(id);
+};
+
+/** Main process owns the actual `electron-updater` calls — every change
+ * gets pushed through, same pattern as the scan hotkey above. */
+const pushAutoUpdateEnabledToMain = (v: boolean) => {
+    (window as unknown as { frequencyManager?: { setAutoUpdateEnabled?: (v: boolean) => void } })
+        .frequencyManager?.setAutoUpdateEnabled?.(v);
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -88,6 +103,12 @@ export const useSettingsStore = create<SettingsState>()(
                 pushCaptureDisplayToMain(id);
                 set({ captureDisplayId: id });
             },
+
+            autoUpdateEnabled: true,
+            setAutoUpdateEnabled: (v) => {
+                pushAutoUpdateEnabledToMain(v);
+                set({ autoUpdateEnabled: v });
+            },
         }),
         {
             name: 'fm-settings',
@@ -98,6 +119,7 @@ export const useSettingsStore = create<SettingsState>()(
             onRehydrateStorage: () => (state) => {
                 if (state?.scanHotkey) pushScanHotkeyToMain(state.scanHotkey);
                 if (state?.captureDisplayId != null) pushCaptureDisplayToMain(state.captureDisplayId);
+                if (state) pushAutoUpdateEnabledToMain(state.autoUpdateEnabled);
             },
         }
     )

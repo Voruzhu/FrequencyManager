@@ -83,6 +83,7 @@ export function SettingsScreen() {
         updateAppRepo, setUpdateAppRepo, updateManifestUrl, setUpdateManifestUrl,
         scanHotkey, setScanHotkey,
         captureDisplayId, setCaptureDisplayId,
+        autoUpdateEnabled, setAutoUpdateEnabled,
     } = useSettingsStore();
     const maxOptimizerThreads = LOGICAL_CORES;
 
@@ -479,7 +480,14 @@ export function SettingsScreen() {
                             <CardTitle>Application</CardTitle>
                             <CardDescription>The FrequencyManager desktop app itself.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <Label htmlFor="auto-update">Check for updates automatically</Label>
+                                    <p className="text-xs text-muted-foreground">Downloads a new app version in the background on launch; installs on next restart.</p>
+                                </div>
+                                <Switch id="auto-update" checked={autoUpdateEnabled} onCheckedChange={setAutoUpdateEnabled} />
+                            </div>
                             {!status?.app ? (
                                 <p className="text-sm text-muted-foreground">
                                     {updateAppRepo ? 'Run a check to see the latest release.' : 'Set your GitHub repo above, then check.'}

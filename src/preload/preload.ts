@@ -178,6 +178,12 @@ const frequencyManagerApi = {
     setCaptureDisplay: (id: number | null): void => ipcRenderer.send('settings:set-capture-display', id),
 
     /**
+     * Toggle whether the app checks GitHub for a new app version on launch
+     * and downloads it in the background (Settings → Updates → Application).
+     */
+    setAutoUpdateEnabled: (enabled: boolean): void => ipcRenderer.send('settings:set-auto-update-enabled', enabled),
+
+    /**
      * Arm or disarm the global hotkey for live scanning. While armed, each
      * hotkey press captures + OCR-scans; while disarmed, the hotkey is a
      * no-op. `scanType` is required when arming (ignored when disarming).
