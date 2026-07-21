@@ -89,6 +89,7 @@ function computeStepDamage(
         reaction,
         charLevel: 90,
         scopedBuffs: [...buffs.filter(isScopedBuff), ...gearScopedBuffs(member.gear)],
+        characterElement: member.character.element,
     };
     return { skill, damage: skillDamage(stats, skill, ctx) };
 }

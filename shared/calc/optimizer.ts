@@ -148,6 +148,12 @@ export interface SkillContext {
      * global stats. e.g. Sanhua's Basic-Attack DMG amp.
      */
     scopedBuffs?: BuffEntry[];
+    /** The character's own element (e.g. `c.element`) — lets `skillDamage`
+     * tell a skill's OWN `SkillDef.element` (when set) apart from the
+     * character's, so an off-element skill (GI's Physical-tagged Normal/
+     * Charged Attacks) reads that specific element's DMG% bucket instead of
+     * the character-element `elemDmg` aggregate, and never reacts. */
+    characterElement?: string;
 }
 
 /**
@@ -660,6 +666,16 @@ export function computeBuildStats(
             : base + (scalable[key] ?? 0) + (flat[key] ?? 0);
         out[key] = def.percent ? Math.round(value * 10) / 10 : Math.round(value);
     }
+    // Off-character-element DMG% buckets (e.g. `physicalDmg` from Bloodstained
+    // Chivalry/Pale Flame's 2pc — no real character has element 'Physical',
+    // so `apply()` above never folds it into the catalog-tracked `elemDmg`
+    // slot) aren't part of any game's stat catalog, so the loop above never
+    // surfaces them. `skillDamage` needs to read them for a skill whose own
+    // `element` differs from the character's — rescue any such key that
+    // survived in `flat` but has no catalog entry, so it isn't just discarded.
+    for (const key of Object.keys(flat)) {
+        if (key.endsWith('Dmg') && !(key in out)) out[key] = Math.round(flat[key] * 10) / 10;
+    }
     // Weapon stat conversions (Homa ATK += 0.8% of Max HP, Scarlet Sands ATK += 52% of
     // EM, …). Applied on FINAL stats so they read post-buff HP/EM/DEF; the added amount
     // is a flat bonus to the target (not re-scaled by that stat's %).
@@ -731,13 +747,28 @@ export function skillDamage(stats: BuildStats, skill: SkillDef, ctx: SkillContex
         mult2 = mult2Base + n * perStack2;
     }
     // Global elemental DMG% + any per-attack-type DMG% scoped to this skill.
-    const dmgPct = (stats.elemDmg ?? 0) + scopedDmgFor(skill, ctx.scopedBuffs);
+    // A skill tagged with its OWN element different from the character's
+    // (e.g. GI's Physical-tagged Normal/Charged Attacks on an elemental
+    // character) must read THAT element's DMG% bucket instead of the
+    // character-element `elemDmg` aggregate. `computeBuildStats`'s `apply()`
+    // already routes an off-character-element buff into its own `<element>Dmg`
+    // key (e.g. `physicalDmg`) rather than the generic `elemDmg` slot — this
+    // was previously never read back out, so e.g. Pale Flame's/Bloodstained
+    // Chivalry's "Physical DMG +25%" silently did nothing, and conversely a
+    // Cryo DMG% buff wrongly boosted a Physical Normal Attack too.
+    const offElement = !!skill.element && skill.element !== ctx.characterElement;
+    const elemDmgForSkill = offElement ? (stats[elemKey(skill.element!)] ?? 0) : (stats.elemDmg ?? 0);
+    const dmgPct = elemDmgForSkill + scopedDmgFor(skill, ctx.scopedBuffs);
     // Flat DMG add scoped to this skill (e.g. "Skill DMG +40% of DEF") — part of
     // the skill's own base damage, so it's boosted by crit/reaction and reduced
     // by enemy mitigation same as the motion-value damage, not a separate hit.
     const talentBase = (scaleStat * mult + scale2Stat * mult2) * (1 + dmgPct / 100) + scopedFlatAddFor(skill, ctx.scopedBuffs);
 
-    const { mult: rMult, addFlat } = reactionEffect(ctx.reaction ?? 'none', stats.elementalMastery ?? 0);
+    // Physical damage can never trigger a Genshin elemental reaction — force
+    // 'none' for a skill explicitly tagged Physical, regardless of whatever
+    // reaction the user picked for the character's other (elemental) skills.
+    const isPhysical = !!skill.element && skill.element.toLowerCase() === 'physical';
+    const { mult: rMult, addFlat } = reactionEffect(isPhysical ? 'none' : (ctx.reaction ?? 'none'), stats.elementalMastery ?? 0);
     const withReaction = talentBase * rMult + addFlat;
 
     const mit = ctx.enemy
@@ -800,6 +831,7 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         stacks: config.stacks,
         reaction: config.reaction,
         charLevel: config.charLevel,
+        characterElement: c.element,
     };
     return combos.map((gear, idx) => {
         // Set-bonus buffs depend on THIS combo's own real piece counts (a
