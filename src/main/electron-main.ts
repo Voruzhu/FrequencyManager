@@ -542,50 +542,66 @@ function setupGamePackageInstaller(): void {
             // resolved path is still really inside gameModulesDir before any
             // destructive operation touches it.
             if (path.relative(gameModulesDir, targetDir).startsWith('..')) return { error: `Invalid package id "${id}"` };
-            fs.rmSync(targetDir, { recursive: true, force: true });
-            // `initExternalGameModules`'s loader scans EVERY subdirectory (and
-            // every loose top-level .json file) in gameModulesDir regardless
-            // of its name, reading each one's own module.json.definition.id —
-            // it does not key off the folder name. Deleting only `targetDir`
-            // (named after THIS id) leaves any OTHER differently-named
-            // folder/file that happens to declare the SAME internal game id
-            // untouched — a real, previously-hit scenario (e.g. a manually
-            // extracted or older-convention copy sitting alongside a fresh
-            // official install) where the loader's registration order picks
-            // ONE of the two arbitrarily and silently skips the other as a
-            // "duplicate," so a fresh reinstall can appear to do nothing if
-            // the stale copy happens to win that race. Remove every other
-            // stale entry for this same game id before extracting the new one.
-            removeStaleGameModuleEntries(gameModulesDir, id, targetDir);
 
-            // Official package zips (build-game-package.js) deliberately wrap
-            // their contents in a single "<id>/" top-level folder, so a user
-            // manually extracting one into game-modules/ with Explorer/7-Zip
-            // gets the correct game-modules/<id>/module.json shape with no
-            // extra steps (see that script's own doc comment). Extracting
-            // straight into targetDir (already named .../game-modules/<id>)
-            // would double-nest the wrapper to .../game-modules/<id>/<id>/...
-            // — detect that shape and extract to the PARENT dir instead, so
-            // the wrapper produces targetDir itself. A community package
-            // zipped WITHOUT a wrapping folder (module.json at the zip root)
-            // still extracts straight into targetDir, same as before.
-            const zip = new AdmZip(buf);
-            // build-game-package.js zips via PowerShell's Compress-Archive,
-            // which stores entry paths with BACKSLASH separators
-            // ("wuthering-waves\module.json", not the zip-spec-standard
-            // forward slash) — AdmZip's own extractAllTo already tolerates
-            // this (that's *why* the old code's naive extraction produced
-            // the double-nested folder bug in the first place: it WAS
-            // interpreting the backslash as a path separator), so detection
-            // has to handle both separators the same way, not just '/'.
-            const topLevelNames = new Set(zip.getEntries().map((e) => e.entryName.replace(/\\/g, '/').split('/')[0]));
-            const isWrapped = topLevelNames.size === 1 && topLevelNames.has(id);
-            if (isWrapped) {
-                fs.mkdirSync(gameModulesDir, { recursive: true });
-                zip.extractAllTo(gameModulesDir, true);
-            } else {
-                fs.mkdirSync(targetDir, { recursive: true });
-                zip.extractAllTo(targetDir, true);
+            // Extract into a STAGING directory and validate it BEFORE
+            // deleting anything already installed. Previously this deleted
+            // targetDir first and extracted straight into it — if the
+            // download was truncated or corrupt, AdmZip doesn't throw on a
+            // zero-entry zip, it just silently extracts nothing, so a single
+            // bad download would wipe a working install and leave the user
+            // with neither the old nor the new package (and no error either,
+            // since nothing here actually threw).
+            const stagingDir = path.join(gameModulesDir, `.staging-${id}`);
+            fs.rmSync(stagingDir, { recursive: true, force: true });
+            try {
+                const zip = new AdmZip(buf);
+                const entries = zip.getEntries();
+                if (entries.length === 0) return { error: 'Downloaded package is empty or corrupt' };
+                // Official package zips (build-game-package.js) deliberately
+                // wrap their contents in a single "<id>/" top-level folder,
+                // so a user manually extracting one into game-modules/ with
+                // Explorer/7-Zip gets the correct game-modules/<id>/module.json
+                // shape with no extra steps (see that script's own doc
+                // comment). A community package zipped WITHOUT a wrapping
+                // folder (module.json at the zip root) extracts flat instead.
+                // build-game-package.js zips via PowerShell's
+                // Compress-Archive, which stores entry paths with BACKSLASH
+                // separators ("wuthering-waves\module.json", not the
+                // zip-spec-standard forward slash) — handle both separators
+                // the same way, not just '/'.
+                const topLevelNames = new Set(entries.map((e) => e.entryName.replace(/\\/g, '/').split('/')[0]));
+                const isWrapped = topLevelNames.size === 1 && topLevelNames.has(id);
+                fs.mkdirSync(stagingDir, { recursive: true });
+                zip.extractAllTo(stagingDir, true);
+                const stagedRoot = isWrapped ? path.join(stagingDir, id) : stagingDir;
+                const stagedJsonFiles = fs.existsSync(stagedRoot)
+                    ? fs.readdirSync(stagedRoot).filter((f) => f.toLowerCase().endsWith('.json'))
+                    : [];
+                const valid = stagedJsonFiles.some((f) => readModuleDefinitionId(path.join(stagedRoot, f)) === id);
+                if (!valid) return { error: 'Downloaded package does not contain a valid module.json for this game' };
+
+                // Validated — only now is it safe to remove the old install
+                // and move the new one into place.
+                fs.rmSync(targetDir, { recursive: true, force: true });
+                // `initExternalGameModules`'s loader scans EVERY subdirectory
+                // (and every loose top-level .json file) in gameModulesDir
+                // regardless of its name, reading each one's own
+                // module.json.definition.id — it does not key off the folder
+                // name. Deleting only `targetDir` (named after THIS id)
+                // leaves any OTHER differently-named folder/file that happens
+                // to declare the SAME internal game id untouched — a real,
+                // previously-hit scenario (e.g. a manually extracted or
+                // older-convention copy sitting alongside a fresh official
+                // install) where the loader's registration order picks ONE of
+                // the two arbitrarily and silently skips the other as a
+                // "duplicate," so a fresh reinstall can appear to do nothing
+                // if the stale copy happens to win that race. Remove every
+                // other stale entry for this same game id before moving the
+                // new one in.
+                removeStaleGameModuleEntries(gameModulesDir, id, targetDir);
+                fs.renameSync(stagedRoot, targetDir);
+            } finally {
+                fs.rmSync(stagingDir, { recursive: true, force: true });
             }
 
             if (!wasInstalled) {
