@@ -99,6 +99,13 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
         const [moved] = next.splice(fromIndex, 1);
         next.splice(toIndex, 0, moved);
         onChange(next);
+        // `expandedStep` is a bare array index, not a stable per-step id — a
+        // move that doesn't also follow it here leaves the SAME index number
+        // expanded, which after the splice above now belongs to a DIFFERENT
+        // step. The Move up/down buttons only render inside the expanded
+        // step's own panel, so `fromIndex` here is always the currently
+        // expanded index.
+        setExpandedStep((prev) => (prev === fromIndex ? toIndex : prev));
     };
 
     const handleClear = () => {
