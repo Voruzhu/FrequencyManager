@@ -98,7 +98,13 @@ export interface ExternalLoadResult {
 // lookaround wrapping a nested quantifier (e.g. `(?<x>a+)+`, `(?=a+)+`) is
 // exactly as exponential as `(a+)+`; missing these left two whole syntax
 // classes able to bypass this check entirely.
-const NESTED_QUANTIFIER = /\((?:\?(?:<[a-zA-Z_$][\w$]*>|<[=!]|[:=!])?)?\s*(?:\[[^\]]*\]|\\.|.)[+*]\s*\)[+*]/;
+// The quantifier itself must cover `{n,}`/`{n,m}` bounded repetition, not
+// just literal `+`/`*` — `(a{5,})+` is exactly as exponential as `(a+)+`,
+// just spelled differently, and was a straight bypass of this check before
+// (a `{n}` EXACT count with no comma is deliberately excluded: `(a{5})+` has
+// no ambiguity to backtrack over, it's linear).
+const QUANTIFIER = '(?:[+*]|\\{\\d+,\\d*\\})';
+const NESTED_QUANTIFIER = new RegExp(`\\((?:\\?(?:<[a-zA-Z_$][\\w$]*>|<[=!]|[:=!])?)?\\s*(?:\\[[^\\]]*\\]|\\\\.|.)${QUANTIFIER}\\s*\\)${QUANTIFIER}`);
 const MAX_PATTERN_LENGTH = 500;
 
 export function isRegexSafe(source: string): boolean {

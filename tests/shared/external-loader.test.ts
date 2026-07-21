@@ -79,6 +79,17 @@ describe('isRegexSafe', () => {
         expect(isRegexSafe('(?<!a+)+$')).toBe(false);
     });
 
+    it('rejects the same nested-quantifier shape spelled with a bounded {n,}/{n,m} repetition (regression: bypassed the old check entirely, which only recognized literal +/*)', () => {
+        expect(isRegexSafe('(a{5,})+$')).toBe(false);
+        expect(isRegexSafe('(a{2,5})+$')).toBe(false);
+        expect(isRegexSafe('(?<x>a{3,})+$')).toBe(false);
+        expect(isRegexSafe('(?=a{3,})+$')).toBe(false);
+    });
+
+    it('does NOT flag an EXACT-count {n} repetition nested in a group (no ambiguity to backtrack over — linear, not exponential)', () => {
+        expect(isRegexSafe('(a{5})+$')).toBe(true);
+    });
+
     it('does NOT flag a safe compound group that merely ends in a quantifier (regression: WuWa\'s real namePattern, which handles names like "Xiangli Yao"/"Rover: Spectro")', () => {
         // A REQUIRED leading punctuation character before the repeated letters
         // means each iteration's start is unambiguous — not the classic
