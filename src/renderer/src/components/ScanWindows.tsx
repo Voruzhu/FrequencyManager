@@ -1,12 +1,12 @@
 import { useRef } from 'react';
 import { ScanLine, Swords, Users, AlertTriangle } from 'lucide-react';
-import { Badge, Button } from './ui';
+import { Badge, Button, toast } from './ui';
 import { useWindowStore } from '../stores/windowStore';
 import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
 import { useOwnedInventory, useInventoryStore } from '../stores/inventoryStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
-import { computeEquippedGearIds, useCalcStore } from '../stores/calcStore';
+import { computeEquippedGearIds, isGearAtCapacity, useCalcStore } from '../stores/calcStore';
 import { AddGearWindow } from './InventoryWindows';
 import { mapScannedEchoToGearDraft } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
@@ -137,6 +137,16 @@ export function EquipScannedGearWindow({ characterId, characterName, gearId }: {
         if (!isOwned) addCharacter(gameId, characterId);
         const current = useLoadoutStore.getState().getLoadout(gameId, characterId);
         if (!current.gearIds.includes(gearId)) {
+            // `computeEquippedGearIds` silently no-ops (returns the array
+            // unchanged) once at capacity with no exclusivity swap to free a
+            // slot — its own doc comment says callers with UI access should
+            // check `isGearAtCapacity` first rather than let that happen
+            // invisibly. Without this check, closing the window here reads
+            // as a successful equip even though nothing changed.
+            if (isGearAtCapacity(gameId, current.gearIds, gearId)) {
+                toast.error(`${characterName} already has a full set of gear`, { description: 'Unequip something first, then try again.' });
+                return;
+            }
             // Routes through the same exclusivity rules as the Calculator's
             // own equip action (one-cost-4-echo, one-artifact-per-slot,
             // maxGear cap) — see computeEquippedGearIds's doc comment.

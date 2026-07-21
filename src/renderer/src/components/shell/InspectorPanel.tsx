@@ -409,7 +409,7 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
                                 ) : owners.length > 0 ? (
                                     <Button
                                         size="sm" variant="outline" className="border-warning/40 text-warning hover:bg-warning/10"
-                                        onClick={() => openWindow('Already equipped', <AlreadyEquippedWindow g={g} gameId={activeGameId} owners={owners} onEquip={() => equipGear(g.id)} />)}
+                                        onClick={() => openWindow('Already equipped', <AlreadyEquippedWindow g={g} gameId={activeGameId} owners={owners} atCapacity={atCapacity} maxGear={data.maxGear} onEquip={() => equipGear(g.id)} />)}
                                     >
                                         <AlertTriangle className="h-3.5 w-3.5" /> Already equipped
                                     </Button>
@@ -427,8 +427,8 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
     );
 }
 
-/** Popup for a gear piece another character already has equipped — purely informational; Equip proceeds unchanged. */
-function AlreadyEquippedWindow({ g, gameId, owners, onEquip }: { g: GearData; gameId: string; owners: CharacterData[]; onEquip: () => void }) {
+/** Popup for a gear piece another character already has equipped — purely informational; Equip proceeds unchanged, UNLESS the active character is also already at their gear cap, in which case "Equip anyway" would silently no-op (see `computeEquippedGearIds`'s doc comment) — disabled instead, same treatment as the plain "At capacity" button elsewhere in this panel. */
+function AlreadyEquippedWindow({ g, gameId, owners, atCapacity, maxGear, onEquip }: { g: GearData; gameId: string; owners: CharacterData[]; atCapacity: boolean; maxGear: number; onEquip: () => void }) {
     const closeWindow = useWindowStore((s) => s.closeWindow);
     const data = useGameData(gameId);
     return (
@@ -453,7 +453,11 @@ function AlreadyEquippedWindow({ g, gameId, owners, onEquip }: { g: GearData; ga
             </div>
             <DialogFooter>
                 <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
-                <Button onClick={() => { onEquip(); closeWindow(); }}>Equip anyway</Button>
+                {atCapacity ? (
+                    <Button disabled title={`Already at the ${maxGear}-piece cap — unequip something first`}>At capacity</Button>
+                ) : (
+                    <Button onClick={() => { onEquip(); closeWindow(); }}>Equip anyway</Button>
+                )}
             </DialogFooter>
         </div>
     );
