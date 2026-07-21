@@ -260,22 +260,35 @@ export function ScannerScreen() {
         if (imagePaths.length === 0) return; // cancelled
         const token = ++scanTokenRef.current;
         setScanning(true);
-        // One at a time, not Promise.all — each scan reuses the same worker
-        // pipeline a live capture does, and doing them sequentially means
-        // history fills in as each one finishes instead of all at once.
-        for (const imagePath of imagePaths) {
-            if (scanTokenRef.current !== token) break; // stopped mid-batch
-            // Run through the same crop+upscale pipeline a live capture gets —
-            // a browsed screenshot (e.g. a full-screen shot saved earlier) has
-            // the exact same UI-noise problem raw OCR would hit on a fresh
-            // capture, so this can't skip that processing.
-            const processedPath = b.processFile ? await b.processFile(imagePath, 'echoes') : imagePath;
-            if (scanTokenRef.current !== token) break; // stopped while preprocessing
-            await runScanFlow(processedPath, token, imagePaths.length > 1);
-        }
-        if (scanTokenRef.current === token) {
-            setScanning(false);
-            if (imagePaths.length > 1) toast.success(`Scanned ${imagePaths.length} images`);
+        // The whole loop is wrapped in try/catch/finally — previously an
+        // exception anywhere in here (a rejected processFile/scanImage IPC
+        // call — a corrupted image, or a main-process crop/OCR failure —
+        // propagates up through runScanFlow's own unguarded awaits too) left
+        // `scanning` stuck true forever with no error shown, permanently
+        // disabling both this button and the hotkey-arm "Scan" button until
+        // the app restarted. Same failure class CalculatorScreen.run() already
+        // guards against the same way.
+        try {
+            // One at a time, not Promise.all — each scan reuses the same worker
+            // pipeline a live capture does, and doing them sequentially means
+            // history fills in as each one finishes instead of all at once.
+            for (const imagePath of imagePaths) {
+                if (scanTokenRef.current !== token) break; // stopped mid-batch
+                // Run through the same crop+upscale pipeline a live capture gets —
+                // a browsed screenshot (e.g. a full-screen shot saved earlier) has
+                // the exact same UI-noise problem raw OCR would hit on a fresh
+                // capture, so this can't skip that processing.
+                const processedPath = b.processFile ? await b.processFile(imagePath, 'echoes') : imagePath;
+                if (scanTokenRef.current !== token) break; // stopped while preprocessing
+                await runScanFlow(processedPath, token, imagePaths.length > 1);
+            }
+            if (scanTokenRef.current === token && imagePaths.length > 1) {
+                toast.success(`Scanned ${imagePaths.length} images`);
+            }
+        } catch (err) {
+            toast.error('Scan failed', { description: err instanceof Error ? err.message : 'An unexpected error occurred.' });
+        } finally {
+            if (scanTokenRef.current === token) setScanning(false);
         }
     };
 
