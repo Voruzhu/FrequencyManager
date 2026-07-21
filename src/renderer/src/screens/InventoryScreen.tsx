@@ -12,6 +12,7 @@ import { useSelectionStore } from '../stores/selectionStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
+import { useCalcStore } from '../stores/calcStore';
 import { useGameData } from '../data/gameData';
 import { AddCharacterWindow, AddWeaponWindow, AddGearWindow } from '../components/InventoryWindows';
 import { GearCard } from '../components/GearCard';
@@ -28,6 +29,20 @@ export function InventoryScreen() {
     const gameLoadouts = useLoadoutStore((s) => s.byGame[activeGameId]) ?? {};
     const isEquippedAnywhere = (gearId: string) => Object.values(gameLoadouts).some((l) => l.gearIds.includes(gearId));
     const selectedId = content?.kind === 'item' ? content.item.id : null;
+
+    // `removeGear` already strips the id out of every OTHER character's
+    // loadout (see `loadoutStore.removeGearEverywhere`), but the Calculator
+    // screen keeps its own separate `calcStore.equipped` snapshot that's only
+    // re-hydrated from loadoutStore when a character is (re)selected — sync
+    // it directly too if the active character had this piece equipped, same
+    // reasoning as `EquipScannedGearWindow`'s post-scan equip sync.
+    const removeGearAndSync = (gearId: string) => {
+        const calc = useCalcStore.getState();
+        removeGear(activeGameId, gearId);
+        if (calc.equipped.gearIds.includes(gearId)) {
+            useCalcStore.setState({ equipped: { ...calc.equipped, gearIds: calc.equipped.gearIds.filter((g) => g !== gearId) } });
+        }
+    };
 
     // ── Characters: search + element/weapon/rarity filters ──
     const [charQuery, setCharQuery] = useState('');
@@ -213,7 +228,7 @@ export function InventoryScreen() {
                                     onClick={() => showItem(g)}
                                     actions={
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); removeGear(activeGameId, g.id); }}
+                                            onClick={(e) => { e.stopPropagation(); removeGearAndSync(g.id); }}
                                             className="flex-shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
                                             aria-label="Remove from inventory" title="Remove"
                                         >

@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { GearEntry, CharacterEntry, WeaponEntry } from '@shared/types/game-bundle';
 import { userStorage } from '../lib/userStorage';
 import { getGameData, useGameData } from '../data/gameData';
+import { useLoadoutStore } from './loadoutStore';
 
 /**
  * The user's owned items for one game. Characters/weapons are referenced by id
@@ -91,9 +92,15 @@ export const useInventoryStore = create<InventoryState>()(
                     return { ...inv, gear: [...inv.gear, { ...gear, id }] };
                 }),
             })),
-            removeGear: (gameId, instanceId) => set((s) => ({
-                byGame: update(s.byGame, gameId, (inv) => ({ ...inv, gear: inv.gear.filter((g) => g.id !== instanceId) })),
-            })),
+            removeGear: (gameId, instanceId) => {
+                set((s) => ({
+                    byGame: update(s.byGame, gameId, (inv) => ({ ...inv, gear: inv.gear.filter((g) => g.id !== instanceId) })),
+                }));
+                // A removed instance can't just be left equipped everywhere it
+                // was — see `removeGearEverywhere`'s doc comment for the
+                // permanent-slot-jam this prevents.
+                useLoadoutStore.getState().removeGearEverywhere(gameId, instanceId);
+            },
             updateGear: (gameId, gear) => set((s) => ({
                 byGame: update(s.byGame, gameId, (inv) => ({ ...inv, gear: inv.gear.map((g) => (g.id === gear.id ? gear : g)) })),
             })),
