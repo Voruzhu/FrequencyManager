@@ -56,19 +56,22 @@ Want to build it yourself instead? See [CONTRIBUTING.md](./CONTRIBUTING.md).
 | --- | --- |
 | **Dashboard** | A quick overview of your build workspace — recent calculations and scans at a glance. |
 | **Calculator** | Pick a character, set what you want to maximize (or hit a minimum threshold for), and either see live stats for your currently-equipped gear or run the **Optimizer** to search every combination of gear you own for the best build. Supports crit modes, elemental reactions (Genshin), a Set Bonus picker, Party Setup for team-wide buffs, and a real boss roster (both games) with per-element RES instead of a generic enemy. |
-| **Scanner** | Point your hotkey at an in-game gear screen and FrequencyManager reads the stats off the screenshot (OCR) and adds it to your inventory — no manual typing. You can also scan a previously saved screenshot, or batch-import several at once. Currently supported: **Wuthering Waves echoes** only (see below). |
+| **Scanner** | Point your hotkey at an in-game gear screen and FrequencyManager reads the stats off the screenshot (OCR) and adds it to your inventory — no manual typing. You can also scan a previously saved screenshot, or batch-import several at once. Currently supported: **Wuthering Waves echoes** only (see below) — for Genshin, use the GOOD-format importer in **Settings → Data** instead. |
 | **Inventory** | Manage everything you own: characters, weapons, and gear. Add, edit, equip, and unequip pieces; filter and sort your gear by stat, set, rarity, or cost; get warned before double-equipping a piece another character is already using. |
-| **Rotation** | Build and save a damage rotation — a sequence of skills/attacks and manually-placed buffs — against your actual party and a real boss (or multi-wave fight), to see total damage over a fight instead of just a single hit. Consecutive actions for the same character group into one card, and any conditional buff a party member can grant (weapon, passive, constellation/sequence) can be dropped into the timeline with its own duration. |
+| **Rotation** | Build and save a damage rotation — a sequence of skills/attacks and manually-placed buffs — against your own configured target(s), to see total damage over a fight instead of just a single hit. Each rotation gets its own boss (or multi-wave fight) with real icons, per-element RES, and custom defense overrides, independent of whatever the Calculator has selected. Consecutive actions for the same character group into one card, and any conditional buff a party member can grant (weapon, passive, constellation/sequence) can be dropped into the timeline with its own duration. |
 | **Settings** | Switch the active game, tune calculator/optimizer behavior (like how many CPU threads the optimizer uses), configure the scan hotkey, manage app/game updates, back up or clear your data, and toggle individual feature modules on or off. |
 
 ---
 
 ## 🔍 OCR Scanning support
 
-OCR scanning currently supports **Wuthering Waves echoes only** (Genshin
-artifacts and any other game/gear type aren't wired up yet — add them to your
-inventory manually via **Inventory → Add**). To get a clean scan, line up the
-in-game Echo screen like this before pressing the scan hotkey:
+OCR scanning currently supports **Wuthering Waves echoes only** — verified
+against real screenshots. Genshin's artifact patterns exist in the code but
+have never been checked against a real screenshot, so the Scanner's "Scan"
+menu grays that option out rather than run an unverified pipeline (Weapons
+and Characters scanning aren't built at all yet, for either game). To get a
+clean Wuthering Waves scan, line up the in-game Echo screen like this before
+pressing the scan hotkey:
 
 **Character → Echo → select a set → click into an echo → Scan**
 
@@ -80,6 +83,13 @@ fixed regions of the screen calibrated against that resolution — a different
 resolution, windowed mode, or a different display scale will crop the wrong
 area and produce a bad or empty scan.
 
+**For Genshin**, skip OCR entirely and use **Settings → Data → Import from
+third-party scanner** instead — it reads the GOOD format (Genshin Open
+Object Description), the community standard already shared by Inventory
+Kamera, Akasha Scanner, Genshin Optimizer, and others. Export from any of
+those and import the file (or pasted JSON) directly; unrecognized sets/stats
+and already-owned duplicates are skipped, not guessed at.
+
 ---
 
 ## 📊 Data accuracy
@@ -89,9 +99,12 @@ against multiple community sources, not scraped automatically — coverage and
 accuracy vary by game as that work continues:
 
 - **Wuthering Waves** — ~95% accurate (full-roster re-audit against 2+
-  independent sources completed 2026-07-17).
+  independent sources completed 2026-07-17); boss roster (42 targets) sourced
+  and cross-checked against 2+ independent sources, including real per-boss
+  icons and per-element RES where documented.
 - **Genshin Impact** — still in progress.
-- **OCR scan support** — unchanged, Wuthering Waves echoes only (see above).
+- **OCR scan support** — Wuthering Waves echoes only, verified against real
+  screenshots (see above); Genshin uses the GOOD-format importer instead.
 
 Found something wrong? Open an issue with the character/weapon and what's off.
 

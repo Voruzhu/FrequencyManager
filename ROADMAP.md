@@ -70,6 +70,15 @@ fabricated:
 - **Sigrika** — missing Outro Skill
 - **Suisui** — missing Intro Skill, and Drizzle Stance
 
+A 2026-07-23 pass expanded the boss/target roster from 8 to 42 real bosses
+(cross-checked against 2+ independent sources), standardized to a shared
+level-90/950-DEF baseline since neither game publishes real per-boss DEF
+(confirmed: GI's defense is purely level-based; WuWa has never documented
+raw per-boss DEF either), differentiated instead by real per-element RES
+overrides where documented. Also sourced real per-boss icons for 41/42 (the
+one gap, a non-Nightmare "Adam Smasher," turned out to not exist as a real
+fight at all — a fabricated duplicate removed in the same pass).
+
 ### Genshin Impact — 121/121 characters, base data complete, full re-audit still ahead
 
 Full roster has real skill data, base stats, constellations, and kit buffs,
@@ -80,10 +89,15 @@ push (see below).
 
 ### OCR scan support
 
-Unchanged — Wuthering Waves echoes only. Reads the in-game Echo detail screen
-(name, cost, main stat, sub-stats) via a global hotkey or a saved screenshot.
-Requires the game running fullscreen at 1920×1080 (see the README). Genshin
-artifact scanning isn't wired up.
+Wuthering Waves echoes only, verified against real screenshots. Reads the
+in-game Echo detail screen (name, cost, main stat, sub-stats) via a global
+hotkey or a saved screenshot. Requires the game running fullscreen at
+1920×1080 (see the README). Genshin's artifact patterns exist in the code but
+have never been checked against a real screenshot, so the Scanner's type
+picker grays that option out rather than run something unverified — Genshin
+players should use the GOOD-format importer (Settings → Data) instead, which
+reads real exported data from Inventory Kamera, Akasha Scanner, Genshin
+Optimizer, or any other tool that shares the format.
 
 Found something wrong in the data? Open an issue naming the character/weapon
 and what's off — that's exactly what this section is tracking against.
@@ -97,14 +111,14 @@ and what's off — that's exactly what this section is tracking against.
   against 2+ independent sources, fixing wrong values/scopes/missing buffs
   as found. The single biggest data-quality item left.
 - **Rotation Builder refinement** — currently positioned as a tool for
-  *testing* rotations (build a sequence of skills/attacks against your real
-  party, see total damage over a fight). Expect refinement as real-world
-  rotations get tried against it.
+  *testing* rotations (build a sequence of skills/attacks against your own
+  party, see total damage over a fight). Each rotation now gets its own
+  independent target(s) — real boss picker with icons/per-element RES, custom
+  defense overrides, and per-wave HP — no longer tied to the Calculator's
+  shared enemy. Expect further refinement as real-world rotations get tried
+  against it.
 - **Keeping up with new game content** — new characters, weapons, and echo
   sets/artifact sets as both games release them.
-- **OCR hotkey-capture scanner** — the file-picker "scan a saved screenshot"
-  path works today; a live in-game capture flow (global hotkey → screen
-  capture → parse, no manual screenshot step) was designed but not yet built.
 - **Dependency security pass** — `npm audit` currently flags Electron,
   Vite, and electron-builder (all several majors behind). Real advisories,
   but low practical exploitability for this app (no remote content loading).
@@ -113,10 +127,7 @@ and what's off — that's exactly what this section is tracking against.
 - **Engine gaps intentionally not planned**: a shield/survivability
   calculation (this app only computes damage *output* — no "damage taken"/
   effective-HP concept exists anywhere, and building one is a different tool,
-  not a gap in this one). Per-element enemy RES tracking is also unmodeled
-  (enemies have one flat RES value regardless of attacking element) — every
-  RES-shred effect is applied against that single value as the closest
-  available approximation.
+  not a gap in this one).
 
 ---
 
