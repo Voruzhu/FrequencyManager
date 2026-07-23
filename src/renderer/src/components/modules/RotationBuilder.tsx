@@ -253,9 +253,6 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
                         return (
                             <div key={`group-${group.indices[0]}`} className="bg-surface border border-border rounded-lg overflow-hidden">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 border-b border-border">
-                                    {character?.icon && (
-                                        <span className="w-5 h-5" dangerouslySetInnerHTML={{ __html: character.icon }} />
-                                    )}
                                     <span className="font-medium text-fg text-sm">{character?.label ?? group.characterId}</span>
                                 </div>
                                 <div className="divide-y divide-border">
