@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { PanelRight } from 'lucide-react';
-import { TooltipProvider, Toaster, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
+import { TooltipProvider, Toaster, toast, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui';
+import { FM_STORAGE_WRITE_FAILED_EVENT } from '../../lib/userStorage';
 import { TopBar } from './TopBar';
 import { NavRail } from './NavRail';
 import { Workspace } from './Workspace';
@@ -8,6 +9,7 @@ import { InspectorPanel } from './InspectorPanel';
 import { StatusBar } from './StatusBar';
 import { WindowHost } from './WindowHost';
 import { DevPanel } from '../DevPanel';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { useModuleStore } from '../../stores/moduleStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGameStore } from '../../stores/gameStore';
@@ -58,6 +60,17 @@ export function AppShell() {
         void Promise.all([bundlesReady, hydrated]).then(seed);
     }, [refreshModules, syncGame, loadBundle]);
 
+    // A failed disk write (disk full, permission denied) used to be reported
+    // to every persisted store as success, with nothing shown to the user —
+    // see `userStorage.ts`'s `setItem`, which dispatches this event instead
+    // of importing a toast component directly (kept dependency-free so
+    // pure-logic store tests don't need a JSX-capable test environment).
+    useEffect(() => {
+        const onWriteFailed = () => toast.error('Failed to save', { description: 'Your changes may not have been written to disk — check available disk space.' });
+        window.addEventListener(FM_STORAGE_WRITE_FAILED_EVENT, onWriteFailed);
+        return () => window.removeEventListener(FM_STORAGE_WRITE_FAILED_EVENT, onWriteFailed);
+    }, []);
+
     return (
         <TooltipProvider delayDuration={200}>
             <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -68,16 +81,24 @@ export function AppShell() {
                         {inspectorOpen ? (
                             <ResizablePanelGroup direction="horizontal" autoSaveId="fm-main-layout">
                                 <ResizablePanel defaultSize={72} minSize={45}>
-                                    <Workspace />
+                                    <ErrorBoundary label="This screen ran into a problem">
+                                        <Workspace />
+                                    </ErrorBoundary>
                                 </ResizablePanel>
                                 <ResizableHandle withHandle />
                                 <ResizablePanel defaultSize={28} minSize={18} maxSize={44}>
-                                    <InspectorPanel />
+                                    <ErrorBoundary label="The inspector ran into a problem">
+                                        <InspectorPanel />
+                                    </ErrorBoundary>
                                 </ResizablePanel>
                             </ResizablePanelGroup>
                         ) : (
                             <div className="flex h-full">
-                                <div className="min-w-0 flex-1"><Workspace /></div>
+                                <div className="min-w-0 flex-1">
+                                    <ErrorBoundary label="This screen ran into a problem">
+                                        <Workspace />
+                                    </ErrorBoundary>
+                                </div>
                                 <button
                                     onClick={() => setInspectorOpen(true)}
                                     className="flex w-9 flex-shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
