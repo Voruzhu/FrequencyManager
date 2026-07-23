@@ -110,66 +110,77 @@ const supplements: GameCatalogSupplements = {
     // per Fandom's Damage/DMG RES pages (cross-checked, not independently
     // re-read live — see this feature's research notes).
     enemies: [
-        { id: 'ww-crownless', name: 'Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-aix', name: 'Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
-        { id: 'ww-beringal', name: 'Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
-        { id: 'ww-mephis', name: 'Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
-        { id: 'ww-inferno', name: 'Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        // icon paths added 2026-07-23, sourced from api.encore.moe's
+        // /en/monster (list) + /en/monster/<id> (detail) endpoints — same
+        // per-boss `Icon` field the site itself serves, verified by
+        // downloading and checking each file's real WEBP magic bytes (the
+        // API's own `.png` extension 404s against the CDN; the identical
+        // path with a `.webp` extension is what's actually hosted there).
+        { id: 'ww-crownless', name: 'Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-crownless.webp' },
+        { id: 'ww-aix', name: 'Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 }, icon: 'icons/enemies/ww-aix.webp' },
+        { id: 'ww-beringal', name: 'Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 }, icon: 'icons/enemies/ww-beringal.webp' },
+        { id: 'ww-mephis', name: 'Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 }, icon: 'icons/enemies/ww-mephis.webp' },
+        { id: 'ww-inferno', name: 'Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-inferno.webp' },
         // Element not documented anywhere found (Fandom RES table has no
         // entry for it) — left at baseline RES rather than guessed.
-        { id: 'ww-lampylumen', name: 'Lampylumen Myriad', level: 90, def: 950, res: 10 },
-        { id: 'ww-dreamless', name: 'Dreamless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-hecate', name: 'Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-lampylumen', name: 'Lampylumen Myriad', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-lampylumen.webp' },
+        { id: 'ww-dreamless', name: 'Dreamless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-dreamless.webp' },
+        { id: 'ww-hecate', name: 'Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-hecate.webp' },
         // Two-phase boss (human/Fusion form -> enraged goat/Spectro+Havoc
         // form) — this schema has no time-varying RES concept, so this uses
         // the enraged phase (where most of a real fight happens) and drops
-        // the human-phase Fusion affinity rather than merging both.
-        { id: 'ww-scar', name: 'Scar', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Havoc: 40 } },
-        { id: 'ww-jue', name: 'Jué', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Electro: 40 } },
+        // the human-phase Fusion affinity rather than merging both. Icon
+        // matches this same enraged phase ("Scar: Lightbane Reversal" in
+        // the API, not the human-phase "Scar: Aberrant Nightmare").
+        { id: 'ww-scar', name: 'Scar', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Havoc: 40 }, icon: 'icons/enemies/ww-scar.webp' },
+        { id: 'ww-jue', name: 'Jué', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Electro: 40 }, icon: 'icons/enemies/ww-jue.webp' },
         // Element not documented — left at baseline.
-        { id: 'ww-fleurdelys', name: 'Reminiscence: Fleurdelys', level: 90, def: 950, res: 10 },
-        { id: 'ww-leviathan', name: 'Threnodian: Leviathan', level: 90, def: 950, res: 10 },
-        { id: 'ww-sigillum', name: 'Sigillum', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
-        { id: 'ww-denia', name: 'Denia', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        { id: 'ww-puppet-pavilion', name: 'Thousand-Puppet Pavilion', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 } },
-        { id: 'ww-heron', name: 'Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-mech-abomination', name: 'Mech Abomination', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
-        { id: 'ww-thundering-mephis', name: 'Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
-        { id: 'ww-fallacy', name: 'Fallacy of No Return', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
-        { id: 'ww-sentry-construct', name: 'Sentry Construct', level: 90, def: 950, res: 10, resByElement: { Glacio: 40 } },
-        { id: 'ww-dragon-of-dirge', name: 'Dragon of Dirge', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        { id: 'ww-lorelei', name: 'Lorelei', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-lioness-of-glory', name: 'Lioness of Glory', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        { id: 'ww-fenrico', name: 'Fenrico', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
-        { id: 'ww-false-sovereign', name: 'The False Sovereign', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 } },
+        { id: 'ww-fleurdelys', name: 'Reminiscence: Fleurdelys', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-fleurdelys.webp' },
+        { id: 'ww-leviathan', name: 'Threnodian: Leviathan', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-leviathan.webp' },
+        { id: 'ww-sigillum', name: 'Sigillum', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 }, icon: 'icons/enemies/ww-sigillum.webp' },
+        { id: 'ww-denia', name: 'Denia', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-denia.webp' },
+        { id: 'ww-puppet-pavilion', name: 'Thousand-Puppet Pavilion', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 }, icon: 'icons/enemies/ww-puppet-pavilion.webp' },
+        { id: 'ww-heron', name: 'Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-heron.webp' },
+        { id: 'ww-mech-abomination', name: 'Mech Abomination', level: 90, def: 950, res: 10, resByElement: { Electro: 40 }, icon: 'icons/enemies/ww-mech-abomination.webp' },
+        { id: 'ww-thundering-mephis', name: 'Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 }, icon: 'icons/enemies/ww-thundering-mephis.webp' },
+        { id: 'ww-fallacy', name: 'Fallacy of No Return', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 }, icon: 'icons/enemies/ww-fallacy.webp' },
+        { id: 'ww-sentry-construct', name: 'Sentry Construct', level: 90, def: 950, res: 10, resByElement: { Glacio: 40 }, icon: 'icons/enemies/ww-sentry-construct.webp' },
+        { id: 'ww-dragon-of-dirge', name: 'Dragon of Dirge', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-dragon-of-dirge.webp' },
+        { id: 'ww-lorelei', name: 'Lorelei', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-lorelei.webp' },
+        { id: 'ww-lioness-of-glory', name: 'Lioness of Glory', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-lioness-of-glory.webp' },
+        { id: 'ww-fenrico', name: 'Fenrico', level: 90, def: 950, res: 10, resByElement: { Aero: 40 }, icon: 'icons/enemies/ww-fenrico.webp' },
+        { id: 'ww-false-sovereign', name: 'The False Sovereign', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 }, icon: 'icons/enemies/ww-false-sovereign.webp' },
         // Element not documented — left at baseline.
-        { id: 'ww-lady-of-the-sea', name: 'Lady of the Sea', level: 90, def: 950, res: 10 },
-        { id: 'ww-hyvatia', name: 'Hyvatia', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
-        { id: 'ww-reactor-husk', name: 'Reactor Husk', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        { id: 'ww-nameless-explorer', name: 'Nameless Explorer', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
-        { id: 'ww-rustfire-chassis', name: 'Myriad Snare: Rustfire Chassis', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        // No elemental weakness documented — explicitly "not weak to any
-        // single element" per source; its real exploitable weakness is a
-        // collab-exclusive status effect this schema has no concept of.
-        { id: 'ww-adam-smasher', name: 'Adam Smasher', level: 90, def: 950, res: 10 },
+        { id: 'ww-lady-of-the-sea', name: 'Lady of the Sea', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-lady-of-the-sea.webp' },
+        { id: 'ww-hyvatia', name: 'Hyvatia', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 }, icon: 'icons/enemies/ww-hyvatia.webp' },
+        { id: 'ww-reactor-husk', name: 'Reactor Husk', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-reactor-husk.webp' },
+        { id: 'ww-nameless-explorer', name: 'Nameless Explorer', level: 90, def: 950, res: 10, resByElement: { Aero: 40 }, icon: 'icons/enemies/ww-nameless-explorer.webp' },
+        { id: 'ww-rustfire-chassis', name: 'Myriad Snare: Rustfire Chassis', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-rustfire-chassis.webp' },
         // Nightmare variants: same boss, tougher stats, fought later in the
         // story — no independent RES confirmation was found for any of
         // these specifically, so each REUSES its base form's documented
         // element as the best available estimate, not a separately-sourced
         // value.
-        { id: 'ww-nightmare-beringal', name: 'Nightmare: Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
-        { id: 'ww-nightmare-heron', name: 'Nightmare: Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-nightmare-thundering-mephis', name: 'Nightmare: Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
-        { id: 'ww-nightmare-tempest-mephis', name: 'Nightmare: Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
-        { id: 'ww-nightmare-crownless', name: 'Nightmare: Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-nightmare-inferno-rider', name: 'Nightmare: Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
-        { id: 'ww-nightmare-mourning-aix', name: 'Nightmare: Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
-        { id: 'ww-nightmare-lampylumen', name: 'Nightmare: Lampylumen Myriad', level: 90, def: 950, res: 10 },
+        { id: 'ww-nightmare-beringal', name: 'Nightmare: Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 }, icon: 'icons/enemies/ww-nightmare-beringal.webp' },
+        { id: 'ww-nightmare-heron', name: 'Nightmare: Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-nightmare-heron.webp' },
+        { id: 'ww-nightmare-thundering-mephis', name: 'Nightmare: Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 }, icon: 'icons/enemies/ww-nightmare-thundering-mephis.webp' },
+        { id: 'ww-nightmare-tempest-mephis', name: 'Nightmare: Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 }, icon: 'icons/enemies/ww-nightmare-tempest-mephis.webp' },
+        { id: 'ww-nightmare-crownless', name: 'Nightmare: Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-nightmare-crownless.webp' },
+        { id: 'ww-nightmare-inferno-rider', name: 'Nightmare: Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 }, icon: 'icons/enemies/ww-nightmare-inferno-rider.webp' },
+        { id: 'ww-nightmare-mourning-aix', name: 'Nightmare: Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 }, icon: 'icons/enemies/ww-nightmare-mourning-aix.webp' },
+        { id: 'ww-nightmare-lampylumen', name: 'Nightmare: Lampylumen Myriad', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-nightmare-lampylumen.webp' },
         // No non-Nightmare "Kelpie" boss exists to inherit an element from;
         // element not independently confirmed for this one either.
-        { id: 'ww-nightmare-kelpie', name: 'Nightmare: Kelpie', level: 90, def: 950, res: 10 },
-        { id: 'ww-nightmare-hecate', name: 'Nightmare: Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
-        { id: 'ww-nightmare-adam-smasher', name: 'Nightmare: Adam Smasher', level: 90, def: 950, res: 10 },
+        { id: 'ww-nightmare-kelpie', name: 'Nightmare: Kelpie', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-nightmare-kelpie.webp' },
+        { id: 'ww-nightmare-hecate', name: 'Nightmare: Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 }, icon: 'icons/enemies/ww-nightmare-hecate.webp' },
+        // Like Kelpie, no non-Nightmare "Adam Smasher" boss exists — this
+        // collab boss is only ever fought at "Nightmare" difficulty in-game
+        // (confirmed: api.encore.moe's full monster list has no base-form
+        // entry for it either). No elemental weakness documented — source
+        // explicitly says it isn't weak to any single element; its real
+        // exploitable weakness is a collab-exclusive status effect this
+        // schema has no concept of.
+        { id: 'ww-nightmare-adam-smasher', name: 'Nightmare: Adam Smasher', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-nightmare-adam-smasher.webp' },
     ],
     buffs: {
         basic: [

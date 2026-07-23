@@ -1,15 +1,16 @@
 import * as React from 'react';
-import { User, Swords, Gem, Sparkles, type LucideIcon } from 'lucide-react';
+import { User, Swords, Gem, Sparkles, Skull, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /** Item categories the app displays. Real art will replace these placeholders. */
-export type ItemKind = 'character' | 'weapon' | 'echo' | 'artifact';
+export type ItemKind = 'character' | 'weapon' | 'echo' | 'artifact' | 'enemy';
 
 const KIND_ICON: Record<ItemKind, LucideIcon> = {
     character: User,
     weapon: Swords,
     echo: Gem,
     artifact: Sparkles,
+    enemy: Skull,
 };
 
 // Standard gacha rarity-quality colors: 5★ gold, 4★ purple (Epic), 3★ blue,

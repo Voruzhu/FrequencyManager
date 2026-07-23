@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Skull, Star, Target as TargetIcon, Users } from 'lucide-react';
+import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Star, Target as TargetIcon, Users } from 'lucide-react';
 import {
     Badge, Button, Input, Label, ItemIcon, EmptyState, Separator, ScrollArea, DialogFooter, DialogClose, Switch,
     Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -599,15 +599,23 @@ function EnemyPicker({ gameId }: { gameId: string }) {
                     const isDummy = e.id === 'dummy';
                     // For the selected row, reflect any custom-configured values.
                     const disp = active ? enemy : e;
+                    const overrides = Object.entries(e.resByElement ?? {}) as Array<[string, number]>;
                     return (
                         <div key={e.id} className={cn('flex items-center gap-2 rounded-md border p-2 transition-colors', active ? 'border-primary bg-primary/5' : 'border-border bg-surface')}>
                             <button onClick={() => setEnemy(e)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                                <div className={cn('flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md', isDummy ? 'bg-surface-2 text-muted-foreground' : 'bg-destructive/15 text-destructive')}>
-                                    {isDummy ? <TargetIcon className="h-5 w-5" /> : <Skull className="h-5 w-5" />}
-                                </div>
+                                {isDummy ? (
+                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted-foreground">
+                                        <TargetIcon className="h-5 w-5" />
+                                    </div>
+                                ) : (
+                                    <ItemIcon kind="enemy" size="sm" src={iconSrc(gameId, e.icon)} className="bg-destructive/15 text-destructive" />
+                                )}
                                 <div className="min-w-0 flex-1">
                                     <div className="truncate text-sm font-medium text-foreground">{disp.name}</div>
-                                    <div className="text-xs text-muted-foreground">Lv{disp.level} · {disp.def} DEF · {disp.res}% RES</div>
+                                    <div className="truncate text-xs text-muted-foreground">
+                                        Lv{disp.level} · {disp.def} DEF · {disp.res}% RES
+                                        {overrides.length > 0 && ` · ${overrides.map(([el, v]) => `${el} ${v}%`).join(', ')}`}
+                                    </div>
                                 </div>
                             </button>
                             {active && (
@@ -768,6 +776,13 @@ function EnemyConfig() {
 
     // The catalog preset for the current enemy (dummy → 0/0/0).
     const preset = getEnemies(gameId).find((e) => e.id === enemy.id) ?? DUMMY;
+    // Real per-element RES overrides (e.g. a Havoc-affinity boss resisting
+    // Havoc damage specifically more than the flat baseline) — read-only
+    // here since the "RES %" field above only edits the flat fallback value
+    // `enemyMultiplier` uses for any element WITHOUT its own override; showing
+    // these makes clear the actual RES applied against a specific attacking
+    // element may differ from that flat number.
+    const resOverrides = Object.entries(preset.resByElement ?? {}) as Array<[string, number]>;
 
     const apply = () => {
         setEnemy({ ...enemy, level: Number(level) || 0, def: Number(def) || 0, res: Number(res) || 0 });
@@ -797,6 +812,16 @@ function EnemyConfig() {
                     <Input type="number" value={res} onChange={(e) => setRes(Number(e.target.value))} />
                 </div>
             </div>
+            {resOverrides.length > 0 && (
+                <div className="space-y-1.5 rounded-md border border-border bg-surface p-2.5">
+                    <p className="text-xs text-muted-foreground">
+                        This target has real per-element RES that differs from the flat value above — the calculator uses these against a matching attack, and the flat RES % only for every other element:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {resOverrides.map(([el, v]) => <Badge key={el} variant="outline">{el} {v}%</Badge>)}
+                    </div>
+                </div>
+            )}
             <DialogFooter>
                 <Button variant="ghost" onClick={revert}>Revert to default</Button>
                 <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
