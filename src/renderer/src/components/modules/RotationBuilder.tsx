@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWindowStore } from '../../stores/windowStore';
 import { RotationCharacterPickerWindow } from '../CharacterWindows';
 import { elapsedTimes, cooldownWarningFor } from '../../lib/rotationEngine';
-import type { FieldSpec, RotationStepSpec } from '../../types';
+import type { FieldSpec, RotationStepSpec, TimedBuffOption } from '../../types';
 
 interface RotationBuilderProps {
     field: FieldSpec;
@@ -59,6 +59,7 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
 
     const characters = config.characters || [];
     const skills = config.skills || {};
+    const buffOptions = config.buffs || [];
     const maxTime = config.maxRotationLength || 30;
 
     const handleAddStep = (characterId: string) => {
@@ -82,6 +83,31 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
 
         onChange([...value, newStep]);
         setExpandedStep(value.length);
+    };
+
+    /** Adds another action for the SAME character right after `index`, so
+     * building several actions in a row for one character doesn't need
+     * going back to the top-level character picker each time. */
+    const handleAddStepAfter = (index: number) => {
+        if (totalTime >= maxTime) return;
+        const characterId = value[index].characterId;
+        const charSkills = skills[characterId] || [];
+        const defaultSkill = charSkills[0];
+
+        const newStep: RotationStepSpec = {
+            characterId,
+            actionType: 'skill',
+            skillId: defaultSkill?.id,
+            skillLabel: defaultSkill?.label,
+            duration: 2,
+            energyCost: defaultSkill?.energyCost || 0,
+            energyGain: 0,
+        };
+
+        const next = [...value];
+        next.splice(index + 1, 0, newStep);
+        onChange(next);
+        setExpandedStep(index + 1);
     };
 
     const handleUpdateStep = (index: number, updates: Partial<RotationStepSpec>) => {
@@ -219,12 +245,14 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
                             isExpanded={expandedStep === index}
                             character={characters.find(c => c.id === step.characterId)}
                             availableSkills={getSkillsForCharacter(step.characterId)}
+                            availableBuffs={buffOptions.filter((b) => b.source === 'team' || b.characterId === step.characterId)}
                             cooldownWarning={cooldownWarningFor(value, elapsed, index, cooldownsBySkillId)}
                             onToggleExpand={() => setExpandedStep(expandedStep === index ? null : index)}
                             onUpdate={(updates) => handleUpdateStep(index, updates)}
                             onRemove={() => handleRemoveStep(index)}
                             onMoveUp={() => index > 0 && handleMoveStep(index, index - 1)}
                             onMoveDown={() => index < value.length - 1 && handleMoveStep(index, index + 1)}
+                            onAddAfter={() => handleAddStepAfter(index)}
                             disabled={disabled}
                         />
                     ))
@@ -254,23 +282,26 @@ interface RotationStepCardProps {
     isExpanded: boolean;
     character?: { id: string; label: string; icon?: string };
     availableSkills: Array<{ id: string; label: string; type: string; energyCost?: number; cooldown?: number; stackMax?: number }>;
+    availableBuffs: TimedBuffOption[];
     cooldownWarning?: string;
     onToggleExpand: () => void;
     onUpdate: (updates: Partial<RotationStepSpec>) => void;
     onRemove: () => void;
     onMoveUp: () => void;
     onMoveDown: () => void;
+    onAddAfter: () => void;
     disabled?: boolean;
 }
 
 function RotationStepCard({
-    index, isLast, step, isExpanded, character, availableSkills, cooldownWarning,
-    onToggleExpand, onUpdate, onRemove, onMoveUp, onMoveDown, disabled
+    index, isLast, step, isExpanded, character, availableSkills, availableBuffs, cooldownWarning,
+    onToggleExpand, onUpdate, onRemove, onMoveUp, onMoveDown, onAddAfter, disabled
 }: RotationStepCardProps) {
     const actionTypeLabels: Record<string, string> = {
         basic: 'Basic Attack',
         skill: 'Skill',
         ultimate: 'Ultimate',
+        buff: 'Buff',
         switch: 'Switch Character',
         movement: 'Movement',
         wait: 'Wait',
@@ -286,7 +317,11 @@ function RotationStepCard({
         switch: 'bg-green-500/20 text-green-300 border-green-500/30',
         movement: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
         wait: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+        buff: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
     };
+
+    const selectedBuff = availableBuffs.find((b) => b.refId === step.buffRefId);
+    const isBuffStep = step.actionType === 'buff';
 
     return (
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
@@ -304,7 +339,9 @@ function RotationStepCard({
                 <span className={`px-2 py-0.5 text-xs rounded ${actionTypeColors[step.actionType] || 'bg-surface-2 text-muted'}`}>
                     {actionTypeLabels[step.actionType] || step.actionType}
                 </span>
-                {step.skillLabel && (
+                {isBuffStep ? (
+                    <span className="text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{selectedBuff?.label ?? 'No buff selected'}</span>
+                ) : step.skillLabel && (
                     <span className="text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{step.skillLabel}</span>
                 )}
                 {selectedSkillCooldown != null && (
@@ -335,17 +372,45 @@ function RotationStepCard({
                             <label className="block text-xs font-medium text-muted mb-1">Action Type</label>
                             <select
                                 value={step.actionType}
-                                onChange={(e) => onUpdate({ actionType: e.target.value as RotationStepSpec['actionType'], skillId: undefined, skillLabel: undefined })}
+                                onChange={(e) => {
+                                    const nextType = e.target.value as RotationStepSpec['actionType'];
+                                    if (nextType === 'buff') {
+                                        // Instant — a Buff action never occupies timeline duration;
+                                        // its OWN active window comes from the buff's real duration
+                                        // (resolved fresh from current party state), not this field.
+                                        // buffRefId deliberately starts unset (not availableBuffs[0]) —
+                                        // team-wide options are always listed first regardless of which
+                                        // character this step belongs to, so defaulting to "the first
+                                        // one" silently picked a random teammate's buff for EVERY new
+                                        // Buff action, on every character, unless the user happened to
+                                        // notice and change it. Forces an explicit pick instead.
+                                        onUpdate({ actionType: nextType, skillId: undefined, skillLabel: undefined, duration: 0, buffRefId: undefined });
+                                    } else {
+                                        onUpdate({ actionType: nextType, skillId: undefined, skillLabel: undefined, buffRefId: undefined, duration: step.actionType === 'buff' ? 2 : step.duration });
+                                    }
+                                }}
                                 disabled={disabled}
                                 className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
                             >
                                 <option value="basic">Basic Attack</option>
                                 <option value="skill">Skill</option>
                                 <option value="ultimate">Ultimate</option>
+                                <option value="buff">Buff</option>
                                 <option value="switch">Switch Character</option>
                                 <option value="movement">Movement</option>
                                 <option value="wait">Wait</option>
                             </select>
+                            <button
+                                onClick={onAddAfter}
+                                disabled={disabled}
+                                title="Add another action for this character, right after this one"
+                                className="mt-1.5 flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-xs text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:opacity-50"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add action
+                            </button>
                         </div>
 
                         {/* Skill selector (for skill/ultimate) */}
@@ -375,52 +440,59 @@ function RotationStepCard({
                             </div>
                         )}
 
-                        {/* Duration */}
-                        <div>
-                            <label className="block text-xs font-medium text-muted mb-1">Duration (s)</label>
-                            <input
-                                type="number"
-                                value={step.duration || 0}
-                                onChange={(e) => onUpdate({ duration: parseFloat(e.target.value) || 0 })}
-                                min={0.1}
-                                max={30}
-                                step={0.1}
-                                disabled={disabled}
-                                className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
-                            />
-                        </div>
-
-                        {/* Talent level / stack count override — blank = best case (Lv10 / max stacks), the same default the damage calc assumes. */}
-                        {step.skillId && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block text-xs font-medium text-muted mb-1">Talent Level</label>
-                                    <input
-                                        type="number"
-                                        value={step.talentLevel ?? ''}
-                                        onChange={(e) => onUpdate({ talentLevel: e.target.value === '' ? undefined : Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) })}
-                                        min={1}
-                                        max={10}
-                                        placeholder="Best (10)"
+                        {/* Buff selector — which timed party/self buff this instant action activates. */}
+                        {isBuffStep && (
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-1">Buff</label>
+                                {availableBuffs.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground py-2">No timed buffs available for this party yet.</p>
+                                ) : (
+                                    <select
+                                        value={step.buffRefId || ''}
+                                        onChange={(e) => onUpdate({ buffRefId: e.target.value || undefined })}
                                         disabled={disabled}
-                                        className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
-                                    />
-                                </div>
-                                {selectedSkillStackMax != null && (
-                                    <div>
-                                        <label className="block text-xs font-medium text-muted mb-1">Stack Count</label>
-                                        <input
-                                            type="number"
-                                            value={step.stackCount ?? ''}
-                                            onChange={(e) => onUpdate({ stackCount: e.target.value === '' ? undefined : Math.max(0, Math.min(selectedSkillStackMax, parseInt(e.target.value) || 0)) })}
-                                            min={0}
-                                            max={selectedSkillStackMax}
-                                            placeholder={`Best (${selectedSkillStackMax})`}
-                                            disabled={disabled}
-                                            className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
-                                        />
-                                    </div>
+                                        className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                                    >
+                                        <option value="">Select buff...</option>
+                                        {availableBuffs.map(b => (
+                                            <option key={b.refId} value={b.refId}>{b.label} ({b.durationSeconds}s)</option>
+                                        ))}
+                                    </select>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Duration — a Buff action is always instant, no timeline cost. */}
+                        {!isBuffStep && (
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-1">Duration (s)</label>
+                                <input
+                                    type="number"
+                                    value={step.duration || 0}
+                                    onChange={(e) => onUpdate({ duration: parseFloat(e.target.value) || 0 })}
+                                    min={0.1}
+                                    max={30}
+                                    step={0.1}
+                                    disabled={disabled}
+                                    className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                                />
+                            </div>
+                        )}
+
+                        {/* Stack count override — blank = best case (max stacks), the same default the damage calc assumes. Talent level always assumes best-case (10); no per-step override for it. */}
+                        {step.skillId && selectedSkillStackMax != null && (
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-1">Stack Count</label>
+                                <input
+                                    type="number"
+                                    value={step.stackCount ?? ''}
+                                    onChange={(e) => onUpdate({ stackCount: e.target.value === '' ? undefined : Math.max(0, Math.min(selectedSkillStackMax, parseInt(e.target.value) || 0)) })}
+                                    min={0}
+                                    max={selectedSkillStackMax}
+                                    placeholder={`Best (${selectedSkillStackMax})`}
+                                    disabled={disabled}
+                                    className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
+                                />
                             </div>
                         )}
 
