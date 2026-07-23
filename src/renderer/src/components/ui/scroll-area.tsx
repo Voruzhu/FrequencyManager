@@ -11,7 +11,17 @@ const ScrollArea = React.forwardRef<
         className={cn('relative overflow-hidden', className)}
         {...props}
     >
-        <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+        {/* Radix's Viewport wraps `children` in its own inline-styled
+         * `display:table` div (not exposed via any prop) so the scrollbar
+         * can measure content size — but table sizing ignores the
+         * viewport's width and grows to fit content's natural width
+         * instead, silently defeating any `truncate`/flex-shrink layout
+         * inside (a row's trailing button ends up past the visible edge,
+         * only reachable by scrolling/widening the window). Overriding it
+         * to `display:block` with an `!important` utility (which DOES win
+         * over a plain, non-important inline style) makes it size to the
+         * viewport like a normal block child again. */}
+        <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit] [&>div]:!block">
             {children}
         </ScrollAreaPrimitive.Viewport>
         <ScrollBar />
