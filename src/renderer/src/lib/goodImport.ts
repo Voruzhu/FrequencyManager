@@ -80,17 +80,29 @@ export function mapGoodArtifactToDraft(a: GoodArtifact, catalog: GearCatalog): G
     if (!mainKey) major(`Main stat "${a.mainStatKey}" not recognized`);
     else if (!catalog.mains.some((m) => m.key === mainKey)) major(`Main stat "${a.mainStatKey}" isn't a valid option for this catalog`);
 
+    // Rarity is a structural/identity field (it drives which main-stat VALUE
+    // gets looked up) — an out-of-range or non-finite value here (a garbled
+    // export, or a hand-edited file) would otherwise silently fall through
+    // to `buildGearEntryFromDraft`'s `?? 0` default instead of being caught,
+    // producing a real-looking but wrong 0-value main stat.
+    const validRarity = Number.isFinite(a.rarity) && catalog.rarities.includes(a.rarity);
+    if (!validRarity) major(`Rarity "${a.rarity}" isn't valid for this catalog (expected one of ${catalog.rarities.join('/')})`);
+    const rarity = validRarity ? a.rarity : undefined;
+
     const maxLevel = a.rarity >= 5 ? 20 : 16;
-    if (a.level < maxLevel) {
+    if (Number.isFinite(a.level) && a.level < maxLevel) {
         minor(`Level ${a.level}/${maxLevel} — imported using the max-level main-stat value since per-level scaling isn't modeled; sub-stats are the real values from the file`);
+    } else if (!Number.isFinite(a.level)) {
+        minor(`Level "${a.level}" isn't a real number — ignored, imported at the max-level main-stat value`);
     }
 
     const subs: Array<{ key: string; value: number }> = [];
     for (const s of a.substats ?? []) {
         const key = GOOD_STAT_KEY_MAP[s.key];
         if (!key) { minor(`Sub-stat "${s.key}" not recognized — dropped`); continue; }
+        if (!Number.isFinite(s.value)) { minor(`Sub-stat "${s.key}" has a non-numeric value (${s.value}) — dropped`); continue; }
         subs.push({ key, value: s.value });
     }
 
-    return { setId: setDef?.id, rarity: a.rarity, slotId: slot?.id, mainKey, subs, unresolved };
+    return { setId: setDef?.id, rarity, slotId: slot?.id, mainKey, subs, unresolved };
 }

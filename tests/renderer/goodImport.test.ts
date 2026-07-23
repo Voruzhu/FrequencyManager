@@ -82,6 +82,25 @@ describe('mapGoodArtifactToDraft', () => {
         expect(draft.unresolved.some((u) => u.severity === 'minor' && u.message.includes('Level 12/20'))).toBe(true);
     });
 
+    it('flags a non-numeric rarity as blocking instead of silently falling through to a 0-value main stat', () => {
+        const draft = mapGoodArtifactToDraft({ ...baseArtifact, rarity: Number.NaN }, GI_GEAR_CATALOG);
+        expect(hasBlockingIssues(draft)).toBe(true);
+        expect(draft.rarity).toBeUndefined();
+    });
+
+    it('flags a rarity outside the catalog\'s known values as blocking', () => {
+        const draft = mapGoodArtifactToDraft({ ...baseArtifact, rarity: 3 }, GI_GEAR_CATALOG);
+        expect(hasBlockingIssues(draft)).toBe(true);
+        expect(draft.rarity).toBeUndefined();
+    });
+
+    it('drops a non-numeric sub-stat value without blocking the rest', () => {
+        const draft = mapGoodArtifactToDraft({ ...baseArtifact, substats: [{ key: 'critRate_', value: Number.NaN }, { key: 'critDMG_', value: 12.4 }] }, GI_GEAR_CATALOG);
+        expect(hasBlockingIssues(draft)).toBe(false);
+        expect(draft.subs).toEqual([{ key: 'critDmg', value: 12.4 }]);
+        expect(draft.unresolved.some((u) => u.severity === 'minor' && u.message.includes('non-numeric value'))).toBe(true);
+    });
+
     it('resolves the physicalDmg goblet main stat added alongside this feature', () => {
         const draft = mapGoodArtifactToDraft({ ...baseArtifact, slotKey: 'goblet', mainStatKey: 'physical_dmg_' }, GI_GEAR_CATALOG);
         expect(hasBlockingIssues(draft)).toBe(false);
