@@ -61,6 +61,7 @@ jobs:
             1. Download the `Setup` .exe.
             2. Run it and follow the install wizard.
             3. The app checks for updates automatically after that.
+          generate_release_notes: true
           draft: false
           prerelease: false
         env:
