@@ -41,6 +41,13 @@ interface InventoryState {
     addWeapon: (gameId: string, id: string) => void;
     removeWeapon: (gameId: string, id: string) => void;
     addGear: (gameId: string, gear: GearEntry) => void;
+    /** Same as calling `addGear` once per item, but in a SINGLE store update
+     * — a bulk import (OCR "Auto import from latest", the GOOD-format
+     * importer) calling `addGear` once per item each triggers its own
+     * zustand persist, which rewrites the entire combined settings/data
+     * file synchronously on every call; a few hundred imported items meant
+     * a few hundred blocking full-file disk writes back to back. */
+    addGearBatch: (gameId: string, gear: GearEntry[]) => void;
     removeGear: (gameId: string, instanceId: string) => void;
     /** Replace an already-owned gear instance's stats in place (same `id` —
      * so it stays equipped wherever it already was, unlike remove+re-add). */
@@ -90,6 +97,17 @@ export const useInventoryStore = create<InventoryState>()(
                     const taken = new Set(inv.gear.map((g) => g.id));
                     const id = !gear.id || taken.has(gear.id) ? freshGearId(gameId, taken) : gear.id;
                     return { ...inv, gear: [...inv.gear, { ...gear, id }] };
+                }),
+            })),
+            addGearBatch: (gameId, gear) => set((s) => ({
+                byGame: update(s.byGame, gameId, (inv) => {
+                    const taken = new Set(inv.gear.map((g) => g.id));
+                    const withIds = gear.map((g) => {
+                        const id = !g.id || taken.has(g.id) ? freshGearId(gameId, taken) : g.id;
+                        taken.add(id);
+                        return { ...g, id };
+                    });
+                    return { ...inv, gear: [...inv.gear, ...withIds] };
                 }),
             })),
             removeGear: (gameId, instanceId) => {

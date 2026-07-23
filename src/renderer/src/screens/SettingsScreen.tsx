@@ -20,6 +20,7 @@ import { useAppVersion } from '../lib/useAppVersion';
 import { newGearId } from '../components/InventoryWindows';
 import { hasBlockingIssues, buildGearEntryFromDraft, gearIdentityKey } from '../lib/ocrMapping';
 import { mapGoodArtifactToDraft, type GoodFile } from '../lib/goodImport';
+import type { GearEntry } from '@shared/types/game-bundle';
 
 interface AppUpdateInfo {
     repo: string;
@@ -66,6 +67,11 @@ interface DisplayInfo { id: number; width: number; height: number; isPrimary: bo
 const scannerBridge = () => (window as unknown as {
     frequencyManager?: { listDisplays?: () => Promise<DisplayInfo[]> };
 }).frequencyManager;
+
+/** Reserved storage key holding a full snapshot of every OTHER key, taken
+ * right before the last full-app import — lets a bad/corrupted backup be
+ * undone via `restorePreviousImport` instead of being unrecoverable. */
+const PRE_IMPORT_SNAPSHOT_KEY = '__fm_pre_import_snapshot__';
 
 const dataBridge = () => (window as unknown as {
     frequencyManager?: {
@@ -179,18 +185,43 @@ export function SettingsScreen() {
     const doImport = async () => {
         let parsed: { kind?: string; data?: Record<string, unknown> };
         try { parsed = JSON.parse(importText) as { kind?: string; data?: Record<string, unknown> }; } catch { toast.error('Invalid JSON'); return; }
-        if (parsed?.kind !== 'frequency-manager-userdata' || typeof parsed.data !== 'object' || !parsed.data) {
-            toast.error('Not a FrequencyManager backup file'); return;
+        if (parsed?.kind !== 'frequency-manager-userdata' || typeof parsed.data !== 'object' || !parsed.data || Object.keys(parsed.data).length === 0) {
+            toast.error('Not a valid FrequencyManager backup file', { description: 'The file is missing the expected data, or is empty.' });
+            return;
         }
         const b = dataBridge();
-        if (!b?.storageSet) { toast.error('Storage unavailable'); return; }
+        if (!b?.storageSet || !b?.storageGetAll) { toast.error('Storage unavailable'); return; }
         try {
-            for (const [k, v] of Object.entries(parsed.data)) await b.storageSet(k, v);
-            toast.success('Imported — reloading to apply…');
+            // Snapshot everything as it is RIGHT NOW, before writing anything
+            // from the import — a bad/corrupted backup would otherwise
+            // overwrite the user's real data with no way back. See
+            // `restorePreviousImport` below.
+            const current = await b.storageGetAll();
+            delete current[PRE_IMPORT_SNAPSHOT_KEY];
+            await b.storageSet(PRE_IMPORT_SNAPSHOT_KEY, current);
+            for (const [k, v] of Object.entries(parsed.data)) {
+                if (k === PRE_IMPORT_SNAPSHOT_KEY) continue; // never import someone else's snapshot key
+                await b.storageSet(k, v);
+            }
+            toast.success('Imported — reloading to apply…', { description: 'Your previous data was snapshotted — use "Restore previous state" below if this import looks wrong.' });
             setTimeout(() => window.location.reload(), 700);
         } catch {
             toast.error('Import failed');
         }
+    };
+    const restorePreviousImport = async () => {
+        const b = dataBridge();
+        if (!b?.storageGetAll || !b?.storageSet) { toast.error('Storage unavailable'); return; }
+        const current = await b.storageGetAll();
+        const snapshot = current[PRE_IMPORT_SNAPSHOT_KEY] as Record<string, unknown> | undefined;
+        if (!snapshot || typeof snapshot !== 'object' || Object.keys(snapshot).length === 0) {
+            toast.info('No previous snapshot to restore', { description: 'A snapshot is only saved right before an import.' });
+            return;
+        }
+        if (!window.confirm('Restore your data to how it was right before the last import? This replaces everything currently saved.')) return;
+        for (const [k, v] of Object.entries(snapshot)) await b.storageSet(k, v);
+        toast.success('Restored — reloading…');
+        setTimeout(() => window.location.reload(), 700);
     };
 
     // Game-scoped data — export/import/cleanup for just the ACTIVE game's
@@ -257,7 +288,7 @@ export function SettingsScreen() {
     // scanner's "Auto import from latest" already uses (see `goodImport.ts`).
     const goodGameData = useGameData(activeGameId);
     const goodInventoryGear = useOwnedInventory(activeGameId).gear;
-    const addGear = useInventoryStore((s) => s.addGear);
+    const addGearBatch = useInventoryStore((s) => s.addGearBatch);
     const [goodImportText, setGoodImportText] = useState('');
     const loadGoodFromFile = async () => {
         const res = await dataBridge()?.openJsonFile?.();
@@ -271,7 +302,11 @@ export function SettingsScreen() {
         }
         const catalog = goodGameData.gearCatalog;
         const seenKeys = new Set(goodInventoryGear.map((g) => gearIdentityKey(g)));
-        let imported = 0;
+        // Collected and committed via ONE addGearBatch call at the end
+        // instead of one addGear call per artifact — a real Genshin
+        // Optimizer/Kamera export can easily have a few hundred pieces, each
+        // of which used to trigger its own full-file synchronous disk write.
+        const toImport: GearEntry[] = [];
         let skippedIssues = 0;
         let skippedDuplicate = 0;
         for (const a of parsed.artifacts) {
@@ -281,10 +316,11 @@ export function SettingsScreen() {
             if (!gear) { skippedIssues++; continue; }
             const key = gearIdentityKey(gear);
             if (seenKeys.has(key)) { skippedDuplicate++; continue; }
-            addGear(activeGameId, gear);
+            toImport.push(gear);
             seenKeys.add(key);
-            imported++;
         }
+        if (toImport.length > 0) addGearBatch(activeGameId, toImport);
+        const imported = toImport.length;
         const parts: string[] = [];
         if (skippedIssues > 0) parts.push(`${skippedIssues} skipped (unrecognized set/stat)`);
         if (skippedDuplicate > 0) parts.push(`${skippedDuplicate} skipped as duplicate${skippedDuplicate === 1 ? '' : 's'}`);
@@ -509,7 +545,7 @@ export function SettingsScreen() {
                                         value={updateManifestUrl}
                                         onChange={(e) => setUpdateManifestUrl(e.target.value)}
                                     />
-                                    <p className="text-xs text-muted-foreground">JSON listing available game-module updates.</p>
+                                    <p className="text-xs text-muted-foreground">JSON listing available game-module updates. Must be an https:// GitHub URL (github.com/raw.githubusercontent.com) — anything else is rejected.</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -733,6 +769,10 @@ export function SettingsScreen() {
                                 className="h-40 w-full rounded-md border border-input bg-surface p-3 font-mono text-xs text-foreground placeholder:text-muted-foreground scrollbar-thin"
                             />
                             <Button onClick={() => { void doImport(); }} disabled={!importText.trim()}>Import &amp; reload</Button>
+                            <div className="border-t border-border pt-3">
+                                <Button variant="secondary" onClick={() => { void restorePreviousImport(); }}>Restore previous state</Button>
+                                <p className="mt-1.5 text-xs text-muted-foreground">Undoes the last import — restores everything to exactly how it was right before you imported.</p>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>

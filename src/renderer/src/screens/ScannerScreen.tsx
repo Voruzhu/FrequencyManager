@@ -14,6 +14,7 @@ import { ScanTypeWindow, ConfirmScannedGearWindow } from '../components/ScanWind
 import { newGearId } from '../components/InventoryWindows';
 import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, findDuplicateSource, gearIdentityKey, type DuplicateSource } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
+import type { GearEntry } from '@shared/types/game-bundle';
 
 /** One scanned screenshot (from either the file-picker or the global-hotkey
  * live-capture path). Failed scans are kept too (not just a toast) — OCR
@@ -62,7 +63,7 @@ export function ScannerScreen() {
     const [scanning, setScanning] = useState(false);
     const gameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(gameId);
-    const addGear = useInventoryStore((s) => s.addGear);
+    const addGearBatch = useInventoryStore((s) => s.addGearBatch);
     const scanHotkey = useSettingsStore((s) => s.scanHotkey);
     const inventoryGear = useOwnedInventory(gameId).gear;
 
@@ -149,6 +150,11 @@ export function ScannerScreen() {
         }
         const seenKeys = new Set(inventoryGear.map((g) => gearIdentityKey(g)));
         const importedIds = new Set<string>();
+        // Collected and committed via ONE addGearBatch call at the end
+        // instead of one addGear call per item — each store write rewrites
+        // the entire combined settings/data file synchronously, so a
+        // hundred-item import used to mean a hundred blocking disk writes.
+        const toImport: GearEntry[] = [];
         let skippedReview = 0;
         let skippedDuplicate = 0;
         for (const r of [...eligible].reverse()) { // oldest first
@@ -158,10 +164,11 @@ export function ScannerScreen() {
             if (!gear) { skippedReview++; continue; }
             const key = gearIdentityKey(gear);
             if (seenKeys.has(key)) { skippedDuplicate++; continue; }
-            addGear(gameId, gear);
+            toImport.push(gear);
             seenKeys.add(key);
             importedIds.add(r.id);
         }
+        if (toImport.length > 0) addGearBatch(gameId, toImport);
         if (importedIds.size > 0) {
             setResults((rs) => rs.map((r) => (importedIds.has(r.id) ? { ...r, autoImported: true } : r)));
             const parts: string[] = [];
