@@ -113,7 +113,7 @@ function fakeKernel(opts: FakeKernelOptions = {}): {
 } {
     const configMap: Record<string, unknown> = {
         updates: {
-            gameDefinitionsManifestUrl: 'https://example.invalid/manifest.json',
+            gameDefinitionsManifestUrl: 'https://raw.githubusercontent.com/manifest.json',
             gameModuleCheckOnBoot: false, // we drive checks manually
             checkIntervalHours: 0,        // no scheduled re-checks in tests
             requestTimeoutMs: 1000,
@@ -242,7 +242,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '1.0.0',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -274,7 +274,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '99.0.0',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                         releaseNotes: 'new set bonuses',
                     },
                 ]),
@@ -297,7 +297,7 @@ describe('Update Checker module', () => {
                 id: 'wuthering-waves',
                 displayName: 'Wuthering Waves',
                 remoteVersion: '99.0.0',
-                downloadUrl: 'https://example.invalid/wu.ts',
+                downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                 releaseNotes: 'new set bonuses',
             });
             // localVersion should be the actual local version (1.0.0), not '0.0.0'.
@@ -312,7 +312,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '1.0.0',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -339,7 +339,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '0.0.1',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -366,7 +366,7 @@ describe('Update Checker module', () => {
                         id: 'honkai-star-rail',
                         displayName: 'Honkai: Star Rail',
                         version: '1.0.0',
-                        downloadUrl: 'https://example.invalid/hsr.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/hsr.ts',
                     },
                 ]),
             });
@@ -401,7 +401,7 @@ describe('Update Checker module', () => {
                         displayName: 'Wuthering Waves',
                         version: '99.0.0',
                         // no minAppVersion
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -431,7 +431,7 @@ describe('Update Checker module', () => {
                         displayName: 'Wuthering Waves',
                         version: '99.0.0',
                         minAppVersion: '5.0.0',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -466,7 +466,7 @@ describe('Update Checker module', () => {
                         displayName: 'Wuthering Waves',
                         version: '99.0.0',
                         minAppVersion: '2.0.0',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -495,7 +495,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '2.0.0-beta.1',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -522,7 +522,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '2.0.0-beta.1',
-                        downloadUrl: 'https://example.invalid/wu.ts',
+                        downloadUrl: 'https://raw.githubusercontent.com/wu.ts',
                     },
                 ]),
             });
@@ -564,6 +564,55 @@ describe('Update Checker module', () => {
             expect(result).toBe(0);
             expect(fetchMock).not.toHaveBeenCalled();
             expect(published.filter((p) => p.type === 'update-checker:game-update-available')).toEqual([]);
+        });
+
+        it('rejects a well-formed https URL on a non-GitHub host — never fetches it', async () => {
+            const { kernel, published } = fakeKernel({
+                updates: { gameDefinitionsManifestUrl: 'https://attacker-controlled.example/manifest.json' },
+            });
+            const fetchMock = jest.fn();
+            global.fetch = fetchMock as unknown as typeof fetch;
+
+            const { default: factory } = await import('../src');
+            const mod = await factory({
+                modulePath: '',
+                kernel,
+                permissions: [],
+                config: {},
+            });
+            await mod.initialize(kernel);
+            const result = await (mod as unknown as { checkNow(): Promise<number> }).checkNow();
+
+            expect(result).toBe(0);
+            expect(fetchMock).not.toHaveBeenCalled();
+            expect(published.filter((p) => p.type === 'update-checker:game-update-available')).toEqual([]);
+            const state = mod.getState();
+            expect((state.data as { lastError: string | null }).lastError).toMatch(/GitHub URL/);
+        });
+
+        it('skips (but does not crash on) a manifest entry whose downloadUrl is not an allowed host', async () => {
+            const { kernel, published } = fakeKernel();
+            mockFetchOnce({
+                body: sampleManifest([
+                    { id: 'wuthering-waves', displayName: 'Wuthering Waves', version: '99.0.0', downloadUrl: 'https://attacker-controlled.example/wu.zip' },
+                    { id: 'genshin-impact', displayName: 'Genshin Impact', version: '99.0.0', downloadUrl: 'https://raw.githubusercontent.com/real/gi.ts' },
+                ]),
+            });
+
+            const { default: factory } = await import('../src');
+            const mod = await factory({
+                modulePath: '',
+                kernel,
+                permissions: [],
+                config: {},
+            });
+            await mod.initialize(kernel);
+            const result = await (mod as unknown as { checkNow(): Promise<number> }).checkNow();
+
+            expect(result).toBe(2); // both entries were still checked
+            const available = published.filter((p) => p.type === 'update-checker:game-update-available');
+            expect(available).toHaveLength(1); // only the GitHub-hosted one surfaced
+            expect((available[0].payload as { id: string }).id).toBe('genshin-impact');
         });
 
         it('records lastError on a 500 response and emits no events', async () => {
@@ -644,8 +693,8 @@ describe('Update Checker module', () => {
             const { kernel } = fakeKernel();
             mockFetchOnce({
                 body: sampleManifest([
-                    { id: 'wuthering-waves', displayName: 'Wuthering Waves', version: '99.0.0', downloadUrl: 'x' },
-                    { id: 'genshin-impact', displayName: 'Genshin Impact', version: '99.0.0', downloadUrl: 'x' },
+                    { id: 'wuthering-waves', displayName: 'Wuthering Waves', version: '99.0.0', downloadUrl: 'https://raw.githubusercontent.com/test/pkg.zip' },
+                    { id: 'genshin-impact', displayName: 'Genshin Impact', version: '99.0.0', downloadUrl: 'https://raw.githubusercontent.com/test/pkg.zip' },
                 ]),
             });
 
@@ -750,7 +799,7 @@ describe('Update Checker module', () => {
                         id: 'wuthering-waves',
                         displayName: 'Wuthering Waves',
                         version: '99.0.0',
-                        downloadUrl: 'x',
+                        downloadUrl: 'https://raw.githubusercontent.com/test/pkg.zip',
                     },
                 ]),
             });

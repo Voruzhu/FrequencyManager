@@ -43,6 +43,34 @@ import { listInstalledGames } from '@adapters/game-definitions';
 
 export { manifest } from './manifest';
 
+// The manifest URL and each entry's downloadUrl are both free-text/remote-
+// controlled values — the manifest URL is a user-editable Settings field,
+// and downloadUrl is whatever the fetched manifest JSON itself claims. Both
+// used to be validated only against `^https?://`, accepting ANY host. Real
+// impact was always bounded (game modules are pure JSON/TS data, never
+// executed — see `shared/game-data/external-loader.ts`), but there was no
+// actual restriction stopping either from pointing at an attacker-controlled
+// host. Restricted to GitHub's own domains, which is where every real,
+// official source (this project's manifest + release assets) already lives.
+const ALLOWED_UPDATE_HOSTS = new Set([
+    'github.com',
+    'api.github.com',
+    'raw.githubusercontent.com',
+    'objects.githubusercontent.com', // GitHub release-asset CDN redirects here
+]);
+
+/** True only for an `https://` URL whose hostname is exactly one of
+ * `ALLOWED_UPDATE_HOSTS` (not merely a suffix match — `github.com.evil.com`
+ * must NOT pass). */
+export function isAllowedUpdateHost(url: string): boolean {
+    if (!url || !/^https:\/\//i.test(url)) return false;
+    try {
+        return ALLOWED_UPDATE_HOSTS.has(new URL(url).hostname.toLowerCase());
+    } catch {
+        return false;
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Wire shape
 // ─────────────────────────────────────────────────────────────────────────────
@@ -250,6 +278,15 @@ class UpdateCheckerModule implements ModuleAPI {
             if (!this.isAcceptableVersion(remote.version, cfg.allowPrerelease)) {
                 continue;
             }
+            // The manifest URL itself is now host-restricted (see
+            // `fetchManifest`), but that only vouches for who SERVED the
+            // manifest — not for where each entry's own downloadUrl points.
+            // Validate it independently before ever surfacing it as
+            // installable, since it's what `game-package:install` fetches.
+            if (!isAllowedUpdateHost(remote.downloadUrl)) {
+                this.kernel.logger.warn('[Update Checker] Skipped a game update with a disallowed downloadUrl host', { id: remote.id, downloadUrl: remote.downloadUrl });
+                continue;
+            }
 
             const local = localGames[remote.id];
             // Brand-new game we don't have locally yet.
@@ -327,8 +364,8 @@ class UpdateCheckerModule implements ModuleAPI {
     // ─────────────────────────────────────────────────────────────────────────
 
     private async fetchManifest(url: string, timeoutMs: number): Promise<GameDefinitionsManifest | null> {
-        if (!url || !/^https?:\/\//.test(url)) {
-            this.state.lastError = `Invalid manifest URL: ${url}`;
+        if (!isAllowedUpdateHost(url)) {
+            this.state.lastError = `Manifest URL must be an https:// GitHub URL (github.com, raw.githubusercontent.com): ${url}`;
             this.kernel?.logger.warn('[Update Checker] ' + this.state.lastError);
             return null;
         }
