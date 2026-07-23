@@ -23,7 +23,13 @@ import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWin
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
+import { gearSlotsFor, totalCombinations } from '@shared/calc/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
+
+// Soft warning vs. hard block for the optimizer's combinatorial search size
+// (see the pre-flight check in `run()` below for the full reasoning).
+const OPTIMIZER_WARN_COMBOS = 20_000_000;
+const OPTIMIZER_BLOCK_COMBOS = 300_000_000;
 import { getWeaponScaling, refineMul, hasRefinement } from '../data/weaponScaling';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
@@ -258,6 +264,27 @@ export function CalculatorScreen() {
                     return;
                 }
             }
+            // Pre-flight size check — each combination requires a full stat/
+            // damage computation, so tens of millions of them is already a
+            // real multi-second-to-minute search, and hundreds of millions to
+            // billions (a genuinely reachable number with a few hundred
+            // owned pieces — see OPTIMIZER_BLOCK_COMBOS's own history: this
+            // exact class of bug, an unbounded combinatorial search, already
+            // crashed the optimizer once via a different symptom) risks
+            // hanging or exhausting memory with no progress shown until it's
+            // too late to back out.
+            const comboK = gearSlotsFor(optimizePool.length);
+            const totalCombos = totalCombinations(optimizePool.length, comboK);
+            if (totalCombos > OPTIMIZER_BLOCK_COMBOS) {
+                toast.error('Too many combinations to search', {
+                    description: `${optimizePool.length} ${data.gearLabelPlural.toLowerCase()} would require checking ${totalCombos.toLocaleString()} combinations — reduce how many you're optimizing over (equip some elsewhere, narrow with a Set Bonus, or turn on "Only unequipped") and try again.`,
+                });
+                return;
+            }
+            if (totalCombos > OPTIMIZER_WARN_COMBOS && !window.confirm(`This will search ${totalCombos.toLocaleString()} combinations and may take a while. Continue?`)) {
+                return;
+            }
+
             const { config } = buildConfig(character);
 
             // Optimize over the player's OWNED gear (or the set-narrowed
