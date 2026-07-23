@@ -15,11 +15,11 @@ import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberRes
 import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { elapsedTimes, isAutoBuffActiveAtStep, simulateWaves, type WaveConfig } from '@/lib/rotationEngine';
+import { elapsedTimes, simulateWaves, type WaveConfig } from '@/lib/rotationEngine';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import { getEnemies } from '../data/enemies';
-import type { FieldSpec, RotationStepSpec } from '../types';
+import type { FieldSpec, RotationStepSpec, TimedBuffOption } from '../types';
 import type { BuffEntry, SkillDef } from '@shared/types/game-bundle';
 
 /** This member's own weapon-passive refine multiplier (R1 = 1) — see `weaponAutoBuffs`. */
@@ -54,6 +54,23 @@ interface StepResult {
     skill?: SkillDef;
     damage: number;
 }
+
+/** A timed buff resolved with its real current value/duration — the
+ * damage-calc-ready counterpart to the public, display-only `TimedBuffOption`
+ * (see `src/renderer/src/types/index.ts`). */
+interface ResolvedTimedBuff {
+    refId: string;
+    source: 'team' | 'self';
+    characterId?: string;
+    label: string;
+    durationSeconds: number;
+    buff: BuffEntry;
+}
+
+/** Suggested duration for a placed buff that has no real `autoTrigger`
+ * metadata (a normally-permanent passive) — long enough to cover a typical
+ * rotation; the user can shorten or extend it freely once placed. */
+const DEFAULT_BUFF_DURATION_SECONDS = 999;
 
 /** Best-case-by-default per-step damage: talent 10 / max stacks unless the step overrides them. Team buffs are always on; self-buffs are on only for characters with an enabled conditional toggle — same convention as the Calculator. */
 function computeStepDamage(
@@ -92,10 +109,6 @@ function computeStepDamage(
         characterElement: member.character.element,
     };
     return { skill, damage: skillDamage(stats, skill, ctx) };
-}
-
-function SummaryLabel({ children, className }: { children: React.ReactNode; className?: string }) {
-    return <h3 className={cn('mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground', className)}>{children}</h3>;
 }
 
 let rotSeq = 0;
@@ -157,15 +170,6 @@ export function RotationScreen() {
         return enabledPartyBuffs(effects, partyDisabled, calc.targetStatuses);
     }, [data, members, partyDisabled, calc.targetStatuses]);
 
-    /** characterId -> enabled conditional-self-buff ids for that member (persists across steps, not per-step). */
-    const [enabledSelfBuffIds, setEnabledSelfBuffIds] = useState<Record<string, string[]>>({});
-    const toggleSelfBuff = (characterId: string, buffId: string) =>
-        setEnabledSelfBuffIds((prev) => {
-            const cur = prev[characterId] ?? [];
-            const next = cur.includes(buffId) ? cur.filter((id) => id !== buffId) : [...cur, buffId];
-            return { ...prev, [characterId]: next };
-        });
-
     const savedRotations = useRotationStore((s) => s.byGame[activeGameId]);
     const savedList = useMemo(() => Object.values(savedRotations ?? {}), [savedRotations]);
     const [rotationName, setRotationName] = useState('');
@@ -176,14 +180,13 @@ export function RotationScreen() {
         const name = rotationName.trim();
         if (!name) return;
         const id = loadedRotationId ?? nextRotationId();
-        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, enabledSelfBuffIds, mode, waves };
+        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, mode, waves };
         useRotationStore.getState().save(activeGameId, rotation);
         setLoadedRotationId(id);
         toast.success(`Saved "${name}"`);
     };
     const handleLoad = (r: SavedRotation) => {
         setSteps(r.steps);
-        setEnabledSelfBuffIds(r.enabledSelfBuffIds);
         setRotationName(r.name);
         setLoadedRotationId(r.id);
         setActivePartyId(r.partyId);
@@ -199,12 +202,49 @@ export function RotationScreen() {
     };
     const handleNewRotation = () => {
         setSteps([]);
-        setEnabledSelfBuffIds({});
         setRotationName('');
         setLoadedRotationId(null);
         setMode('boss');
         setWaves([{ enemyId: 'dummy' }]);
     };
+
+    // Every conditional buff available to place as a 'buff' step — team-wide
+    // party effects and any character's conditional self-buff, WHETHER OR NOT
+    // it carries real `autoTrigger` metadata. Placement is a manual choice —
+    // the user decides when a buff is active, not the engine's own notion of
+    // whether it "should" be time-limited. A buff with real autoTrigger
+    // metadata suggests its own real duration as the starting value (still
+    // user-editable); one without it (a normally-permanent passive) suggests
+    // a generous default instead. Recomputed whenever the party/gear
+    // changes, same as everything else here — a 'buff' step only stores
+    // WHICH one (`buffRefId`), never a frozen value, so editing gear after
+    // placing one still reflects current stats.
+    const timedBuffs: ResolvedTimedBuff[] = useMemo(() => {
+        const team: ResolvedTimedBuff[] = partyEffects(data, members).flatMap((e) =>
+            e.buffs.map((b, i) => ({ b, i }))
+                .map(({ b, i }): ResolvedTimedBuff => ({
+                    refId: `team:${e.id}#${i}`,
+                    source: 'team',
+                    label: `${e.source} — ${b.label ?? e.name}`,
+                    durationSeconds: b.autoTrigger?.durationSeconds ?? DEFAULT_BUFF_DURATION_SECONDS,
+                    buff: { id: `${e.id}#${i}`, name: e.name, source: e.source, stat: b.stat, value: b.value, appliesTo: b.appliesTo },
+                })));
+        const self: ResolvedTimedBuff[] = members.flatMap((m) =>
+            conditionalBuffCandidates(m, data.statCatalog, activeGameId)
+                .map((b): ResolvedTimedBuff => ({
+                    refId: `self:${m.character.id}:${b.id}`,
+                    source: 'self',
+                    characterId: m.character.id,
+                    label: `${m.character.name} — ${(b as { label?: string }).label ?? b.name}`,
+                    durationSeconds: (b as { autoTrigger?: { durationSeconds: number } }).autoTrigger?.durationSeconds ?? DEFAULT_BUFF_DURATION_SECONDS,
+                    buff: b,
+                })));
+        return [...team, ...self];
+    }, [data, members, activeGameId]);
+    const timedBuffOptions: TimedBuffOption[] = useMemo(
+        () => timedBuffs.map(({ refId, source, characterId, label, durationSeconds }) => ({ refId, source, characterId, label, durationSeconds })),
+        [timedBuffs],
+    );
 
     const field: FieldSpec = useMemo(() => ({
         id: 'rotation',
@@ -216,40 +256,40 @@ export function RotationScreen() {
                 m.character.id,
                 m.character.skills.map((s) => ({ id: s.id, label: s.name, type: coarseSkillType(s.type), stackMax: s.stackMax, cooldown: s.cooldown })),
             ])),
+            buffs: timedBuffOptions,
             maxRotationLength: 60,
             showEnergy: false,
         },
-    }), [members]);
+    }), [members, timedBuffOptions]);
 
     const reaction: SkillContext['reaction'] = data.supportsReactions ? calc.reaction : 'none';
     const elapsed = useMemo(() => elapsedTimes(steps), [steps]);
-    // Team-wide effects carrying `autoTrigger` are excluded from `enabledBuffs`
-    // (`enabledPartyBuffs`'s autoTrigger exclusion) — resolve them per-step
-    // here instead, active for any step whose elapsed time falls in a
-    // trigger's window regardless of which party member cast the trigger.
-    const windowedTeamEffects = useMemo(
-        () => partyEffects(data, members).flatMap((e) =>
-            e.buffs
-                .map((b, i) => ({ e, b, i }))
-                .filter(({ b }) => !!b.autoTrigger)),
-        [data, members],
-    );
+    // A 'buff' step activates its buff from THAT step's own elapsed start
+    // time, for the buff's real duration — replaces the old "search the
+    // timeline for when the trigger skill was cast" auto-detection entirely;
+    // every timed buff is now something explicitly placed where it actually
+    // triggers.
+    const buffWindows = useMemo(() => steps
+        .map((step, index) => ({ step, index }))
+        .filter(({ step }) => step.actionType === 'buff' && step.buffRefId)
+        .flatMap(({ step, index }) => {
+            const resolved = timedBuffs.find((tb) => tb.refId === step.buffRefId);
+            if (!resolved) return [];
+            const start = elapsed[index] ?? 0;
+            const duration = step.buffDurationSeconds ?? resolved.durationSeconds;
+            return [{ ...resolved, start, end: start + duration }];
+        }), [steps, elapsed, timedBuffs]);
     const results: StepResult[] = useMemo(() => steps.map((step, index) => {
         const member = members.find((m) => m.character.id === step.characterId);
-        const enabledIds = new Set(enabledSelfBuffIds[step.characterId] ?? []);
-        const candidates = member ? conditionalBuffCandidates(member, data.statCatalog, activeGameId) : [];
-        const manuallyToggled = enabledIds.size > 0 ? candidates.filter((b) => enabledIds.has(b.id) && !(b as { autoTrigger?: unknown }).autoTrigger) : [];
-        const autoActive = candidates.filter((b) => {
-            const at = (b as { autoTrigger?: { skillIds: string[]; durationSeconds: number } }).autoTrigger;
-            return at && member && isAutoBuffActiveAtStep(steps, elapsed, index, at, member.character.id);
-        });
-        const windowedTeamBuffs: BuffEntry[] = windowedTeamEffects
-            .filter(({ b }) => isAutoBuffActiveAtStep(steps, elapsed, index, b.autoTrigger!))
-            .map(({ e, b, i }) => ({ id: `${e.id}#${i}`, name: e.name, source: e.source, stat: b.stat, value: b.value, appliesTo: b.appliesTo }));
-        const stepTeamBuffs = [...enabledBuffs, ...windowedTeamBuffs];
-        const { skill, damage } = computeStepDamage(step, member, stepTeamBuffs, [...manuallyToggled, ...autoActive], calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
+        const t = elapsed[index] ?? 0;
+        const activeWindows = buffWindows.filter((w) => t >= w.start && t < w.end);
+        const activeTeamBuffs = activeWindows.filter((w) => w.source === 'team').map((w) => w.buff);
+        const activeSelfBuffs = activeWindows.filter((w) => w.source === 'self' && w.characterId === step.characterId).map((w) => w.buff);
+
+        const stepTeamBuffs = [...enabledBuffs, ...activeTeamBuffs];
+        const { skill, damage } = computeStepDamage(step, member, stepTeamBuffs, activeSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
         return { step, index, member, skill, damage };
-    }), [steps, members, enabledBuffs, enabledSelfBuffIds, elapsed, windowedTeamEffects, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
+    }), [steps, members, enabledBuffs, elapsed, buffWindows, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
 
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);
     const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -343,50 +383,6 @@ export function RotationScreen() {
                                     ))}
                                 </div>
                             )}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader><CardTitle>Conditional self-buffs</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-xs text-muted-foreground">Off by default, same convention as the Calculator — toggle on any that are realistically active for this rotation. Applies to every step for that character.</p>
-                            {members.map((m) => {
-                                const candidates = conditionalBuffCandidates(m, data.statCatalog, activeGameId);
-                                if (candidates.length === 0) return null;
-                                const enabled = new Set(enabledSelfBuffIds[m.character.id] ?? []);
-                                return (
-                                    <div key={m.id}>
-                                        <SummaryLabel>{m.character.name}</SummaryLabel>
-                                        <div className="mt-1 flex flex-wrap gap-1">
-                                            {candidates.map((b) => {
-                                                const autoTrigger = (b as { autoTrigger?: unknown }).autoTrigger;
-                                                if (autoTrigger) {
-                                                    return (
-                                                        <span
-                                                            key={b.id}
-                                                            className="rounded-md border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-muted-foreground"
-                                                            title="Auto-computed from rotation timing — active on whichever steps fall in its trigger window"
-                                                        >
-                                                            Auto: {(b as { label?: string }).label ?? b.name} +{b.value}
-                                                        </span>
-                                                    );
-                                                }
-                                                const on = enabled.has(b.id);
-                                                return (
-                                                    <button
-                                                        key={b.id}
-                                                        onClick={() => toggleSelfBuff(m.character.id, b.id)}
-                                                        className={`rounded-md border px-2 py-0.5 text-xs transition-colors ${on ? 'border-primary/50 bg-primary/15 text-foreground' : 'border-dashed border-border bg-surface text-muted-foreground hover:bg-surface-2'}`}
-                                                        title={(b as { label?: string }).label ?? b.name}
-                                                    >
-                                                        {on ? '✓ ' : '+ '}{(b as { label?: string }).label ?? b.name} +{b.value}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })}
                         </CardContent>
                     </Card>
 

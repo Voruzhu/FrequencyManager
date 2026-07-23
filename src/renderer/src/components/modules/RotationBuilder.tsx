@@ -151,6 +151,18 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
         return skills[characterId] || [];
     };
 
+    // Groups consecutive same-character steps into one visual block — purely
+    // a rendering concern, derived fresh from the flat array each render, not
+    // stored separately. Adding/moving a step still just edits `value`;
+    // whether it lands inside an existing block or starts a new one falls
+    // out naturally from whether its neighbor shares its characterId.
+    const stepGroups: Array<{ characterId: string; indices: number[] }> = [];
+    for (let i = 0; i < value.length; i++) {
+        const last = stepGroups[stepGroups.length - 1];
+        if (last && last.characterId === value[i].characterId) last.indices.push(i);
+        else stepGroups.push({ characterId: value[i].characterId, indices: [i] });
+    }
+
     const elapsed = elapsedTimes(value);
     const cooldownsBySkillId: Record<string, number> = {};
     for (const list of Object.values(skills)) for (const s of list) if (s.cooldown != null) cooldownsBySkillId[s.id] = s.cooldown;
@@ -236,26 +248,40 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
                         <p className="text-xs text-muted/70 mt-1">Click a character above to add steps</p>
                     </div>
                 ) : (
-                    value.map((step, index) => (
-                        <RotationStepCard
-                            key={`${step.characterId}-${index}`}
-                            index={index}
-                            isLast={index === value.length - 1}
-                            step={step}
-                            isExpanded={expandedStep === index}
-                            character={characters.find(c => c.id === step.characterId)}
-                            availableSkills={getSkillsForCharacter(step.characterId)}
-                            availableBuffs={buffOptions.filter((b) => b.source === 'team' || b.characterId === step.characterId)}
-                            cooldownWarning={cooldownWarningFor(value, elapsed, index, cooldownsBySkillId)}
-                            onToggleExpand={() => setExpandedStep(expandedStep === index ? null : index)}
-                            onUpdate={(updates) => handleUpdateStep(index, updates)}
-                            onRemove={() => handleRemoveStep(index)}
-                            onMoveUp={() => index > 0 && handleMoveStep(index, index - 1)}
-                            onMoveDown={() => index < value.length - 1 && handleMoveStep(index, index + 1)}
-                            onAddAfter={() => handleAddStepAfter(index)}
-                            disabled={disabled}
-                        />
-                    ))
+                    stepGroups.map((group) => {
+                        const character = characters.find(c => c.id === group.characterId);
+                        return (
+                            <div key={`group-${group.indices[0]}`} className="bg-surface border border-border rounded-lg overflow-hidden">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-surface-2 border-b border-border">
+                                    {character?.icon && (
+                                        <span className="w-5 h-5" dangerouslySetInnerHTML={{ __html: character.icon }} />
+                                    )}
+                                    <span className="font-medium text-fg text-sm">{character?.label ?? group.characterId}</span>
+                                </div>
+                                <div className="divide-y divide-border">
+                                    {group.indices.map((index) => (
+                                        <RotationStepCard
+                                            key={index}
+                                            index={index}
+                                            isLast={index === value.length - 1}
+                                            step={value[index]}
+                                            isExpanded={expandedStep === index}
+                                            availableSkills={getSkillsForCharacter(value[index].characterId)}
+                                            availableBuffs={buffOptions.filter((b) => b.source === 'team' || b.characterId === value[index].characterId)}
+                                            cooldownWarning={cooldownWarningFor(value, elapsed, index, cooldownsBySkillId)}
+                                            onToggleExpand={() => setExpandedStep(expandedStep === index ? null : index)}
+                                            onUpdate={(updates) => handleUpdateStep(index, updates)}
+                                            onRemove={() => handleRemoveStep(index)}
+                                            onMoveUp={() => index > 0 && handleMoveStep(index, index - 1)}
+                                            onMoveDown={() => index < value.length - 1 && handleMoveStep(index, index + 1)}
+                                            onAddAfter={() => handleAddStepAfter(index)}
+                                            disabled={disabled}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })
                 )}
             </div>
 
@@ -275,12 +301,14 @@ export function RotationBuilder({ field, value, onChange, disabled, restrictToCh
 }
 
 // ─── Rotation Step Card ────────────────────────────────────────────────────
+// One ACTION row within a character's group block (see `stepGroups` in the
+// parent) — the character's own icon/name render once at the group level,
+// not per row, so this only ever shows the action's own details.
 interface RotationStepCardProps {
     index: number;
     isLast: boolean;
     step: RotationStepSpec;
     isExpanded: boolean;
-    character?: { id: string; label: string; icon?: string };
     availableSkills: Array<{ id: string; label: string; type: string; energyCost?: number; cooldown?: number; stackMax?: number }>;
     availableBuffs: TimedBuffOption[];
     cooldownWarning?: string;
@@ -294,7 +322,7 @@ interface RotationStepCardProps {
 }
 
 function RotationStepCard({
-    index, isLast, step, isExpanded, character, availableSkills, availableBuffs, cooldownWarning,
+    index, isLast, step, isExpanded, availableSkills, availableBuffs, cooldownWarning,
     onToggleExpand, onUpdate, onRemove, onMoveUp, onMoveDown, onAddAfter, disabled
 }: RotationStepCardProps) {
     const actionTypeLabels: Record<string, string> = {
@@ -324,26 +352,22 @@ function RotationStepCard({
     const isBuffStep = step.actionType === 'buff';
 
     return (
-        <div className="bg-surface border border-border rounded-lg overflow-hidden">
+        <div>
             {/* Collapsed header */}
             <button
                 onClick={onToggleExpand}
                 disabled={disabled}
-                className="w-full p-3 flex items-center gap-3 hover:bg-surface transition-colors text-left disabled:opacity-70"
+                className="w-full p-3 flex items-center gap-3 hover:bg-surface-2 transition-colors text-left disabled:opacity-70"
             >
                 <span className="w-6 text-center text-muted">{index + 1}</span>
-                {character?.icon && (
-                    <span className="w-5 h-5" dangerouslySetInnerHTML={{ __html: character.icon }} />
-                )}
-                <span className="font-medium text-fg flex-1">{character?.label || step.characterId}</span>
                 <span className={`px-2 py-0.5 text-xs rounded ${actionTypeColors[step.actionType] || 'bg-surface-2 text-muted'}`}>
                     {actionTypeLabels[step.actionType] || step.actionType}
                 </span>
                 {isBuffStep ? (
-                    <span className="text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{selectedBuff?.label ?? 'No buff selected'}</span>
-                ) : step.skillLabel && (
-                    <span className="text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{step.skillLabel}</span>
-                )}
+                    <span className="flex-1 truncate text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{selectedBuff?.label ?? 'No buff selected'}</span>
+                ) : step.skillLabel ? (
+                    <span className="flex-1 truncate text-sm text-muted/70 px-2 py-0.5 bg-surface rounded">{step.skillLabel}</span>
+                ) : <span className="flex-1" />}
                 {selectedSkillCooldown != null && (
                     <span className="text-xs text-muted-foreground">CD {selectedSkillCooldown}s</span>
                 )}
@@ -440,16 +464,22 @@ function RotationStepCard({
                             </div>
                         )}
 
-                        {/* Buff selector — which timed party/self buff this instant action activates. */}
+                        {/* Buff selector — which party/self buff this instant action activates.
+                            Every conditional buff a member could grant is offered here, whether
+                            or not it has real trigger/duration metadata — placement is a manual
+                            choice, not gated by whether the engine thinks it "should" be timed. */}
                         {isBuffStep && (
                             <div>
                                 <label className="block text-xs font-medium text-muted mb-1">Buff</label>
                                 {availableBuffs.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground py-2">No timed buffs available for this party yet.</p>
+                                    <p className="text-xs text-muted-foreground py-2">No conditional buffs available for this party yet.</p>
                                 ) : (
                                     <select
                                         value={step.buffRefId || ''}
-                                        onChange={(e) => onUpdate({ buffRefId: e.target.value || undefined })}
+                                        onChange={(e) => {
+                                            const picked = availableBuffs.find((b) => b.refId === e.target.value);
+                                            onUpdate({ buffRefId: e.target.value || undefined, buffDurationSeconds: picked?.durationSeconds });
+                                        }}
                                         disabled={disabled}
                                         className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
                                     >
@@ -459,6 +489,24 @@ function RotationStepCard({
                                         ))}
                                     </select>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Buff duration override — always editable. The selected buff's own
+                            duration (if it has real trigger metadata) is just the starting
+                            suggestion; the user decides how long it's actually active for. */}
+                        {isBuffStep && step.buffRefId && (
+                            <div>
+                                <label className="block text-xs font-medium text-muted mb-1">Buff Duration (s)</label>
+                                <input
+                                    type="number"
+                                    value={step.buffDurationSeconds ?? selectedBuff?.durationSeconds ?? 0}
+                                    onChange={(e) => onUpdate({ buffDurationSeconds: parseFloat(e.target.value) || 0 })}
+                                    min={0.1}
+                                    step={0.1}
+                                    disabled={disabled}
+                                    className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-accent"
+                                />
                             </div>
                         )}
 

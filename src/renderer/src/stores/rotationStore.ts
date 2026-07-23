@@ -14,8 +14,11 @@ export interface SavedRotation {
      * turn-picker restriction until a party is explicitly selected. */
     partyId?: string;
     steps: RotationStepSpec[];
-    /** characterId -> enabled conditional self-buff ids for that member. */
-    enabledSelfBuffIds: Record<string, string[]>;
+    /** characterId -> enabled conditional self-buff ids for that member.
+     * Legacy field — conditional buffs are now placed as 'buff' timeline
+     * steps instead (see `RotationStepSpec.buffRefId`); kept optional purely
+     * so a rotation saved before this change still loads without error. */
+    enabledSelfBuffIds?: Record<string, string[]>;
     /** 'boss' = single WaveConfig entry (HP optional). 'waves' = 2+ entries.
      * Undefined for a rotation saved before this field existed — treated as
      * 'boss' mode with no enemy config (falls back to the plain single-target

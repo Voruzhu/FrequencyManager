@@ -50,7 +50,7 @@ export type GameRuleRef =
 /** A single step in a character rotation. */
 export interface RotationStepSpec {
     characterId: string;
-    actionType: 'basic' | 'skill' | 'ultimate' | 'switch' | 'movement' | 'wait';
+    actionType: 'basic' | 'skill' | 'ultimate' | 'switch' | 'movement' | 'wait' | 'buff';
     skillId?: string;
     skillLabel?: string;
     duration?: number; // seconds
@@ -61,6 +61,38 @@ export interface RotationStepSpec {
     talentLevel?: number;
     /** Stack count for this step's skill, overriding the best-case default (skill.stackMax). */
     stackCount?: number;
+    /** actionType === 'buff' only — which `TimedBuffOption.refId` (from
+     * `RotationBuilderSpec.buffs`) this step activates. The step is instant
+     * (its own `duration` is always 0); the buff's real VALUE is re-resolved
+     * fresh from CURRENT party/character state whenever damage is computed,
+     * never snapshotted into the step — same "derive, don't freeze"
+     * convention as every other step referencing gear/skills by id. */
+    buffRefId?: string;
+    /** actionType === 'buff' only — how long, from this step's position,
+     * the buff stays active. Defaults to the buff's own real duration (see
+     * `TimedBuffOption.durationSeconds`) when first placed, but the user can
+     * freely edit it — placement is a manual choice, not gated by whether
+     * the underlying buff happens to carry real trigger/duration metadata. */
+    buffDurationSeconds?: number;
+}
+
+/** A party/self buff eligible to be manually placed as a 'buff' rotation
+ * step (see `RotationStepSpec.buffRefId`) — every conditional buff a member
+ * could grant, whether or not it has a real known duration. `durationSeconds`
+ * is the SUGGESTED starting value shown when first placed (the buff's own
+ * `autoTrigger.durationSeconds` if it has one, else a generous default for a
+ * buff that's normally permanent-while-toggled) — the user can edit it per
+ * placement regardless. */
+export interface TimedBuffOption {
+    /** Stable across a render — NOT persisted/parsed, just looked up fresh
+     * each time from whatever list `RotationBuilderSpec.buffs` currently has. */
+    refId: string;
+    source: 'team' | 'self';
+    /** For a 'self' buff, the character whose kit/weapon/gear it comes from —
+     * only applies to that character's own skill steps, unlike a 'team' buff. */
+    characterId?: string;
+    label: string;
+    durationSeconds: number;
 }
 
 /** Rotation builder configuration exposed by module. */
@@ -69,6 +101,8 @@ export interface RotationBuilderSpec {
     characters: Array<{ id: string; label: string; icon?: string }>;
     /** Available skills per character (optional, can be fetched from backend) */
     skills?: Record<string, Array<{ id: string; label: string; type: 'basic' | 'skill' | 'ultimate'; energyCost?: number; cooldown?: number; stackMax?: number }>>;
+    /** Timed buffs eligible to be placed as a 'buff' action — see `TimedBuffOption`. */
+    buffs?: TimedBuffOption[];
     /** Default rotation template */
     defaultRotation?: RotationStepSpec[];
     /** Maximum rotation length in seconds */

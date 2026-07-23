@@ -1,4 +1,4 @@
-import { elapsedTimes, cooldownWarningFor, isAutoBuffActiveAtStep, simulateWaves, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
+import { elapsedTimes, cooldownWarningFor, simulateWaves, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
 import type { RotationStepSpec } from '../../src/renderer/src/types';
 
 const step = (characterId: string, skillId: string, duration: number): RotationStepSpec =>
@@ -44,35 +44,6 @@ describe('cooldownWarningFor', () => {
     it('only compares against the SAME character\'s prior use of the SAME skill', () => {
         const steps = [step('a', 'ult', 2), step('b', 'ult', 1)]; // different character, same skillId
         expect(cooldownWarningFor(steps, elapsedTimes(steps), 1, cooldowns)).toBeUndefined();
-    });
-});
-
-describe('isAutoBuffActiveAtStep', () => {
-    const trigger = { skillIds: ['skill'], durationSeconds: 15 };
-
-    it('inactive before any trigger has been cast', () => {
-        const steps = [step('a', 'basic', 1), step('a', 'ult', 1)];
-        expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 1, trigger, 'a')).toBe(false);
-    });
-
-    it('active within the window after the triggering skill completes', () => {
-        const steps = [step('a', 'skill', 2), step('a', 'ult', 1)]; // skill completes at t=2, ult starts at t=2
-        expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 1, trigger, 'a')).toBe(true);
-    });
-
-    it('inactive once the window has passed', () => {
-        const steps = [step('a', 'skill', 2), step('a', 'basic', 20), step('a', 'ult', 1)]; // ult starts at t=22, window ends at t=17
-        expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 2, trigger, 'a')).toBe(false);
-    });
-
-    it('a self-buff (restrictToCharacterId set) ignores a different character\'s trigger cast', () => {
-        const steps = [step('b', 'skill', 2), step('a', 'ult', 1)];
-        expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 1, trigger, 'a')).toBe(false);
-    });
-
-    it('a team-wide buff (no restrictToCharacterId) counts any character\'s trigger cast', () => {
-        const steps = [step('b', 'skill', 2), step('a', 'ult', 1)];
-        expect(isAutoBuffActiveAtStep(steps, elapsedTimes(steps), 1, trigger)).toBe(true);
     });
 });
 
