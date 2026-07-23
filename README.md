@@ -55,10 +55,10 @@ Want to build it yourself instead? See [CONTRIBUTING.md](./CONTRIBUTING.md).
 | Screen | What it's for |
 | --- | --- |
 | **Dashboard** | A quick overview of your build workspace — recent calculations and scans at a glance. |
-| **Calculator** | Pick a character, set what you want to maximize (or hit a minimum threshold for), and either see live stats for your currently-equipped gear or run the **Optimizer** to search every combination of gear you own for the best build. Supports crit modes, elemental reactions (Genshin), a Set Bonus picker, and Party Setup for team-wide buffs. |
+| **Calculator** | Pick a character, set what you want to maximize (or hit a minimum threshold for), and either see live stats for your currently-equipped gear or run the **Optimizer** to search every combination of gear you own for the best build. Supports crit modes, elemental reactions (Genshin), a Set Bonus picker, Party Setup for team-wide buffs, and a real boss roster (both games) with per-element RES instead of a generic enemy. |
 | **Scanner** | Point your hotkey at an in-game gear screen and FrequencyManager reads the stats off the screenshot (OCR) and adds it to your inventory — no manual typing. You can also scan a previously saved screenshot, or batch-import several at once. Currently supported: **Wuthering Waves echoes** only (see below). |
 | **Inventory** | Manage everything you own: characters, weapons, and gear. Add, edit, equip, and unequip pieces; filter and sort your gear by stat, set, rarity, or cost; get warned before double-equipping a piece another character is already using. |
-| **Rotation** | Build and save a damage rotation — a sequence of skills/attacks — against your actual party, to see total damage over a fight instead of just a single hit. |
+| **Rotation** | Build and save a damage rotation — a sequence of skills/attacks and manually-placed buffs — against your actual party and a real boss (or multi-wave fight), to see total damage over a fight instead of just a single hit. Consecutive actions for the same character group into one card, and any conditional buff a party member can grant (weapon, passive, constellation/sequence) can be dropped into the timeline with its own duration. |
 | **Settings** | Switch the active game, tune calculator/optimizer behavior (like how many CPU threads the optimizer uses), configure the scan hotkey, manage app/game updates, back up or clear your data, and toggle individual feature modules on or off. |
 
 ---
