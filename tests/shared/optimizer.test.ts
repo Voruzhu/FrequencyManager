@@ -672,3 +672,43 @@ describe('computeBaseLoadouts — set bonuses are derived PER COMBO from real ge
         expect(() => computeBaseLoadouts(c, [[echo('Void Thunder', 'a'), echo('Void Thunder', 'b')]], config)).not.toThrow();
     });
 });
+
+describe('enemyMultiplier — per-element RES overrides', () => {
+    const boss = (res: number, resByElement?: Partial<Record<string, number>>): EnemyEntry =>
+        ({ id: 'boss', name: 'Boss', level: 90, def: 900, res, resByElement });
+
+    it('with no element argument, uses the flat baseline RES (old 4-arg behavior unchanged)', () => {
+        const e = boss(10, { Cryo: 40 });
+        expect(enemyMultiplier(e, 90, 0, 0)).toBe(enemyMultiplier({ ...e, resByElement: undefined }, 90, 0, 0));
+    });
+
+    it('an element with a documented override uses that RES instead of the flat baseline', () => {
+        const e = boss(10, { Cryo: 40, Pyro: -20 });
+        const cryoMit = enemyMultiplier(e, 90, 0, 0, 'Cryo');
+        const baselineMit = enemyMultiplier({ ...e, resByElement: undefined }, 90, 0, 0);
+        expect(cryoMit).not.toBeCloseTo(baselineMit, 5);
+        // Higher RES (40 vs 10) must mitigate MORE, i.e. a smaller multiplier.
+        expect(cryoMit).toBeLessThan(baselineMit);
+    });
+
+    it('a weakness (negative override RES) mitigates LESS than the flat baseline — more damage taken', () => {
+        const e = boss(10, { Pyro: -20 });
+        const pyroMit = enemyMultiplier(e, 90, 0, 0, 'Pyro');
+        const baselineMit = enemyMultiplier({ ...e, resByElement: undefined }, 90, 0, 0);
+        expect(pyroMit).toBeGreaterThan(baselineMit);
+    });
+
+    it('an element with NO override falls back to the flat baseline RES', () => {
+        const e = boss(10, { Cryo: 40 });
+        const electroMit = enemyMultiplier(e, 90, 0, 0, 'Electro');
+        const baselineMit = enemyMultiplier({ ...e, resByElement: undefined }, 90, 0, 0);
+        expect(electroMit).toBeCloseTo(baselineMit, 10);
+    });
+
+    it('resShredPct still applies against whichever RES value (override or baseline) was selected', () => {
+        const e = boss(10, { Cryo: 40 });
+        const shredded = enemyMultiplier(e, 90, 0, 15, 'Cryo');
+        const unshredded = enemyMultiplier(e, 90, 0, 0, 'Cryo');
+        expect(shredded).toBeGreaterThan(unshredded);
+    });
+});

@@ -262,7 +262,17 @@ export interface EnemyEntry {
     name: string;
     level: number;
     def: number;
+    /** Baseline RES% applied when the attacking skill's element isn't listed
+     * in `resByElement` — real bosses have a "default" resistance most
+     * elements share, with a handful of documented exceptions. */
     res: number; // percent
+    /** Per-element RES% overrides (e.g. `{ Cryo: -20, Pyro: 40 }`) for a boss
+     * that's notably weak or resistant to specific elements — keyed by the
+     * same element display name used in `CharacterEntry.element`/`SkillDef.element`
+     * ('Pyro', 'Physical', 'Spectro', ...). Elements absent here fall back to
+     * the flat `res` above. Negative values represent a weakness (increased
+     * damage taken), matching `enemyMultiplier`'s existing r<0 handling. */
+    resByElement?: Partial<Record<string, number>>;
     /** Icon path relative to the game package (art added later). */
     icon?: string;
 }

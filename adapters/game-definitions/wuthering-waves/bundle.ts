@@ -92,15 +92,84 @@ const supplements: GameCatalogSupplements = {
         { key: 'resonanceSkillDmgBonus', label: 'Resonance Skill DMG Bonus', percent: true },
         { key: 'resonanceLiberationDmgBonus', label: 'Resonance Liberation DMG Bonus', percent: true },
     ],
+    // Level 90 for every entry (the real "max Tacet Field/Illusive Realm
+    // difficulty" build-testing convention — confirmed via wutheringwaves.gg
+    // + Fandom's Damage page, 2026-07 research pass). `def: 950` is uniform
+    // across every boss deliberately, not an oversight: Wuthering Waves has
+    // NEVER published a raw per-boss DEF stat anywhere (wutheringwaves.gg's
+    // own damage guide states this explicitly) — the only documented figure
+    // is the ~50% same-level damage-reduction result, which this engine's
+    // `factor/(factor+def)` formula reproduces at level 90 exactly when
+    // def=950 (since factor = 5*90+500 = 950). The 820-1150 spread this file
+    // used to have per boss was therefore never a real, sourced difference —
+    // it's been replaced by a single correct baseline, with RES (which IS
+    // genuinely documented and varies for real) carrying all the per-boss
+    // differentiation instead. RES baseline is 10% for every enemy; a boss
+    // with a documented own-element affinity gets +30 points against that
+    // element specifically (~40% total) via `resByElement` — both figures
+    // per Fandom's Damage/DMG RES pages (cross-checked, not independently
+    // re-read live — see this feature's research notes).
     enemies: [
-        { id: 'ww-crownless', name: 'Crownless', level: 90, def: 900, res: 10 },
-        { id: 'ww-aix', name: 'Mourning Aix', level: 90, def: 950, res: 10 },
-        { id: 'ww-beringal', name: 'Feilian Beringal', level: 90, def: 920, res: 20 },
-        { id: 'ww-mephis', name: 'Tempest Mephis', level: 90, def: 1000, res: 20 },
-        { id: 'ww-inferno', name: 'Inferno Rider', level: 90, def: 880, res: 20 },
-        { id: 'ww-lampylumen', name: 'Lampylumen Myriad', level: 90, def: 860, res: 20 },
-        { id: 'ww-dreamless', name: 'Dreamless', level: 90, def: 1050, res: 15 },
-        { id: 'ww-hecate', name: 'Hecate', level: 90, def: 1150, res: 20 },
+        { id: 'ww-crownless', name: 'Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-aix', name: 'Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
+        { id: 'ww-beringal', name: 'Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
+        { id: 'ww-mephis', name: 'Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'ww-inferno', name: 'Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        // Element not documented anywhere found (Fandom RES table has no
+        // entry for it) — left at baseline RES rather than guessed.
+        { id: 'ww-lampylumen', name: 'Lampylumen Myriad', level: 90, def: 950, res: 10 },
+        { id: 'ww-dreamless', name: 'Dreamless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-hecate', name: 'Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        // Two-phase boss (human/Fusion form -> enraged goat/Spectro+Havoc
+        // form) — this schema has no time-varying RES concept, so this uses
+        // the enraged phase (where most of a real fight happens) and drops
+        // the human-phase Fusion affinity rather than merging both.
+        { id: 'ww-scar', name: 'Scar', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Havoc: 40 } },
+        { id: 'ww-jue', name: 'Jué', level: 90, def: 950, res: 10, resByElement: { Spectro: 40, Electro: 40 } },
+        // Element not documented — left at baseline.
+        { id: 'ww-fleurdelys', name: 'Reminiscence: Fleurdelys', level: 90, def: 950, res: 10 },
+        { id: 'ww-leviathan', name: 'Threnodian: Leviathan', level: 90, def: 950, res: 10 },
+        { id: 'ww-sigillum', name: 'Sigillum', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
+        { id: 'ww-denia', name: 'Denia', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        { id: 'ww-puppet-pavilion', name: 'Thousand-Puppet Pavilion', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 } },
+        { id: 'ww-heron', name: 'Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-mech-abomination', name: 'Mech Abomination', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'ww-thundering-mephis', name: 'Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'ww-fallacy', name: 'Fallacy of No Return', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
+        { id: 'ww-sentry-construct', name: 'Sentry Construct', level: 90, def: 950, res: 10, resByElement: { Glacio: 40 } },
+        { id: 'ww-dragon-of-dirge', name: 'Dragon of Dirge', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        { id: 'ww-lorelei', name: 'Lorelei', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-lioness-of-glory', name: 'Lioness of Glory', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        { id: 'ww-fenrico', name: 'Fenrico', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
+        { id: 'ww-false-sovereign', name: 'The False Sovereign', level: 90, def: 950, res: 10, resByElement: { Electro: 40, Havoc: 40 } },
+        // Element not documented — left at baseline.
+        { id: 'ww-lady-of-the-sea', name: 'Lady of the Sea', level: 90, def: 950, res: 10 },
+        { id: 'ww-hyvatia', name: 'Hyvatia', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
+        { id: 'ww-reactor-husk', name: 'Reactor Husk', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        { id: 'ww-nameless-explorer', name: 'Nameless Explorer', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
+        { id: 'ww-rustfire-chassis', name: 'Myriad Snare: Rustfire Chassis', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        // No elemental weakness documented — explicitly "not weak to any
+        // single element" per source; its real exploitable weakness is a
+        // collab-exclusive status effect this schema has no concept of.
+        { id: 'ww-adam-smasher', name: 'Adam Smasher', level: 90, def: 950, res: 10 },
+        // Nightmare variants: same boss, tougher stats, fought later in the
+        // story — no independent RES confirmation was found for any of
+        // these specifically, so each REUSES its base form's documented
+        // element as the best available estimate, not a separately-sourced
+        // value.
+        { id: 'ww-nightmare-beringal', name: 'Nightmare: Feilian Beringal', level: 90, def: 950, res: 10, resByElement: { Aero: 40 } },
+        { id: 'ww-nightmare-heron', name: 'Nightmare: Impermanence Heron', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-nightmare-thundering-mephis', name: 'Nightmare: Thundering Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'ww-nightmare-tempest-mephis', name: 'Nightmare: Tempest Mephis', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'ww-nightmare-crownless', name: 'Nightmare: Crownless', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-nightmare-inferno-rider', name: 'Nightmare: Inferno Rider', level: 90, def: 950, res: 10, resByElement: { Fusion: 40 } },
+        { id: 'ww-nightmare-mourning-aix', name: 'Nightmare: Mourning Aix', level: 90, def: 950, res: 10, resByElement: { Spectro: 40 } },
+        { id: 'ww-nightmare-lampylumen', name: 'Nightmare: Lampylumen Myriad', level: 90, def: 950, res: 10 },
+        // No non-Nightmare "Kelpie" boss exists to inherit an element from;
+        // element not independently confirmed for this one either.
+        { id: 'ww-nightmare-kelpie', name: 'Nightmare: Kelpie', level: 90, def: 950, res: 10 },
+        { id: 'ww-nightmare-hecate', name: 'Nightmare: Hecate', level: 90, def: 950, res: 10, resByElement: { Havoc: 40 } },
+        { id: 'ww-nightmare-adam-smasher', name: 'Nightmare: Adam Smasher', level: 90, def: 950, res: 10 },
     ],
     buffs: {
         basic: [

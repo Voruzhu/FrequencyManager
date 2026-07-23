@@ -71,15 +71,102 @@ const supplements: GameCatalogSupplements = {
         { key: 'energyRegen', label: 'Energy Recharge', percent: true },
         { key: 'elemDmg', label: 'Elemental DMG', percent: true },
     ],
+    // Level 90 for every entry (max Trounce Domain difficulty — the real
+    // farming/build-testing convention; a couple of open-world bosses like
+    // Andrius actually scale with World Level instead and can run slightly
+    // higher, but 90 is the documented common baseline used here). `def: 950`
+    // is uniform and INTENTIONAL, not a placeholder: Genshin's real defense
+    // mitigation is confirmed PURELY level-based with no per-monster DEF stat
+    // at all (`DEF_Enemy = 5*Level+500` — Fandom's DEF page + KQM's
+    // Theorycrafting Compendium both state this explicitly). The previous
+    // 820-1150 per-boss spread in this file was therefore never real Genshin
+    // data — it looked like a stat model copied from a different game. RES
+    // is where real per-boss variance actually lives (Fandom's own master
+    // Enemy RES table): most enemies default to 10% elemental / 10%
+    // physical, with real, individually-documented exceptions encoded below
+    // via `resByElement` (cross-checked, not independently re-read live —
+    // see this feature's research notes). Several bosses have real but
+    // TEMPORARY phase/state-based RES swings (shielded, stunned, charging,
+    // a specific attack phase) that this static per-boss table has no way to
+    // represent — those are called out inline and deliberately left
+    // unencoded rather than baked in as if permanent.
     enemies: [
-        { id: 'gi-dvalin', name: 'Stormterror Dvalin', level: 90, def: 900, res: 10 },
-        { id: 'gi-andrius', name: 'Lupus Boreas (Andrius)', level: 90, def: 920, res: 10 },
-        { id: 'gi-childe', name: 'Childe (Tartaglia)', level: 90, def: 950, res: 10 },
-        { id: 'gi-azhdaha', name: 'Azhdaha', level: 90, def: 1000, res: 20 },
-        { id: 'gi-raiden', name: 'Raiden Shogun', level: 90, def: 1050, res: 10 },
-        { id: 'gi-geovishap', name: 'Primo Geovishap', level: 90, def: 900, res: 30 },
-        { id: 'gi-serpent', name: 'Ruin Serpent', level: 90, def: 980, res: 10 },
-        { id: 'gi-guard', name: 'Ruin Guard', level: 90, def: 820, res: 10 },
+        { id: 'gi-dvalin', name: 'Stormterror Dvalin', level: 90, def: 950, res: 10 },
+        // Documented as flatly immune to both — approximated with a very
+        // high RES (true 0-damage immunity has no representation in this
+        // formula, which asymptotically approaches but never reaches 0).
+        { id: 'gi-andrius', name: 'Lupus Boreas (Andrius)', level: 90, def: 950, res: 10, resByElement: { Cryo: 300, Anemo: 300 } },
+        // A genuine, documented LOW baseline (not a typo) — Childe is the
+        // one boss on Fandom's table with 0% RES to everything by default.
+        // Real per-phase RES buffs (P1 +50 Hydro, P2 +50 Electro, P3 +70/+70)
+        // are temporary and not modeled.
+        { id: 'gi-childe', name: 'Childe (Tartaglia)', level: 90, def: 950, res: 0 },
+        // Geo/Physical RES are permanent traits; the elemental-infusion RES
+        // swap (+60% to whatever element it just absorbed) is dynamic/
+        // conditional and not modeled.
+        { id: 'gi-azhdaha', name: 'Azhdaha', level: 90, def: 950, res: 10, resByElement: { Geo: 70, Physical: 40 } },
+        // Real boss name for Raiden's weekly-Trounce encounter (her avatar,
+        // not the playable character) — the RES buffs documented for this
+        // fight (+40 Cryo/+60 Pyro-equivalent-style phase swings on OTHER
+        // Trounce bosses; for this one specifically +200% during "Baleful
+        // Shadowlord", -60% once stunned after) are phase-temporary, not
+        // modeled — baseline is a plain 10%.
+        { id: 'gi-raiden', name: 'Magatsu Mitake Narukami no Mikoto', level: 90, def: 950, res: 10 },
+        { id: 'gi-geovishap', name: 'Primo Geovishap', level: 90, def: 950, res: 10, resByElement: { Geo: 50, Physical: 30 } },
+        { id: 'gi-serpent', name: 'Ruin Serpent', level: 90, def: 950, res: 10, resByElement: { Physical: 70 } },
+        { id: 'gi-guard', name: 'Ruin Guard', level: 90, def: 950, res: 10, resByElement: { Physical: 70 } },
+        // Phase-temporary RES buffs only (10%/10% baseline, +40 Cryo P1 /
+        // +60 Pyro P2) — not modeled, same reasoning as Raiden above.
+        { id: 'gi-la-signora', name: 'La Signora', level: 90, def: 950, res: 10 },
+        // P1 baseline used (Electro:40); P2's escalation to 30/30 elemental
+        // + 60 Electro is temporary and not modeled.
+        { id: 'gi-wanderer', name: 'Everlasting Lord of Arcane Wisdom', level: 90, def: 950, res: 10, resByElement: { Electro: 40 } },
+        { id: 'gi-apep-guardian', name: "Guardian of Apep's Oasis", level: 90, def: 950, res: 10, resByElement: { Dendro: 70 } },
+        // Both real combat forms encoded — this boss alternates between a
+        // Hydro-affinity normal form and an Electro-affinity Phantom form.
+        { id: 'gi-narwhal', name: 'All-Devouring Narwhal', level: 90, def: 950, res: 10, resByElement: { Hydro: 70, Electro: 70 } },
+        { id: 'gi-knave', name: 'The Knave (Arlecchino)', level: 90, def: 950, res: 10, resByElement: { Pyro: 70 } },
+        { id: 'gi-primal-fire-lord', name: 'Lord of Eroded Primal Fire', level: 90, def: 950, res: 10 },
+        // "The Game Before the Gate" is fought as two sequential forms with
+        // distinct RES profiles — modeled as two separate selectable targets
+        // rather than one entry, since a single target pick can't represent
+        // "fight one, then the other."
+        { id: 'gi-king-piece', name: 'The Game Before the Gate: King Piece', level: 90, def: 950, res: 10, resByElement: { Pyro: 70 } },
+        { id: 'gi-sublimated-queen', name: 'The Game Before the Gate: Sublimated Queen', level: 90, def: 950, res: 10, resByElement: { Electro: 70, Hydro: 70 } },
+        // No documented RES exception found for either Dottore Trounce form
+        // — left at baseline rather than guessed.
+        { id: 'gi-dottore-1', name: 'Heretic of the False Moon', level: 90, def: 950, res: 10 },
+        { id: 'gi-dottore-2', name: 'Exalted Master of the Heretical Path', level: 90, def: 950, res: 10 },
+        { id: 'gi-wolflord', name: 'Golden Wolflord', level: 90, def: 950, res: 25 },
+        { id: 'gi-rifthound', name: 'Rifthound', level: 90, def: 950, res: 25 },
+        { id: 'gi-rifthound-whelp', name: 'Rifthound Whelp', level: 90, def: 950, res: 20 },
+        { id: 'gi-vishap-hatchling', name: 'Bathysmal Vishap (Hatchling)', level: 90, def: 950, res: 10, resByElement: { Physical: 30 } },
+        { id: 'gi-vishap-large', name: 'Bathysmal Vishap (Large)', level: 90, def: 950, res: 10, resByElement: { Physical: 30 } },
+        { id: 'gi-ruin-drake', name: 'Ruin Drake', level: 90, def: 950, res: 10, resByElement: { Physical: 50 } },
+        { id: 'gi-jadeplume', name: 'Jadeplume Terrorshroom', level: 90, def: 950, res: 25, resByElement: { Dendro: 80 } },
+        { id: 'gi-aeonblight', name: 'Aeonblight Drake', level: 90, def: 950, res: 10, resByElement: { Physical: 70 } },
+        { id: 'gi-maguu-kenki', name: 'Maguu Kenki', level: 90, def: 950, res: 10 },
+        { id: 'gi-dual-maguu-kenki', name: 'Dual Maguu Kenki', level: 90, def: 950, res: 10 },
+        { id: 'gi-emperor-fire-iron', name: 'Emperor of Fire and Iron', level: 90, def: 950, res: 10, resByElement: { Pyro: 60 } },
+        { id: 'gi-pearl-seahorse', name: 'Millennial Pearl Seahorse', level: 90, def: 950, res: 10, resByElement: { Electro: 60 } },
+        // Documented as flatly immune to Hydro (its own element) —
+        // approximated the same way as Andrius above.
+        { id: 'gi-hydro-tulpa', name: 'Hydro Tulpa', level: 90, def: 950, res: 10, resByElement: { Hydro: 300 } },
+        { id: 'gi-solitary-suanni', name: 'Solitary Suanni', level: 90, def: 950, res: 10, resByElement: { Anemo: 70, Hydro: 70 } },
+        { id: 'gi-setekh-wenut', name: 'Setekh Wenut', level: 90, def: 950, res: 25, resByElement: { Anemo: 60 } },
+        // "Consecrated Beast" is really a family of separately-elemented
+        // sub-bosses (Pyro/Hydro/Cryo/Electro variants) sharing this
+        // statline — no source found breaking out which variant gets which
+        // extra element, so this is the shared 40% baseline only, no
+        // per-element override guessed.
+        { id: 'gi-consecrated-beast', name: 'Consecrated Beast', level: 90, def: 950, res: 40 },
+        { id: 'gi-statue-marble-brass', name: 'Statue of Marble and Brass', level: 90, def: 950, res: 10 },
+        { id: 'gi-lava-dragon-statue', name: 'Lava Dragon Statue', level: 90, def: 950, res: 70 },
+        { id: 'gi-wayob', name: 'Iniquitous Baptist (Wayob)', level: 90, def: 950, res: 10 },
+        { id: 'gi-wayob-manifestation', name: 'Wayob Manifestation', level: 90, def: 950, res: 10 },
+        { id: 'gi-xuanwen-beast', name: 'Xuanwen Beast', level: 90, def: 950, res: 10, resByElement: { Anemo: 50, Hydro: 50 } },
+        { id: 'gi-lord-hidden-depths', name: 'Lord of the Hidden Depths', level: 90, def: 950, res: 10 },
+        { id: 'gi-fisher-hidden-depths', name: 'Fisher of Hidden Depths', level: 90, def: 950, res: 10 },
     ],
     buffs: {
         basic: [

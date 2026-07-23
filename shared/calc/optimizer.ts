@@ -546,12 +546,17 @@ export interface Loadout {
  * percentage POINTS before the same formula (can push RES negative — the
  * piecewise formula below already handles that, same as a real negative-RES
  * enemy would). Both default to 0 (no change from the old 2-arg behavior).
+ * `element` picks the RES value: `e.resByElement[element]` if the boss has a
+ * documented exception for that element, else the flat baseline `e.res` —
+ * omitted (or an element the boss has no override for) behaves exactly like
+ * the old flat-RES-only model.
  */
-export function enemyMultiplier(e: EnemyEntry, charLevel = 90, defIgnorePct = 0, resShredPct = 0): number {
+export function enemyMultiplier(e: EnemyEntry, charLevel = 90, defIgnorePct = 0, resShredPct = 0, element?: string): number {
     const factor = 5 * charLevel + 500;
     const effectiveDef = e.def * (1 - Math.min(100, Math.max(0, defIgnorePct)) / 100);
     const defMult = factor / (factor + effectiveDef);
-    const r = (e.res - resShredPct) / 100;
+    const baseRes = (element != null ? e.resByElement?.[element] : undefined) ?? e.res;
+    const r = (baseRes - resShredPct) / 100;
     const resMult = r < 0 ? 1 - r / 2 : r < 0.75 ? 1 - r : 1 / (4 * r + 1);
     return defMult * resMult;
 }
@@ -756,6 +761,7 @@ export function skillDamage(stats: BuildStats, skill: SkillDef, ctx: SkillContex
     // was previously never read back out, so e.g. Pale Flame's/Bloodstained
     // Chivalry's "Physical DMG +25%" silently did nothing, and conversely a
     // Cryo DMG% buff wrongly boosted a Physical Normal Attack too.
+    const effectiveElement = skill.element ?? ctx.characterElement;
     const offElement = !!skill.element && skill.element !== ctx.characterElement;
     const elemDmgForSkill = offElement ? (stats[elemKey(skill.element!)] ?? 0) : (stats.elemDmg ?? 0);
     const dmgPct = elemDmgForSkill + scopedDmgFor(skill, ctx.scopedBuffs);
@@ -772,7 +778,7 @@ export function skillDamage(stats: BuildStats, skill: SkillDef, ctx: SkillContex
     const withReaction = talentBase * rMult + addFlat;
 
     const mit = ctx.enemy
-        ? enemyMultiplier(ctx.enemy, ctx.charLevel ?? 90, scopedDefIgnoreFor(skill, ctx.scopedBuffs), scopedResShredFor(skill, ctx.scopedBuffs))
+        ? enemyMultiplier(ctx.enemy, ctx.charLevel ?? 90, scopedDefIgnoreFor(skill, ctx.scopedBuffs), scopedResShredFor(skill, ctx.scopedBuffs), effectiveElement)
         : 1;
     const dmg = withReaction * critMultiplier(stats, ctx.mode) * mit;
     return Math.round(dmg);
