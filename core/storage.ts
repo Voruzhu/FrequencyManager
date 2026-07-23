@@ -19,13 +19,27 @@ import * as path from 'path';
 
 export interface StorageAdapter {
     get<T = unknown>(key: string, fallback?: T): T;
-    set(key: string, value: unknown): void;
+    /** Returns false if the key was rejected (see `DANGEROUS_KEYS`) or the
+     * write to disk failed — callers that need the user to know a save
+     * didn't actually happen should check this rather than assume success. */
+    set(key: string, value: unknown): boolean;
     delete(key: string): void;
     has(key: string): boolean;
     keys(): string[];
     getAll(): Record<string, unknown>;
     clear(): void;
 }
+
+// Keys that would hit Object.prototype's own accessor on plain bracket
+// assignment (`this.data[key] = value`), letting a crafted import JSON with
+// one of these as a literal top-level key swap this instance's OWN prototype
+// out from under it — contained (never touches the real global
+// Object.prototype, since this is a per-instance assignment) but a genuine
+// correctness bug: every `key in this.data` / `this.data[key]` call
+// afterward would silently misbehave for the rest of the session. Rejected
+// outright rather than merely worked around, since no legitimate storage key
+// is ever named this.
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 export class FileStorage implements StorageAdapter {
     private readonly file: string;
@@ -47,24 +61,29 @@ export class FileStorage implements StorageAdapter {
         }
     }
 
-    private persist(): void {
+    private persist(): boolean {
         try {
             fs.mkdirSync(path.dirname(this.file), { recursive: true });
             // Write to a temp file then rename for atomicity.
             const tmp = `${this.file}.tmp`;
             fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2), 'utf-8');
             fs.renameSync(tmp, this.file);
+            return true;
         } catch {
-            /* best-effort; a failed write must not crash the app */
+            // A failed write must not crash the app, but callers that care
+            // whether the save actually landed need to know it didn't —
+            // see `StorageAdapter.set`'s return value.
+            return false;
         }
     }
 
     get<T = unknown>(key: string, fallback?: T): T {
         return (key in this.data ? this.data[key] : fallback) as T;
     }
-    set(key: string, value: unknown): void {
+    set(key: string, value: unknown): boolean {
+        if (DANGEROUS_KEYS.has(key)) return false;
         this.data[key] = value;
-        this.persist();
+        return this.persist();
     }
     delete(key: string): void {
         delete this.data[key];

@@ -37,6 +37,12 @@ let kernel: Kernel | null = null;
 let storage: FileStorage | null = null;
 const logger = new StructuredLogger('electron-main');
 
+/** Only http(s) — never file://, a custom scheme, or javascript:. Shared by
+ * every `shell.openExternal` call site so a window-open handler can't be the
+ * one place that forgets the check the dedicated `shell:open-external` IPC
+ * handler already enforces. */
+const isSafeExternalUrl = (url: string): boolean => typeof url === 'string' && /^https?:\/\//i.test(url);
+
 // Custom scheme that serves per-game icon art (characters, weapons, gear,
 // enemies, …). Must be registered as privileged BEFORE the app is ready.
 protocol.registerSchemesAsPrivileged([
@@ -125,7 +131,7 @@ function createWindow(): void {
 
     // Handle external links
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        void shell.openExternal(url);
+        if (isSafeExternalUrl(url)) void shell.openExternal(url);
         return { action: 'deny' };
     });
 }
@@ -247,9 +253,7 @@ async function initializeKernel(): Promise<void> {
         // Open external links (release pages) in the default browser. Only
         // http(s) is allowed — never file:// or app-relative URLs.
         ipcMain.on('shell:open-external', (_e, url: string) => {
-            if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
-                void shell.openExternal(url);
-            }
+            if (isSafeExternalUrl(url)) void shell.openExternal(url);
         });
 
         // ── Module enable/disable ──
@@ -389,7 +393,7 @@ function setupStorage(): void {
     logger.info('User storage ready', { file: storage.filePath });
 
     ipcMain.handle('storage:get', (_e, key: string, fallback: unknown) => storage?.get(key, fallback) ?? fallback ?? null);
-    ipcMain.handle('storage:set', (_e, key: string, value: unknown) => { storage?.set(key, value); return true; });
+    ipcMain.handle('storage:set', (_e, key: string, value: unknown) => storage?.set(key, value) ?? false);
     ipcMain.handle('storage:delete', (_e, key: string) => { storage?.delete(key); return true; });
     ipcMain.handle('storage:keys', () => storage?.keys() ?? []);
     ipcMain.handle('storage:getAll', () => storage?.getAll() ?? {});
@@ -1366,11 +1370,22 @@ function setupFileIpc(): void {
     const IMAGE_MIME_TYPES: Record<string, string> = {
         '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
     };
+    // Deliberately NOT restricted to a fixed directory (temp/userData) — the
+    // whole point of this handler is previewing a screenshot the user picked
+    // from ANYWHERE via the native OS dialog (Pictures, Downloads, wherever),
+    // so confining it would break that. What IS worth guarding regardless of
+    // trust: this must be a real, reasonably-sized regular file, not a
+    // directory/device/pipe and not something so large it exhausts memory
+    // turning it into a base64 data: URL (a legitimate huge file picked by
+    // mistake, or a future caller passing an unvalidated path, either way).
+    const MAX_PREVIEW_BYTES = 50 * 1024 * 1024; // 50MB — generous for any real screenshot
     ipcMain.handle('fs:read-image-preview', (_event, filePath: string) => {
         try {
             const ext = path.extname(filePath).toLowerCase();
             const mime = IMAGE_MIME_TYPES[ext];
             if (!mime) return null;
+            const stat = fs.statSync(filePath);
+            if (!stat.isFile() || stat.size > MAX_PREVIEW_BYTES) return null;
             const data = fs.readFileSync(filePath);
             const dataUrl = `data:${mime};base64,${data.toString('base64')}`;
             // Once read into a data: URL the renderer holds in memory from here
@@ -1394,8 +1409,13 @@ function setupFileIpc(): void {
             ],
         });
         if (result.filePath) {
-            fs.writeFileSync(result.filePath, content);
-            return result.filePath;
+            try {
+                fs.writeFileSync(result.filePath, content);
+                return result.filePath;
+            } catch (err) {
+                logger.warn('[dialog:saveFile] write failed', { error: (err as Error).message });
+                return null;
+            }
         }
         return null;
     });
@@ -1556,6 +1576,15 @@ app.whenReady().then(async () => {
     });
 }).catch((err: Error) => {
     logger.error('[electron-main] Fatal error during boot', { error: err.message });
+    // Every individual module/config-load step already has its own try/catch
+    // (see `discoverAndLoadModules`/`loadConfigFile` in core/kernel.ts) — this
+    // is only reached if something ELSE, upstream of those guards, throws.
+    // Previously that left the process running invisibly with no window and
+    // no user-facing sign anything went wrong, recoverable only via Task
+    // Manager. A native dialog + explicit quit at least tells the user
+    // something failed instead of silence.
+    dialog.showErrorBox('FrequencyManager failed to start', `An unexpected error occurred during startup:\n\n${err.message}\n\nCheck the logs (Settings > Developer > Open logs folder, or restart and try again).`);
+    app.quit();
 });
 
 app.on('will-quit', () => {
@@ -1591,7 +1620,7 @@ app.on('web-contents-created', (_event, contents) => {
     // `setWindowOpenHandler` on each webContents. This approach works across all
     // supported Electron versions and avoids the deprecated event signature.
     contents.setWindowOpenHandler(({ url }: { url: string }) => {
-        void shell.openExternal(url);
+        if (isSafeExternalUrl(url)) void shell.openExternal(url);
         return { action: 'deny' };
     });
 });

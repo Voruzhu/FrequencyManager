@@ -7,7 +7,15 @@ import type { StateStorage } from 'zustand/middleware';
  * ONE file we own — it survives restarts, sits outside the renderer origin, and
  * makes the upcoming JSON export/import trivial (it's just that file). Falls
  * back to localStorage when the bridge is unavailable (dev-in-browser).
+ *
+ * Deliberately has NO UI/component imports (see `FM_STORAGE_WRITE_FAILED`
+ * below for how a failed write is surfaced instead of importing `toast`
+ * directly) — this file is a dependency of every persisted store, most of
+ * which are unit-tested under a plain Node jest environment with no JSX
+ * transform configured; pulling in the `components/ui` barrel (which
+ * re-exports many `.tsx` files) broke that compilation for every such test.
  */
+export const FM_STORAGE_WRITE_FAILED_EVENT = 'fm:storage-write-failed';
 // `typeof window === 'undefined'` guard: this module only ever actually RUNS
 // in the renderer (where `window` always exists) — the guard exists purely so
 // a persisted store's mutating actions don't crash the process (an unhandled
@@ -32,7 +40,16 @@ export const userStorage: StateStorage = {
     },
     setItem: async (name, value) => {
         const b = bridge();
-        if (b?.storageSet) { await b.storageSet(name, value); return; }
+        if (b?.storageSet) {
+            const ok = await b.storageSet(name, value);
+            // A failed disk write used to be reported to the caller as
+            // success — the user would believe their data saved when
+            // nothing actually hit disk. Surface it via a DOM event instead
+            // of importing a toast component directly (see the file-level
+            // comment) — `AppShell.tsx` listens for this and shows the toast.
+            if (!ok) window.dispatchEvent(new CustomEvent(FM_STORAGE_WRITE_FAILED_EVENT, { detail: { key: name } }));
+            return;
+        }
         try { localStorage.setItem(name, value); } catch { /* no-op */ }
     },
     removeItem: async (name) => {
