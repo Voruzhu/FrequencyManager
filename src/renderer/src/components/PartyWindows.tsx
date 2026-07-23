@@ -28,7 +28,7 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
             {parties.length === 0 ? (
                 <EmptyState icon={Users} title="No parties yet" description="Create a party to sequence its members' turns in the Rotation Builder." />
             ) : (
-                <ul className="space-y-1.5">
+                <ul className="max-h-[70vh] space-y-1.5 overflow-y-auto scrollbar-thin pr-1">
                     {parties.map((p) => (
                         <li key={p.id}>
                             <button

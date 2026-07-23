@@ -28,7 +28,11 @@ export function EnemyPicker({ gameId, value, onChange }: { gameId: string; value
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-8" placeholder="Search enemies…" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
+            {/* This popup window (`WindowHost`/`DialogContent`) has no height
+             * cap of its own — without one here, a ~40-entry boss list just
+             * grows the whole popup to fill the screen instead of scrolling.
+             * `70vh` leaves room for the dialog header + search input above. */}
+            <div className="max-h-[70vh] space-y-1.5 overflow-y-auto scrollbar-thin pr-1">
                 {filtered.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No enemies match “{query}”.</p>}
                 {filtered.map((e) => {
                     const active = e.id === value.id;
