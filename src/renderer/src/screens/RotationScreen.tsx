@@ -15,7 +15,9 @@ import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberRes
 import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { elapsedTimes, simulateWaves, type WaveConfig } from '@/lib/rotationEngine';
+import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, type WaveConfig } from '@/lib/rotationEngine';
+import { EnemyPicker, EnemyConfig } from '../components/EnemyPicker';
+import type { Enemy } from '../data/enemies';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import { getEnemies } from '../data/enemies';
@@ -279,17 +281,32 @@ export function RotationScreen() {
             const duration = step.buffDurationSeconds ?? resolved.durationSeconds;
             return [{ ...resolved, start, end: start + duration }];
         }), [steps, elapsed, timedBuffs]);
-    const results: StepResult[] = useMemo(() => steps.map((step, index) => {
-        const member = members.find((m) => m.character.id === step.characterId);
-        const t = elapsed[index] ?? 0;
-        const activeWindows = buffWindows.filter((w) => t >= w.start && t < w.end);
-        const activeTeamBuffs = activeWindows.filter((w) => w.source === 'team').map((w) => w.buff);
-        const activeSelfBuffs = activeWindows.filter((w) => w.source === 'self' && w.characterId === step.characterId).map((w) => w.buff);
+    // Each wave can have its own independent level/DEF/RES (see `WaveConfig`)
+    // — a step's damage must be computed against WHICHEVER wave is currently
+    // being fought, which itself depends on how much cumulative damage prior
+    // steps already dealt. Walked progressively (not a separate post-hoc
+    // pass) using the exact same transition rule `simulateWaves` uses for its
+    // summary bucketing below (`applyWaveTransition`), so the two never
+    // disagree on wave boundaries.
+    const results: StepResult[] = useMemo(() => {
+        let currentWave = 0;
+        let remaining = waves[0]?.hp;
+        return steps.map((step, index) => {
+            const member = members.find((m) => m.character.id === step.characterId);
+            const t = elapsed[index] ?? 0;
+            const activeWindows = buffWindows.filter((w) => t >= w.start && t < w.end);
+            const activeTeamBuffs = activeWindows.filter((w) => w.source === 'team').map((w) => w.buff);
+            const activeSelfBuffs = activeWindows.filter((w) => w.source === 'self' && w.characterId === step.characterId).map((w) => w.buff);
 
-        const stepTeamBuffs = [...enabledBuffs, ...activeTeamBuffs];
-        const { skill, damage } = computeStepDamage(step, member, stepTeamBuffs, activeSelfBuffs, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId);
-        return { step, index, member, skill, damage };
-    }), [steps, members, enabledBuffs, elapsed, buffWindows, calc.critMode, calc.enemy, reaction, data.statCatalog, activeGameId]);
+            const stepTeamBuffs = [...enabledBuffs, ...activeTeamBuffs];
+            const waveEnemy = resolveWaveEnemy(waves[currentWave] ?? waves[0] ?? { enemyId: 'dummy' }, activeGameId);
+            const { skill, damage } = computeStepDamage(step, member, stepTeamBuffs, activeSelfBuffs, calc.critMode, waveEnemy, reaction, data.statCatalog, activeGameId);
+            const t2 = applyWaveTransition(damage, waves, currentWave, remaining);
+            currentWave = t2.nextWave;
+            remaining = t2.nextRemaining;
+            return { step, index, member, skill, damage };
+        });
+    }, [steps, members, enabledBuffs, elapsed, buffWindows, calc.critMode, waves, reaction, data.statCatalog, activeGameId]);
 
     const totalDamage = results.reduce((sum, r) => sum + r.damage, 0);
     const totalDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -332,27 +349,43 @@ export function RotationScreen() {
                                 <Button size="sm" variant={mode === 'boss' ? 'default' : 'secondary'} onClick={() => { setMode('boss'); setWaves((w) => (w.slice(0, 1).length ? w.slice(0, 1) : [{ enemyId: 'dummy' }])); }}>Boss</Button>
                                 <Button size="sm" variant={mode === 'waves' ? 'default' : 'secondary'} onClick={() => setMode('waves')}>Waves</Button>
                             </div>
-                            {waves.map((w, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    <select
-                                        value={w.enemyId}
-                                        onChange={(e) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, enemyId: e.target.value } : x)))}
-                                        className="rounded-md border border-border bg-bg px-2 py-1 text-sm text-fg"
-                                    >
-                                        {getEnemies(activeGameId).map((en) => <option key={en.id} value={en.id}>{en.name}</option>)}
-                                    </select>
-                                    <Input
-                                        type="number"
-                                        placeholder="HP (optional)"
-                                        className="w-32"
-                                        value={w.hp ?? ''}
-                                        onChange={(e) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, hp: e.target.value === '' ? undefined : Number(e.target.value) } : x)))}
-                                    />
-                                    {mode === 'waves' && waves.length > 1 && (
-                                        <Button size="sm" variant="ghost" onClick={() => setWaves((ws) => ws.filter((_, xi) => xi !== i))}><Trash2 /></Button>
-                                    )}
-                                </div>
-                            ))}
+                            {waves.map((w, i) => {
+                                const waveEnemy = resolveWaveEnemy(w, activeGameId);
+                                const updateWaveEnemy = (e: Enemy) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, enemyId: e.id, level: e.level, def: e.def, res: e.res } : x)));
+                                return (
+                                    <div key={i} className="flex items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            className="flex-1 justify-start gap-2 overflow-hidden"
+                                            onClick={() => useWindowStore.getState().openWindow(
+                                                mode === 'waves' ? `Target enemy — Wave ${i + 1}` : 'Target enemy',
+                                                <EnemyPicker gameId={activeGameId} value={waveEnemy} onChange={updateWaveEnemy} />,
+                                            )}
+                                        >
+                                            <TargetIcon className="h-4 w-4 flex-shrink-0" />
+                                            <span className="truncate">{waveEnemy.name}</span>
+                                        </Button>
+                                        <Input
+                                            type="number"
+                                            placeholder="HP (optional)"
+                                            className="w-28 flex-shrink-0"
+                                            value={w.hp ?? ''}
+                                            onChange={(e) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, hp: e.target.value === '' ? undefined : Number(e.target.value) } : x)))}
+                                        />
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flex-shrink-0"
+                                            onClick={() => useWindowStore.getState().openWindow('Configure enemy', <EnemyConfig gameId={activeGameId} value={waveEnemy} onChange={updateWaveEnemy} />)}
+                                        >
+                                            Configure
+                                        </Button>
+                                        {mode === 'waves' && waves.length > 1 && (
+                                            <Button size="sm" variant="ghost" className="flex-shrink-0" onClick={() => setWaves((ws) => ws.filter((_, xi) => xi !== i))}><Trash2 /></Button>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {mode === 'waves' && (
                                 <Button size="sm" variant="secondary" onClick={() => setWaves((ws) => [...ws, { enemyId: 'dummy' }])}>Add wave</Button>
                             )}

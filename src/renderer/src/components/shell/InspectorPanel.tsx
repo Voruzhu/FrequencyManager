@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Star, Target as TargetIcon, Users } from 'lucide-react';
+import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Star, Users } from 'lucide-react';
 import {
-    Badge, Button, Input, Label, ItemIcon, EmptyState, Separator, ScrollArea, DialogFooter, DialogClose, Switch,
+    Badge, Button, Input, ItemIcon, EmptyState, Separator, ScrollArea, DialogFooter, DialogClose, Switch,
     Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '../ui';
 import { cn } from '@/lib/utils';
@@ -20,9 +20,9 @@ import type { getGameData} from '../../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
 import { getBuffs } from '../../data/buffs';
 import { computeBuildStats, elemKey, activeSetBonuses } from '../../data/optimizer';
-import { getEnemies, DUMMY } from '../../data/enemies';
 import { getWeaponScaling, atkAtLevel, secAtLevel, refineMul, hasRefinement } from '../../data/weaponScaling';
 import { TalentsWindow } from '../CharacterWindows';
+import { EnemyPicker } from '../EnemyPicker';
 import { GearCard, GearStatsList } from '../GearCard';
 import { GearFilterBar } from '../GearFilterBar';
 import { AddGearWindow } from '../InventoryWindows';
@@ -31,6 +31,8 @@ import { gearToInitial } from '@/lib/gearEdit';
 export function InspectorPanel() {
     const { content, setOpen } = useSelectionStore();
     const calcCharId = useCalcStore((s) => s.characterId);
+    const calcEnemy = useCalcStore((s) => s.enemy);
+    const setCalcEnemy = useCalcStore((s) => s.setEnemy);
     const activeGameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(activeGameId);
     const calcChar = data.characters.find((c) => c.id === calcCharId) ?? null;
@@ -69,7 +71,7 @@ export function InspectorPanel() {
                     {content?.kind === 'gear-picker' && <GearPicker data={data} />}
                     {content?.kind === 'weapon-picker' && <WeaponPicker data={data} />}
                     {content?.kind === 'buffs' && <BuffPicker gameId={activeGameId} />}
-                    {content?.kind === 'enemy' && <EnemyPicker gameId={activeGameId} />}
+                    {content?.kind === 'enemy' && <EnemyPicker gameId={activeGameId} value={calcEnemy} onChange={setCalcEnemy} />}
                     {content?.kind === 'party' && <PartySetup data={data} character={calcChar} />}
                     {content?.kind === 'set-bonus' && <SetBonusPicker data={data} character={calcChar} />}
                 </div>
@@ -571,262 +573,6 @@ function BuffPicker({ gameId }: { gameId: string }) {
                     })}
                 </div>
             </section>
-        </div>
-    );
-}
-
-// ── Enemy picker ────────────────────────────────────────────────────────────
-
-function EnemyPicker({ gameId }: { gameId: string }) {
-    const { enemy, setEnemy } = useCalcStore();
-    const openWindow = useWindowStore((s) => s.openWindow);
-    const [query, setQuery] = useState('');
-    const enemies = getEnemies(gameId);
-    const q = query.trim().toLowerCase();
-    const filtered = q ? enemies.filter((e) => e.name.toLowerCase().includes(q)) : enemies;
-
-    return (
-        <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Damage results are calculated against this target's DEF and RES.</p>
-            <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Search enemies…" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-                {filtered.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No enemies match “{query}”.</p>}
-                {filtered.map((e) => {
-                    const active = e.id === enemy.id;
-                    const isDummy = e.id === 'dummy';
-                    // For the selected row, reflect any custom-configured values.
-                    const disp = active ? enemy : e;
-                    const overrides = Object.entries(e.resByElement ?? {}) as Array<[string, number]>;
-                    return (
-                        <div key={e.id} className={cn('flex items-center gap-2 rounded-md border p-2 transition-colors', active ? 'border-primary bg-primary/5' : 'border-border bg-surface')}>
-                            <button onClick={() => setEnemy(e)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                                {isDummy ? (
-                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-muted-foreground">
-                                        <TargetIcon className="h-5 w-5" />
-                                    </div>
-                                ) : (
-                                    <ItemIcon kind="enemy" size="sm" src={iconSrc(gameId, e.icon)} className="bg-destructive/15 text-destructive" />
-                                )}
-                                <div className="min-w-0 flex-1">
-                                    <div className="truncate text-sm font-medium text-foreground">{disp.name}</div>
-                                    <div className="truncate text-xs text-muted-foreground">
-                                        Lv{disp.level} · {disp.def} DEF · {disp.res}% RES
-                                        {overrides.length > 0 && ` · ${overrides.map(([el, v]) => `${el} ${v}%`).join(', ')}`}
-                                    </div>
-                                </div>
-                            </button>
-                            {active && (
-                                <div className="flex flex-shrink-0 items-center gap-1.5">
-                                    <Button size="sm" variant="secondary" onClick={() => openWindow('Configure enemy', <EnemyConfig />)}>Configure</Button>
-                                    <Badge variant="secondary">Selected</Badge>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-/**
- * Lets the user declare which Sonata/Artifact sets they want the optimizer
- * to build toward — narrows the search POOL to just these sets' pieces (see
- * `run()` in `CalculatorScreen.tsx`); the resulting bonus itself is derived
- * from each candidate combo's own real gear (`activeSetBonuses` in the
- * shared engine), not assumed from this selection. Empty selection (the
- * default) keeps the old, unconstrained free-search behavior.
- *
- * How many sets can be selected at once depends on each set's OWN piece
- * threshold, not a flat count: a normal set needs at least 2 pieces for any
- * bonus, so two of those already use up 4 of the 5 slots. But a real
- * 1pc-threshold set (WW's Shadow of Shattered Dreams, Lucy/Rebecca-only)
- * only costs 1 slot, leaving room for two more 2pc sets — 1+2+2 = 5, a
- * genuinely valid and often-optimal split for those two characters. Tracked
- * via `minPiecesFor`/`usedBudget` below rather than a hardcoded "2 sets max".
- */
-function SetBonusPicker({ data, character }: { data: ReturnType<typeof getGameData>; character: CharacterData | null }) {
-    const { requiredSets, setRequiredSets } = useCalcStore();
-    const [query, setQuery] = useState('');
-    const q = query.trim().toLowerCase();
-    const filtered = q ? data.setBonuses.filter((s) => s.name.toLowerCase().includes(q)) : data.setBonuses;
-    // The real minimum piece cost to get ANY bonus from a set — 1 for a real
-    // 1pc-threshold set, 2 for any normal 2pc/5pc-tier set (a single piece of
-    // those grants nothing).
-    const minPiecesFor = (sb: { pieces: number }) => Math.min(sb.pieces, 2);
-    const usedBudget = requiredSets.reduce((sum, name) => {
-        const sb = data.setBonuses.find((s) => s.name === name);
-        return sum + (sb ? minPiecesFor(sb) : 2);
-    }, 0);
-    const ownElemKey = character ? elemKey(character.element) : null;
-
-    // A set's per-attack-element DMG buff (e.g. Sierra Gale's Aero DMG) only
-    // ever benefits a character who actually deals that element — a
-    // mismatched one (Lucy, Spectro, running an Aero set) gets none of it,
-    // even though the set's OTHER stats (ATK%, Crit Rate, etc.) still apply
-    // normally. Detected by stat key shape: any `<element>Dmg` key that
-    // isn't the generic `elemDmg` slot and isn't the character's own.
-    const hasMismatchedElementDmg = (buffs: Array<{ stat: string }>) =>
-        !!ownElemKey && buffs.some((b) => b.stat.endsWith('Dmg') && b.stat !== 'elemDmg' && b.stat !== ownElemKey);
-
-    // Character-exclusive collab sets (e.g. Shadow of Shattered Dreams,
-    // Rebecca/Lucy-only) never activate for anyone else, and unlike an
-    // off-element mismatch there's no other stat left to gain — selecting
-    // one for an ineligible character would narrow the optimizer's search
-    // to gear that provides ZERO real benefit, so this is disabled outright
-    // rather than just warned about.
-    const restrictedOut = (sb: (typeof data.setBonuses)[number]) =>
-        !!sb.restrictedToCharacters && !!character && !sb.restrictedToCharacters.includes(character.name);
-
-    const toggle = (name: string) => {
-        setRequiredSets(requiredSets.includes(name) ? requiredSets.filter((s) => s !== name) : [...requiredSets, name]);
-    };
-
-    return (
-        <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-                Tell the optimizer which set(s) you want active — it narrows the search to gear from these sets; the bonus actually counted always matches what your build's real piece counts earn. Pick 1 normal set to search toward its full 5pc, or 2 to split 2pc + 2pc. A 1pc-threshold set (like Shadow of Shattered Dreams) only costs 1 slot, so it can join alongside two 2pc sets. Leave empty to search freely, with no set assumed.
-            </p>
-            {requiredSets.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                    {requiredSets.map((s) => (
-                        <Badge key={s} variant="secondary" className="gap-1">
-                            {s}
-                            <button onClick={() => toggle(s)} className="ml-0.5 text-muted-foreground hover:text-foreground" aria-label={`Remove ${s}`}><X className="h-3 w-3" /></button>
-                        </Badge>
-                    ))}
-                    <Button size="sm" variant="ghost" onClick={() => setRequiredSets([])}>Clear</Button>
-                </div>
-            )}
-            <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Search sets…" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-                {filtered.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sets match “{query}”.</p>}
-                {filtered.map((sb) => {
-                    const active = requiredSets.includes(sb.name);
-                    const restricted = restrictedOut(sb);
-                    const disabled = !active && (restricted || usedBudget + minPiecesFor(sb) > 5);
-                    return (
-                        <button
-                            key={sb.name}
-                            onClick={() => toggle(sb.name)}
-                            disabled={disabled}
-                            className={cn(
-                                'flex w-full flex-col gap-1 rounded-md border p-2 text-left transition-colors',
-                                active ? 'border-primary bg-primary/5' : disabled ? 'cursor-not-allowed border-border bg-surface opacity-50' : 'border-border bg-surface hover:bg-surface-2',
-                            )}
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-foreground">{sb.name}</span>
-                                <Badge variant="outline">{sb.pieces}pc</Badge>
-                            </div>
-                            {sb.twoPieceBuffs.length > 0 && (
-                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">2pc</span>
-                                    {sb.twoPieceBuffs.map((b, i) => (
-                                        <span key={i} className="text-[11px] text-muted-foreground">
-                                            {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                            {sb.fullSetOnlyBuffs.length > 0 && (
-                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">{sb.pieces}pc</span>
-                                    {sb.fullSetOnlyBuffs.map((b, i) => (
-                                        <span key={i} className="text-[11px] text-muted-foreground">
-                                            {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                            {(hasMismatchedElementDmg(sb.twoPieceBuffs) || hasMismatchedElementDmg(sb.fullSetOnlyBuffs)) && character && (
-                                <div className="flex items-center gap-1 text-[11px] text-warning">
-                                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                                    <span>This set's elemental DMG bonus doesn't match {character.name}'s {character.element} — only its other stats would help.</span>
-                                </div>
-                            )}
-                            {restricted && character && (
-                                <div className="flex items-center gap-1 text-[11px] text-warning">
-                                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                                    <span>Only works for {sb.restrictedToCharacters!.join(' / ')} — {character.name} can't use this set.</span>
-                                </div>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-/** Window content: custom defensive values for the currently selected enemy (e.g. the dummy). */
-function EnemyConfig() {
-    const { enemy, setEnemy } = useCalcStore();
-    const gameId = useGameStore((s) => s.activeGameId);
-    const closeWindow = useWindowStore((s) => s.closeWindow);
-    const [level, setLevel] = useState(enemy.level);
-    const [def, setDef] = useState(enemy.def);
-    const [res, setRes] = useState(enemy.res);
-
-    // The catalog preset for the current enemy (dummy → 0/0/0).
-    const preset = getEnemies(gameId).find((e) => e.id === enemy.id) ?? DUMMY;
-    // Real per-element RES overrides (e.g. a Havoc-affinity boss resisting
-    // Havoc damage specifically more than the flat baseline) — read-only
-    // here since the "RES %" field above only edits the flat fallback value
-    // `enemyMultiplier` uses for any element WITHOUT its own override; showing
-    // these makes clear the actual RES applied against a specific attacking
-    // element may differ from that flat number.
-    const resOverrides = Object.entries(preset.resByElement ?? {}) as Array<[string, number]>;
-
-    const apply = () => {
-        setEnemy({ ...enemy, level: Number(level) || 0, def: Number(def) || 0, res: Number(res) || 0 });
-        closeWindow();
-    };
-    const revert = () => {
-        setLevel(preset.level); setDef(preset.def); setRes(preset.res);
-        setEnemy({ ...enemy, level: preset.level, def: preset.def, res: preset.res });
-    };
-
-    return (
-        <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-                Custom defenses for <span className="text-foreground">{enemy.name}</span>. Set to 0 for a bare training dummy (raw damage).
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                    <Label>Level</Label>
-                    <Input type="number" value={level} onChange={(e) => setLevel(Number(e.target.value))} />
-                </div>
-                <div className="space-y-1.5">
-                    <Label>DEF</Label>
-                    <Input type="number" value={def} onChange={(e) => setDef(Number(e.target.value))} />
-                </div>
-                <div className="space-y-1.5">
-                    <Label>RES %</Label>
-                    <Input type="number" value={res} onChange={(e) => setRes(Number(e.target.value))} />
-                </div>
-            </div>
-            {resOverrides.length > 0 && (
-                <div className="space-y-1.5 rounded-md border border-border bg-surface p-2.5">
-                    <p className="text-xs text-muted-foreground">
-                        This target has real per-element RES that differs from the flat value above — the calculator uses these against a matching attack, and the flat RES % only for every other element:
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {resOverrides.map(([el, v]) => <Badge key={el} variant="outline">{el} {v}%</Badge>)}
-                    </div>
-                </div>
-            )}
-            <DialogFooter>
-                <Button variant="ghost" onClick={revert}>Revert to default</Button>
-                <DialogClose asChild><Button variant="secondary">Cancel</Button></DialogClose>
-                <Button onClick={apply}>Apply</Button>
-            </DialogFooter>
         </div>
     );
 }

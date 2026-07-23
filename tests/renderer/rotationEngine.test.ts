@@ -1,4 +1,4 @@
-import { elapsedTimes, cooldownWarningFor, simulateWaves, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
+import { elapsedTimes, cooldownWarningFor, simulateWaves, applyWaveTransition, resolveWaveEnemy, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
 import type { RotationStepSpec } from '../../src/renderer/src/types';
 
 const step = (characterId: string, skillId: string, duration: number): RotationStepSpec =>
@@ -102,5 +102,57 @@ describe('simulateWaves', () => {
         expect(result.damageByWave).toEqual([250]); // 50 (capped portion of step0) + 200 (step1, uncapped post-exhaustion) = 250
         expect(result.overflowDiscarded).toBe(50); // ONLY step0's actual overkill (100-50); step1 has nothing left to overflow against, so all of it counts
         // Invariant: (250) + 50 === 100+200 === 300.
+    });
+});
+
+describe('applyWaveTransition', () => {
+    // The extracted, reusable transition rule `simulateWaves` is now a thin
+    // driver over — exercised directly here since the Rotation screen's
+    // progressive per-step damage computation calls it too (each step needs
+    // to know which wave's enemy to use BEFORE its damage is computed, not
+    // just bucket an already-computed number after the fact).
+    const waves: WaveConfig[] = [{ enemyId: 'mob-1', hp: 100 }, { enemyId: 'mob-2', hp: 200 }];
+
+    it('no HP tracked — full damage applied, no transition', () => {
+        const t = applyWaveTransition(500, [{ enemyId: 'boss-1' }], 0, undefined);
+        expect(t).toEqual({ appliedToCurrentWave: 500, overflow: 0, nextWave: 0, nextRemaining: undefined });
+    });
+
+    it('damage under remaining HP — no transition, remaining decreases', () => {
+        const t = applyWaveTransition(40, waves, 0, 100);
+        expect(t).toEqual({ appliedToCurrentWave: 40, overflow: 0, nextWave: 0, nextRemaining: 60 });
+    });
+
+    it('overkill — caps at remaining, overflows, advances to the next wave\'s own HP', () => {
+        const t = applyWaveTransition(150, waves, 0, 100);
+        expect(t).toEqual({ appliedToCurrentWave: 100, overflow: 50, nextWave: 1, nextRemaining: 200 });
+    });
+
+    it('overkill on the last wave — stays on it, remaining becomes undefined', () => {
+        const t = applyWaveTransition(150, waves, 1, 100);
+        expect(t).toEqual({ appliedToCurrentWave: 100, overflow: 50, nextWave: 1, nextRemaining: undefined });
+    });
+});
+
+describe('resolveWaveEnemy', () => {
+    it('uses the catalog preset when no override is set', () => {
+        const enemy = resolveWaveEnemy({ enemyId: 'ww-crownless' }, 'wuthering-waves');
+        expect(enemy.id).toBe('ww-crownless');
+        expect(enemy.level).toBe(90);
+        expect(enemy.def).toBe(900);
+        expect(enemy.res).toBe(10);
+    });
+
+    it('applies a custom level/def/res override on top of the preset', () => {
+        const enemy = resolveWaveEnemy({ enemyId: 'ww-crownless', level: 80, def: 500, res: 25 }, 'wuthering-waves');
+        expect(enemy.level).toBe(80);
+        expect(enemy.def).toBe(500);
+        expect(enemy.res).toBe(25);
+        expect(enemy.name).toBe('Crownless'); // identity fields still come from the preset
+    });
+
+    it('falls back to the Training Dummy for an unknown enemyId', () => {
+        const enemy = resolveWaveEnemy({ enemyId: 'not-a-real-enemy' }, 'wuthering-waves');
+        expect(enemy.id).toBe('dummy');
     });
 });
