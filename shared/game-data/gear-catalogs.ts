@@ -266,8 +266,13 @@ export const GI_GEAR_CATALOG: GearCatalog = {
         // damage engine rather than applying to any character regardless
         // of element, and lets scanned specific-element main stats (e.g.
         // "Pyro DMG Bonus") resolve instead of always showing unresolved.
-        { id: 'goblet', label: 'Goblet', mainStats: ['hpPct', 'atkPct', 'defPct', 'elementalMastery', 'anemoDmg', 'cryoDmg', 'electroDmg', 'geoDmg', 'pyroDmg', 'hydroDmg', 'dendroDmg'] },
-        { id: 'circlet', label: 'Circlet', mainStats: ['hpPct', 'atkPct', 'defPct', 'elementalMastery', 'critRate', 'critDmg'] },
+        // 'physicalDmg' (goblet) and 'healingBonus' (circlet) were missing
+        // entirely — both are real, common main-stat options (a Physical-DPS
+        // or a healer support routinely rolls one) that this catalog simply
+        // never modeled. Added alongside the GOOD-format importer, which
+        // would otherwise reject any real artifact using either of them.
+        { id: 'goblet', label: 'Goblet', mainStats: ['hpPct', 'atkPct', 'defPct', 'elementalMastery', 'anemoDmg', 'cryoDmg', 'electroDmg', 'geoDmg', 'pyroDmg', 'hydroDmg', 'dendroDmg', 'physicalDmg'] },
+        { id: 'circlet', label: 'Circlet', mainStats: ['hpPct', 'atkPct', 'defPct', 'elementalMastery', 'critRate', 'critDmg', 'healingBonus'] },
     ],
     mains: [
         { key: 'hp', label: 'HP', byRarity: { 4: 3571, 5: 4780 } },
@@ -286,6 +291,11 @@ export const GI_GEAR_CATALOG: GearCatalog = {
         { key: 'dendroDmg', label: 'Dendro DMG Bonus', percent: true, byRarity: { 4: 34.8, 5: 46.6 } },
         { key: 'critRate', label: 'Crit Rate', percent: true, byRarity: { 4: 23.3, 5: 31.1 } },
         { key: 'critDmg', label: 'Crit DMG', percent: true, byRarity: { 4: 46.6, 5: 62.2 } },
+        // Real, well-documented Genshin max-level values — Physical DMG Bonus
+        // rolls noticeably higher than an elemental DMG Bonus goblet (a real
+        // game quirk, not a typo).
+        { key: 'physicalDmg', label: 'Physical DMG Bonus', percent: true, byRarity: { 4: 43.8, 5: 58.3 } },
+        { key: 'healingBonus', label: 'Healing Bonus', percent: true, byRarity: { 4: 26.9, 5: 35.9 } },
     ],
     subs: [
         { key: 'atkPct', label: 'ATK%', percent: true, byRarity: { 4: { min: 4.1, max: 19.8 }, 5: { min: 4.1, max: 23.3 } } },

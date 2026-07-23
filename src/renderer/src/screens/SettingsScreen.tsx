@@ -11,10 +11,15 @@ import { useThemeStore } from '../stores/themeStore';
 import { useModuleStore } from '../stores/moduleStore';
 import { useDevStore } from '../stores/devStore';
 import { useGameStore } from '../stores/gameStore';
+import { useGameData } from '../data/gameData';
+import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useSettingsStore, LOGICAL_CORES } from '../stores/settingsStore';
 import { gameDataCounts, exportGameData, importGameData, clearGameData, type GameDataEnvelope } from '../lib/gameDataBackup';
 import { GamePackageInstaller } from '../components/GamePackageInstaller';
 import { useAppVersion } from '../lib/useAppVersion';
+import { newGearId } from '../components/InventoryWindows';
+import { hasBlockingIssues, buildGearEntryFromDraft, gearIdentityKey } from '../lib/ocrMapping';
+import { mapGoodArtifactToDraft, type GoodFile } from '../lib/goodImport';
 
 interface AppUpdateInfo {
     repo: string;
@@ -242,6 +247,53 @@ export function SettingsScreen() {
         clearGameData(activeGameId);
         toast.success(`${activeGameLabel} data cleared — reloading…`);
         setTimeout(() => window.location.reload(), 700);
+    };
+
+    // GOOD-format import (Genshin only) — brings in artifacts from any
+    // third-party scanner/tool that reads or writes the community-standard
+    // GOOD format (Inventory Kamera, Akasha Scanner, Genshin Optimizer,
+    // SEELIE.me), since this app's own OCR scanner doesn't support Genshin.
+    // Reuses the same draft → catalog-resolve → dedupe pipeline the OCR
+    // scanner's "Auto import from latest" already uses (see `goodImport.ts`).
+    const goodGameData = useGameData(activeGameId);
+    const goodInventoryGear = useOwnedInventory(activeGameId).gear;
+    const addGear = useInventoryStore((s) => s.addGear);
+    const [goodImportText, setGoodImportText] = useState('');
+    const loadGoodFromFile = async () => {
+        const res = await dataBridge()?.openJsonFile?.();
+        if (res?.content) { setGoodImportText(res.content); toast.success('Loaded file — review, then Import'); }
+    };
+    const doGoodImport = () => {
+        let parsed: GoodFile;
+        try { parsed = JSON.parse(goodImportText) as GoodFile; } catch { toast.error('Invalid JSON'); return; }
+        if (!Array.isArray(parsed.artifacts) || parsed.artifacts.length === 0) {
+            toast.error('No artifacts found in this file'); return;
+        }
+        const catalog = goodGameData.gearCatalog;
+        const seenKeys = new Set(goodInventoryGear.map((g) => gearIdentityKey(g)));
+        let imported = 0;
+        let skippedIssues = 0;
+        let skippedDuplicate = 0;
+        for (const a of parsed.artifacts) {
+            const draft = mapGoodArtifactToDraft(a, catalog);
+            if (hasBlockingIssues(draft)) { skippedIssues++; continue; }
+            const gear = buildGearEntryFromDraft(draft, catalog, 'artifact', () => newGearId(activeGameId));
+            if (!gear) { skippedIssues++; continue; }
+            const key = gearIdentityKey(gear);
+            if (seenKeys.has(key)) { skippedDuplicate++; continue; }
+            addGear(activeGameId, gear);
+            seenKeys.add(key);
+            imported++;
+        }
+        const parts: string[] = [];
+        if (skippedIssues > 0) parts.push(`${skippedIssues} skipped (unrecognized set/stat)`);
+        if (skippedDuplicate > 0) parts.push(`${skippedDuplicate} skipped as duplicate${skippedDuplicate === 1 ? '' : 's'}`);
+        if (imported > 0) {
+            toast.success(`Imported ${imported} artifact${imported === 1 ? '' : 's'}`, parts.length > 0 ? { description: parts.join(', ') } : undefined);
+            setGoodImportText('');
+        } else {
+            toast.info('Nothing imported', parts.length > 0 ? { description: parts.join(', ') } : undefined);
+        }
     };
 
     return (
@@ -614,6 +666,37 @@ export function SettingsScreen() {
                             </div>
                         </CardContent>
                     </Card>
+                    {activeGameId === 'genshin-impact' && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Import from third-party scanner</CardTitle>
+                                <CardDescription>
+                                    Bring in artifacts from any tool that exports the GOOD format
+                                    (Genshin Open Object Description) — Inventory Kamera, Akasha
+                                    Scanner, Genshin Optimizer, and others all read/write it. This
+                                    app's own OCR scanner doesn't support Genshin, so this is the
+                                    recommended way to get your Genshin gear in.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                    <Button variant="secondary" onClick={() => { void loadGoodFromFile(); }}>Load GOOD file…</Button>
+                                </div>
+                                <textarea
+                                    value={goodImportText}
+                                    onChange={(e) => setGoodImportText(e.target.value)}
+                                    placeholder="Paste GOOD-format JSON here…"
+                                    className="h-28 w-full rounded-md border border-input bg-surface p-3 font-mono text-xs text-foreground placeholder:text-muted-foreground scrollbar-thin"
+                                />
+                                <Button onClick={doGoodImport} disabled={!goodImportText.trim()}>Import artifacts</Button>
+                                <p className="text-xs text-muted-foreground">
+                                    Artifacts are added to inventory unequipped — equip them from
+                                    the Inventory tab. Already-owned duplicates and unrecognized
+                                    sets/stats are skipped, not guessed at.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
                     <Card>
                         <CardHeader>
                             <CardTitle>Export everything</CardTitle>
