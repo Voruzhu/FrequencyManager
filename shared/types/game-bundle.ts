@@ -527,4 +527,16 @@ export interface GameBundle {
     passives: PassiveEntry[];
     /** Equipment set bonuses (from the module), as deployable stat buffs. */
     setBonuses: SetBonusEntry[];
+    /**
+     * Whether OCR gear scanning has been verified to work for this game
+     * (i.e. its `OcrRules` patterns have been checked against a real
+     * screenshot, not just written from best-effort guesses). Omitted or
+     * `true` means the Scanner's type picker offers gear scanning normally;
+     * `false` grays it out with a "not yet supported" indicator instead of
+     * letting the user run an OCR pipeline nobody has confirmed actually
+     * works for this game. Defaults permissive (undefined = true) so a
+     * community-made game package that doesn't set this field isn't
+     * penalized for an omission.
+     */
+    ocrVerified?: boolean;
 }

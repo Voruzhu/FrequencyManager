@@ -143,6 +143,7 @@ const WUTHERING_WAVES: GameBundle = {
         { name: 'Molten Rift', pieces: 5, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 30 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
         { name: 'Moonlit Clouds', pieces: 5, buffs: [{ stat: 'atkPct', label: 'ATK%', value: 22.5 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
     ],
+    ocrVerified: true,
 };
 
 const GENSHIN_IMPACT: GameBundle = {
@@ -258,6 +259,7 @@ const GENSHIN_IMPACT: GameBundle = {
         { name: 'Crimson Witch of Flames', pieces: 4, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 15 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
         { name: 'Emblem of Severed Fate', pieces: 4, buffs: [{ stat: 'atkPct', label: 'ATK%', value: 25 }, { stat: 'energyRegen', label: 'Energy Recharge', value: 20 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
     ],
+    ocrVerified: false,
 };
 
 const EMBEDDED: Record<string, GameBundle> = {

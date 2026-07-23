@@ -376,6 +376,7 @@ interface DefLike {
     combat: { actions: RawAction[] };
     sets?: RawSetBonus[];
     uiOptions?: { characters: Array<{ value: string; label: string }>; setNames: string[] };
+    ocr?: { verified?: boolean };
 }
 
 /**
@@ -438,5 +439,6 @@ export function buildGameBundle(input: {
         buffs: s.buffs,
         passives: s.passives,
         setBonuses: deriveSetBonuses(def.sets ?? [], input.setPieces),
+        ocrVerified: def.ocr?.verified,
     };
 }

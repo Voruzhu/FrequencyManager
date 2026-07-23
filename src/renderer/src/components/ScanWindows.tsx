@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { ScanLine, Swords, Users, AlertTriangle } from 'lucide-react';
 import { Badge, Button, toast } from './ui';
+import { cn } from '@/lib/utils';
 import { useWindowStore } from '../stores/windowStore';
 import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
@@ -12,11 +13,19 @@ import { mapScannedEchoToGearDraft } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
 import type { GearEntry } from '@shared/types/game-bundle';
 
-/** "Scan" button popup — pick what to scan. Only Echoes/Artifacts is wired
- * this pass (user: "let's start with the echoes"); Weapons and Characters
- * are shown so the intended shape is clear, disabled rather than half-built. */
+/** "Scan" / "Auto import" / "Browse" popup — pick what to scan, shared by
+ * all three Scanner entry points so a user picks a type consistently no
+ * matter which button opened it. Only gear (Echoes/Artifacts) is wired;
+ * Weapons and Characters are shown so the intended shape is clear, disabled
+ * rather than half-built. Gear scanning itself is further gated per-game on
+ * `GameBundle.ocrVerified` — grayed out the same way when the active game's
+ * OCR patterns have never been checked against a real screenshot (Genshin,
+ * currently), instead of running a pipeline nobody's confirmed works. */
 export function ScanTypeWindow({ onPickEchoes }: { onPickEchoes: () => void }) {
     const closeWindow = useWindowStore((s) => s.closeWindow);
+    const gameId = useGameStore((s) => s.activeGameId);
+    const data = useGameData(gameId);
+    const gearSupported = data.ocrVerified !== false;
     // Guards against a double-click (or any other re-entrant call) firing
     // two captures from what the user experienced as one press — closing
     // the window is a state update, not an instant DOM removal, so a fast
@@ -33,14 +42,21 @@ export function ScanTypeWindow({ onPickEchoes }: { onPickEchoes: () => void }) {
     return (
         <div className="space-y-2">
             <button
-                onClick={pickEchoes}
-                className="flex w-full items-center gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-surface-2"
+                onClick={gearSupported ? pickEchoes : undefined}
+                disabled={!gearSupported}
+                className={cn(
+                    'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
+                    gearSupported
+                        ? 'border-border bg-card hover:bg-surface-2'
+                        : 'cursor-not-allowed border-dashed border-border bg-card opacity-50',
+                )}
             >
                 <ScanLine className="h-5 w-5 flex-shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-foreground">Echoes / Artifacts</div>
+                    <div className="text-sm font-medium text-foreground">{data.gearLabelPlural}</div>
                     <div className="text-xs text-muted-foreground">Scan a gear piece's stats.</div>
                 </div>
+                {!gearSupported && <Badge variant="muted">Coming soon</Badge>}
             </button>
             <button disabled className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg border border-dashed border-border bg-card p-3 text-left opacity-50">
                 <Swords className="h-5 w-5 flex-shrink-0 text-muted-foreground" />

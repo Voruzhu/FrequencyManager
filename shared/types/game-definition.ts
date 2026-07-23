@@ -275,6 +275,15 @@ export interface OcrRules {
      * consistent native window title, or to fall back to full-screen capture.
      */
     windowTitleHint?: string;
+    /**
+     * Whether these patterns have actually been checked against a real
+     * in-game screenshot, as opposed to written from best-effort guesses at
+     * the game's on-screen text layout. Omit or set `true` once verified;
+     * set `false` while the patterns are unconfirmed — the Scanner's type
+     * picker grays out gear scanning for this game rather than running an
+     * OCR pipeline nobody has confirmed actually works.
+     */
+    verified?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

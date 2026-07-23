@@ -135,6 +135,9 @@ const OCR_PATTERNS = {
     equippedByPattern: 'Equipped by ([A-Za-z][A-Za-z\\s]*)',
     // The official client's window title, regardless of game language/region.
     windowTitleHint: 'Wuthering Waves',
+    // Verified against real Echo Management screenshots (see the comments
+    // above) — the Scanner's type picker offers echo scanning normally.
+    verified: true,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

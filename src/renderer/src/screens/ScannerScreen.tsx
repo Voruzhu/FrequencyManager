@@ -314,10 +314,20 @@ export function ScannerScreen() {
                 description="Extract gear stats from game screenshots — arm the scanner, then press the global hotkey (set in Settings) anytime without switching away from the game, or scan a saved screenshot."
                 actions={
                     <div className="flex gap-2">
-                        <Button variant="secondary" onClick={autoImportFromLatest} disabled={!hasEligibleForImport}>
+                        <Button
+                            variant="secondary"
+                            onClick={() => useWindowStore.getState().openWindow('Auto import', <ScanTypeWindow onPickEchoes={autoImportFromLatest} />)}
+                            disabled={!hasEligibleForImport}
+                        >
                             <Download /> Auto import from latest
                         </Button>
-                        <Button variant="secondary" onClick={() => { void browseAndScan(); }} disabled={scanning}><FolderOpen /> Browse…</Button>
+                        <Button
+                            variant="secondary"
+                            onClick={() => useWindowStore.getState().openWindow('Browse', <ScanTypeWindow onPickEchoes={() => { void browseAndScan(); }} />)}
+                            disabled={scanning}
+                        >
+                            <FolderOpen /> Browse…
+                        </Button>
                         <Button
                             onClick={() => useWindowStore.getState().openWindow('Scan', <ScanTypeWindow onPickEchoes={() => activateScanner('echoes')} />)}
                             disabled={scannerActive || scanning}

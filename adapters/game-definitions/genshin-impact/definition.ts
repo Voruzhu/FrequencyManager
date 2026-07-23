@@ -88,6 +88,12 @@ const OCR_PATTERNS = {
     equippedByPattern: 'Equipped by ([A-Za-z][A-Za-z\\s]*)',
     // The official client's window title, regardless of game language/region.
     windowTitleHint: 'Genshin Impact',
+    // NEVER verified against a real GI artifact-inspection screenshot (see
+    // the comment above) — the Scanner's type picker grays out artifact
+    // scanning for this game until that happens. Genshin players can still
+    // get gear into inventory via the GOOD-format importer (Settings > Data)
+    // instead, which reads real exported data rather than an OCR guess.
+    verified: false,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
