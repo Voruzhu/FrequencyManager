@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { userStorage } from '../lib/userStorage';
 
-const MAX_MEMBERS = 3;
-
 /** A reusable, named party for the Rotation Builder — independent of the
  * Calculator's per-active-character teammate system (`partyStore.ts`),
  * which this does not touch. A member always resolves from their OWN
@@ -11,7 +9,7 @@ const MAX_MEMBERS = 3;
 export interface NamedParty {
     id: string;
     name: string;
-    memberCharacterIds: string[]; // up to 3; can be saved with fewer
+    memberCharacterIds: string[]; // up to the active game's real party size; can be saved with fewer
     /** Party-effect ids toggled OFF, same convention as `partyStore.ts`'s `Party.disabled`. */
     disabled: string[];
 }
@@ -21,7 +19,11 @@ interface NamedPartyState {
     save: (gameId: string, party: NamedParty) => void;
     remove: (gameId: string, partyId: string) => void;
     list: (gameId: string) => NamedParty[];
-    addMember: (gameId: string, partyId: string, characterId: string) => void;
+    /** `max` is the active game's real party size (`data.partyTeammates + 1`)
+     * — passed in by the caller rather than hardcoded here, same convention
+     * as `partyStore.ts`'s `addTeammate`, since the cap genuinely differs
+     * per game (WuWa 3, Genshin 4). */
+    addMember: (gameId: string, partyId: string, characterId: string, max: number) => void;
     removeMember: (gameId: string, partyId: string, characterId: string) => void;
     toggleEffect: (gameId: string, partyId: string, effectId: string) => void;
 }
@@ -51,9 +53,9 @@ export const useNamedPartyStore = create<NamedPartyState>()(
                 return { byGame: { ...s.byGame, [gameId]: forGame } };
             }),
             list: (gameId) => Object.values(get().byGame[gameId] ?? {}),
-            addMember: (gameId, partyId, characterId) => set((s) => ({
+            addMember: (gameId, partyId, characterId, max) => set((s) => ({
                 byGame: write(s.byGame, gameId, partyId, (p) =>
-                    p.memberCharacterIds.length >= MAX_MEMBERS || p.memberCharacterIds.includes(characterId)
+                    p.memberCharacterIds.length >= max || p.memberCharacterIds.includes(characterId)
                         ? p
                         : { ...p, memberCharacterIds: [...p.memberCharacterIds, characterId] }),
             })),

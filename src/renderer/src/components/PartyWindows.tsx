@@ -39,7 +39,7 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
                                     <div className="text-sm font-medium text-foreground">{p.name}</div>
                                     <div className="truncate text-xs text-muted-foreground">{p.memberCharacterIds.map(nameOf).join(', ') || 'No members'}</div>
                                 </div>
-                                <Badge variant="muted">{p.memberCharacterIds.length}/3</Badge>
+                                <Badge variant="muted">{p.memberCharacterIds.length}/{data.partyTeammates + 1}</Badge>
                             </button>
                         </li>
                     ))}
@@ -50,7 +50,8 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
     );
 }
 
-/** Self-contained party creation form — name + up to 3 members, all in one
+/** Self-contained party creation form — name + up to the active game's real
+ * party size (`data.partyTeammates + 1` — WuWa 3, Genshin 4), all in one
  * window (no cross-window state lifting: `useWindowStore` only holds ONE
  * window's content at a time, so a nested picker would replace this form
  * and lose its state; an inline search list avoids that entirely). */
@@ -63,12 +64,15 @@ export function CreatePartyWindow({ onCreated }: { onCreated?: (partyId: string)
     const [query, setQuery] = useState('');
 
     const nameOf = (id: string) => data.characters.find((c) => c.id === id)?.name ?? id;
+    // Real per-game party size (WuWa: 3 total, Genshin: 4) — was hardcoded to
+    // 3 everywhere in this window, silently capping Genshin a member short.
+    const maxMembers = data.partyTeammates + 1;
     const q = query.trim().toLowerCase();
     const results = q
         ? data.characters.filter((c) => c.name.toLowerCase().includes(q) && !memberIds.includes(c.id)).slice(0, 8)
         : [];
 
-    const addMember = (id: string) => { if (memberIds.length < 3) { setMemberIds((ids) => [...ids, id]); setQuery(''); } };
+    const addMember = (id: string) => { if (memberIds.length < maxMembers) { setMemberIds((ids) => [...ids, id]); setQuery(''); } };
     const removeMember = (id: string) => setMemberIds((ids) => ids.filter((x) => x !== id));
 
     const save = () => {
@@ -95,7 +99,7 @@ export function CreatePartyWindow({ onCreated }: { onCreated?: (partyId: string)
                 </div>
             )}
 
-            {memberIds.length < 3 && (
+            {memberIds.length < maxMembers && (
                 <div className="space-y-1.5">
                     <Input placeholder="Search characters to add…" value={query} onChange={(e) => setQuery(e.target.value)} />
                     {results.length > 0 && (

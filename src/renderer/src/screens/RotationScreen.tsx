@@ -328,7 +328,7 @@ export function RotationScreen() {
             <PageHeader
                 title="Rotation Builder"
                 description="Pick a party, sequence turns, and see real damage totals."
-                actions={<Button variant="secondary" onClick={() => useWindowStore.getState().openWindow('Party', <PartyPickerWindow onSelect={setActivePartyId} />)}>Party{activePartyId ? ` (${partyMembers.length}/3)` : ''}</Button>}
+                actions={<Button variant="secondary" onClick={() => useWindowStore.getState().openWindow('Party', <PartyPickerWindow onSelect={setActivePartyId} />)}>Party{activePartyId ? ` (${partyMembers.length}/${data.partyTeammates + 1})` : ''}</Button>}
             />
             {!activePartyId ? (
                 <EmptyState icon={TargetIcon} title="Select a party" description="Pick a saved party (or create one) to start building a rotation." />
