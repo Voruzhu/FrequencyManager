@@ -113,7 +113,13 @@ describe('main-slot (cost-4) exclusivity in gearAutoBuffs/conditionalGearBuffs',
         expect(result[0].source).toBe('Echo A');
     });
 
-    it('a non-cost-4 echo\'s buff still applies alongside the main-slot one', () => {
+    // A cost-4 piece, if equipped, is FORCED into the main slot (the other 4
+    // slots cap at cost 3) — so even if a cost-3 piece in the same build ALSO
+    // carries its own Main Slot bonus (e.g. real echoes like Capitaneus do),
+    // only the forced-main cost-4 piece's bonus applies; the cost-3 piece's
+    // bonus is unreachable in this specific build, exactly like the real game
+    // (only one piece can occupy the main slot at a time).
+    it('a cost-4 piece\'s buff wins over a cost-3 piece\'s own buff when both are equipped', () => {
         jest.spyOn(gameData, 'gearSelfBuffs').mockImplementation((g: { name: string }) => {
             if (g.name === 'Main Echo') return [{ stat: 'critRate', label: 'Main', value: 10, conditional: false }] as never;
             if (g.name === 'Side Echo') return [{ stat: 'atk', label: 'Side', value: 5, conditional: false }] as never;
@@ -124,7 +130,26 @@ describe('main-slot (cost-4) exclusivity in gearAutoBuffs/conditionalGearBuffs',
             { id: 'g2', name: 'Side Echo', cost: 3 },
         ];
         const result = gearAutoBuffs(gear as never);
-        expect(result).toHaveLength(2);
+        expect(result).toHaveLength(1);
+        expect(result[0].source).toBe('Main Echo');
+    });
+
+    // The real fix: the game does NOT restrict the main slot to cost-4 (see
+    // mainSlotEchoId's doc comment) — several cost-3 "Elite" echoes (e.g.
+    // Capitaneus) carry their own Main Slot bonus. With no cost-4 piece
+    // equipped, that cost-3 piece's bonus must still apply.
+    it('a cost-3 piece\'s own buff applies when no cost-4 piece is equipped', () => {
+        jest.spyOn(gameData, 'gearSelfBuffs').mockImplementation((g: { name: string }) => {
+            if (g.name === 'Capitaneus-like') return [{ stat: 'spectroDmg', label: 'Spectro DMG Bonus (Main Slot)', value: 12, conditional: false }] as never;
+            return [];
+        });
+        const gear = [
+            { id: 'g1', name: 'Capitaneus-like', cost: 3 },
+            { id: 'g2', name: 'Plain Echo', cost: 3 },
+        ];
+        const result = gearAutoBuffs(gear as never);
+        expect(result).toHaveLength(1);
+        expect(result[0].source).toBe('Capitaneus-like');
     });
 
     it('conditionalGearBuffs applies the same main-slot exclusivity', () => {

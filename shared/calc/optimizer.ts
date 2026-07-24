@@ -416,12 +416,26 @@ export function setBonusBuffEntries(gear: GearEntry[], setBonuses: SetBonusEntry
  *
  * Must be computed PER COMBO (unlike kit/weapon buffs, which are the same
  * across every combo during a search) since which echo (if any) occupies
- * the combo's own cost-4 slot varies per combo — see `computeBaseLoadouts`,
- * the one caller. `withinCostBudget`'s at-most-one-cost-4-piece rule
- * guarantees `gear.find` below resolves at most one match, so no separate
- * "which one is the real main slot" tie-break is needed here (contrast the
- * renderer's `mainSlotEchoId` in `src/renderer/src/lib/selfBuffs.ts`, which
- * defends against stale/imported data that predates that constraint).
+ * the combo's own main slot varies per combo — see `computeBaseLoadouts`,
+ * the one caller.
+ *
+ * WHICH piece occupies the main slot: a cost-4 piece, if equipped, is
+ * FORCED there (the other 4 slots cap at cost 3, so a cost-4 piece has
+ * nowhere else to go) — `withinCostBudget`'s at-most-one-cost-4-piece rule
+ * guarantees at most one candidate here, no tie-break needed. But the real
+ * game does NOT restrict the main slot to cost-4 — any cost (1/3/4) can
+ * occupy it, and several cost-3 "Elite" echoes carry their own Main Slot
+ * bonus (e.g. Capitaneus — FIXED 2026-07-24, see the dated comment in
+ * `echo-set-names.ts` for the sourcing). So when no cost-4 piece is
+ * equipped, this treats whichever OTHER piece actually has authored Main
+ * Slot buffs as occupying the slot — a piece with none contributes
+ * identical stats whether main or sub, so this is exact in the (by far
+ * most common) single-candidate case. If two-or-more candidates are
+ * equipped simultaneously with no cost-4 piece present (rare), picks the
+ * first found in gear order rather than trying both and keeping the
+ * better — a documented simplification, not a full slot-assignment search;
+ * the renderer's `mainSlotEchoId` (`src/renderer/src/lib/selfBuffs.ts`)
+ * mirrors this same rule so the two stay consistent.
  *
  * Directly imports `WW_ECHO_SELF_BUFFS` rather than threading it through
  * `OptimizeConfig` as a generic parameter — GI has no equivalent mechanic,
@@ -436,7 +450,7 @@ export function mainSlotEchoBuffs(
     characterName?: string,
     selfBuffs: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = WW_ECHO_SELF_BUFFS,
 ): BuffEntry[] {
-    const mainSlot = gear.find((g) => g.cost === 4);
+    const mainSlot = gear.find((g) => g.cost === 4) ?? gear.find((g) => (selfBuffs[g.name]?.length ?? 0) > 0);
     if (!mainSlot) return [];
     return (selfBuffs[mainSlot.name] ?? [])
         .filter((sb) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))

@@ -153,17 +153,29 @@ export function conditionalConstellationBuffs(character: CharacterData | null, s
 export const gearBuffId = (gearId: string, sb: { stat: string; appliesTo?: string[] }, i: number) =>
     `gear-${gearId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
-/** The character's single "main slot" echo id, if any — WW's cost-4 pieces are the only ones that can occupy Slot 1, and only Slot 1 unlocks an echo's main-slot bonus. `calcStore`'s equip-time exclusivity (Task 4) keeps at most one cost-4 piece equipped going forward; this guards stale/imported loadouts that somehow have more than one, by treating only the first as active. */
+/** The character's single "main slot" echo id, if any. A cost-4 piece, if equipped, is FORCED into Slot 1 (the other 4 slots cap at cost 3, so it has nowhere else to go) — `calcStore`'s equip-time exclusivity (Task 4) keeps at most one cost-4 piece equipped going forward; this guards stale/imported loadouts that somehow have more than one, by treating only the first as active.
+ *
+ * The real game does NOT restrict Slot 1 to cost-4, though — any cost can
+ * occupy it, and several cost-3 "Elite" echoes (e.g. Capitaneus — FIXED
+ * 2026-07-24, see `echo-set-names.ts`) carry their own Main Slot bonus. So
+ * when no cost-4 piece is equipped, this falls back to whichever OTHER
+ * equipped piece actually has authored Main Slot buffs — a piece with none
+ * contributes identical stats whether main or sub, so this is exact in the
+ * (by far most common) single-candidate case. Two-or-more simultaneous
+ * candidates with no cost-4 piece present (rare) picks the first found in
+ * gear order — mirrors `mainSlotEchoBuffs` in `shared/calc/optimizer.ts`,
+ * kept consistent on purpose so the Calculator and Optimizer never
+ * disagree about the same 5-piece loadout. */
 export function mainSlotEchoId(gear: GearData[]): string | undefined {
-    return gear.find((g) => g.cost === 4)?.id;
+    return gear.find((g) => g.cost === 4)?.id ?? gear.find((g) => gearSelfBuffs(g).length > 0)?.id;
 }
 
-/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot (cost-4) bonus, so a cost-4 piece that isn't the (single) main-slot one is skipped entirely. */
+/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot bonus (any cost, not just cost-4 — see `mainSlotEchoId`'s doc comment), so any equipped piece that isn't the (single) main-slot one is skipped entirely. */
 export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string) {
     const out: Array<{ id: string; name: string; source: string; stat: string; value: number; appliesTo?: string[] }> = [];
     const mainSlotId = mainSlotEchoId(gear);
     for (const g of gear) {
-        if (g.cost === 4 && g.id !== mainSlotId) continue;
+        if (g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
             .filter(({ sb }) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
@@ -177,7 +189,7 @@ export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, nu
     const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> = [];
     const mainSlotId = mainSlotEchoId(gear);
     for (const g of gear) {
-        if (g.cost === 4 && g.id !== mainSlotId) continue;
+        if (g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
             .filter(({ sb }) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))

@@ -641,7 +641,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                         )}
                         {(() => {
                             const mainSlotId = mainSlotEchoId(gear);
-                            const gearWithBuffs = gear.filter((g) => g.cost !== 4 || g.id === mainSlotId).filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name))));
+                            const gearWithBuffs = gear.filter((g) => g.id === mainSlotId).filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name))));
                             if (gearWithBuffs.length === 0) return null;
                             return (
                                 <div>

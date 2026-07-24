@@ -211,6 +211,30 @@ describe('mainSlotEchoBuffs — WuWa cost-4 echo main-slot bonus, derived per co
     it('defaults to the real WW_ECHO_SELF_BUFFS table when no 3rd argument is passed', () => {
         expect(() => mainSlotEchoBuffs([echo('Anything', 'a', 4)])).not.toThrow();
     });
+
+    // The real game does NOT restrict the main slot to cost-4 pieces (see
+    // mainSlotEchoId's doc comment in selfBuffs.ts) — several cost-3 "Elite"
+    // echoes (e.g. the real Capitaneus) carry their own Main Slot bonus. With
+    // no cost-4 piece in the combo, that cost-3 piece's bonus must still be
+    // found and applied — this was the actual bug: previously `mainSlot`
+    // was derived from `gear.find(g => g.cost === 4)` alone, so a cost-3
+    // main-slot-bonus piece was silently never credited.
+    it('returns a cost-3 piece\'s own unconditional buff when no cost-4 piece is in the combo', () => {
+        const gear = [echo('Test Main Slot Echo', 'a', 3), echo('Filler', 'b', 1)];
+        const result = mainSlotEchoBuffs(gear, undefined, SELF_BUFFS);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('critRate');
+        expect(result[0].value).toBe(15);
+    });
+
+    it('prefers the cost-4 piece over a cost-3 piece that also has its own buff, when both are equipped', () => {
+        const gear = [echo('Test Main Slot Echo', 'a', 4), echo('Test Restricted Echo', 'b', 3)];
+        const result = mainSlotEchoBuffs(gear, 'Rebecca', SELF_BUFFS);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('critRate');
+        expect(result[0].value).toBe(15);
+        expect(result[0].source).toBe('Test Main Slot Echo');
+    });
 });
 
 describe('computeBaseLoadouts — main-slot echo bonus is derived PER COMBO, reaches actual damage', () => {
