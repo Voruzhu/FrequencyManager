@@ -10,6 +10,16 @@ export interface CharacterLoadout {
      * safe default, not a missing-data marker. */
     weaponRefine?: number;
     gearIds: string[];
+    /** WW only — which equipped gearId (if any) occupies the "main slot".
+     * ANY cost is eligible (not just cost-4 — see `mainSlotEchoId`'s doc
+     * comment in `lib/selfBuffs.ts`), so this can't be inferred from cost
+     * anymore; it's a genuine user choice. Undefined means "not explicitly
+     * chosen yet" — `mainSlotEchoId` falls back to a reasonable guess
+     * (whichever equipped piece has an authored Main Slot bonus) rather
+     * than assuming no bonus applies at all, so existing saved loadouts
+     * don't silently lose a bonus they already had before this field
+     * existed. */
+    mainSlotGearId?: string;
 }
 
 const EMPTY_LOADOUT: CharacterLoadout = { gearIds: [] };
@@ -53,7 +63,13 @@ export const useLoadoutStore = create<LoadoutState>()(
                 for (const [characterId, loadout] of Object.entries(forGame)) {
                     if (loadout.gearIds.includes(gearId)) {
                         changed = true;
-                        next[characterId] = { ...loadout, gearIds: loadout.gearIds.filter((g) => g !== gearId) };
+                        next[characterId] = {
+                            ...loadout,
+                            gearIds: loadout.gearIds.filter((g) => g !== gearId),
+                            // Don't leave mainSlotGearId pointing at a piece
+                            // that's no longer even equipped.
+                            ...(loadout.mainSlotGearId === gearId ? { mainSlotGearId: undefined } : {}),
+                        };
                     } else {
                         next[characterId] = loadout;
                     }

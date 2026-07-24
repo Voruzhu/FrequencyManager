@@ -114,18 +114,21 @@ describe('optimize — single-threaded reference path', () => {
         expect(() => optimize(char(), pool, baseConfig({ topN: 5 }))).not.toThrow();
     }, 20000);
 
-    // Direct answer to a real user question: "does the optimizer actually
-    // COMPARE combos with vs. without a cost-4 piece, or does it just always
-    // treat cost-4-as-main as the assumed-best choice?" It compares — a
-    // cost-4 piece is only ever forced main WHEN a combo happens to include
-    // one (mechanically true: cost-4 has nowhere else to fit), but nothing
-    // in the ranking prefers combos that include one. `combinations()` and
-    // `withinCostBudget()` don't touch scoring at all; `optimize()` sorts
-    // purely by each combo's own real `score`. This uses the REAL
-    // WW_ECHO_SELF_BUFFS table (computeBaseLoadouts calls mainSlotEchoBuffs
-    // with no override) with the real 'Capitaneus' entry, so it's an actual
-    // end-to-end proof, not just a unit test of the lookup function alone.
-    it('drops an available cost-4 piece in favor of a cost-3 main-slot bonus when that scores higher on the maximized stat', () => {
+    // CORRECTED 2026-07-25 — this test used to assert the winning combo
+    // EXCLUDED a co-equipped cost-4 piece, on the wrong belief that a
+    // cost-4 piece (if present) is always forced into the main slot, so the
+    // only way for Capitaneus's cost-3 bonus to win was for the cost-4
+    // piece to be dropped from the combo entirely. WW has no such
+    // exclusivity (see `withinCostBudget`'s doc comment) — a non-bonus
+    // cost-4 piece can coexist with Capitaneus in the very same 5-piece
+    // combo, contributing its own stats while Capitaneus is still freely
+    // chosen as the (searched, not assumed) main slot. The real claim this
+    // test proves is narrower and still true: `computeBaseLoadouts`'s
+    // per-combo main-slot search picks the bonus-carrying piece (Capitaneus)
+    // over the non-bonus one (the cost-4 filler) whenever both are
+    // available as candidates, REGARDLESS of which one is cost-4 — proven
+    // via the new `Loadout.mainSlotGearId` field, not via gear absence.
+    it('picks the bonus-carrying piece as main slot even when a non-bonus cost-4 piece is equipped alongside it', () => {
         const fillerCost4: GearEntry = {
             kind: 'echo', id: 'filler4', name: 'Unnamed Filler Echo', setName: 'Void Thunder', rarity: 5, cost: 4,
             mainStat: { key: 'atk', label: 'ATK', value: 500 }, subStats: [],
@@ -135,8 +138,7 @@ describe('optimize — single-threaded reference path', () => {
             mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [],
         };
         // Plain filler pieces carry no spectroDmg at all, so ONLY a combo
-        // that includes Capitaneus-as-main (no cost-4 piece competing for
-        // that slot) can score anything above 0 on this target.
+        // that includes Capitaneus-as-main can score anything above 0 here.
         const fillers = [gear(50, 1), gear(50, 1), gear(50, 3), gear(50, 3), gear(50, 1)];
         const pool = [fillerCost4, capitaneus, ...fillers];
 
@@ -147,20 +149,29 @@ describe('optimize — single-threaded reference path', () => {
         // under its own specific key, inert). So `elemDmg` — not a raw
         // `spectroDmg` key — is the real stat this shows up on.
         const target: Target = { id: 't1', kind: 'stat', key: 'elemDmg', label: 'Elemental DMG', mode: 'max' };
-        const result = optimize(char(), pool, baseConfig({ targets: [target], topN: 10 }));
+        // topN covers every C(7,5)=21 combo so we can inspect ALL of them,
+        // not just the top-ranked one.
+        const result = optimize(char(), pool, baseConfig({ targets: [target], topN: 21 }));
+        expect(result.length).toBe(21);
 
-        expect(result.length).toBeGreaterThan(0);
-        const top = result[0];
-        expect(top.gear).toContainEqual(expect.objectContaining({ id: 'cap' }));
-        expect(top.gear).not.toContainEqual(expect.objectContaining({ id: 'filler4' }));
-        expect(top.stats.elemDmg).toBeGreaterThan(0);
+        // Every combo that includes Capitaneus picks her as main and scores
+        // above 0 — including the ones that ALSO include the cost-4 filler.
+        const withCap = result.filter((l) => l.gear.some((g) => g.id === 'cap'));
+        expect(withCap.length).toBeGreaterThan(0);
+        for (const lo of withCap) {
+            expect(lo.mainSlotGearId).toBe('cap');
+            expect(lo.stats.elemDmg).toBeGreaterThan(0);
+        }
+        const withBoth = withCap.find((l) => l.gear.some((g) => g.id === 'filler4'));
+        expect(withBoth).toBeDefined();
+        expect(withBoth!.mainSlotGearId).toBe('cap');
 
-        // Confirm the "with cost-4 instead" alternative genuinely exists
-        // among the ranked results (so this isn't just "the cost-4 piece
-        // was never a candidate") and that it scored strictly lower.
-        const withCost4 = result.find((l) => l.gear.some((g) => g.id === 'filler4'));
-        expect(withCost4).toBeDefined();
-        expect(withCost4!.stats.elemDmg ?? 0).toBeLessThan(top.stats.elemDmg ?? 0);
+        // Combos with no bonus-carrying piece at all (Capitaneus absent)
+        // score 0 — including the ones that DO include the cost-4 filler,
+        // proving the filler itself carries no bonus of its own.
+        const withoutCap = result.filter((l) => !l.gear.some((g) => g.id === 'cap'));
+        expect(withoutCap.length).toBeGreaterThan(0);
+        for (const lo of withoutCap) expect(lo.stats.elemDmg ?? 0).toBe(0);
     });
 });
 
@@ -175,8 +186,8 @@ describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes
         expect(withinCostBudget(combo, 12)).toBe(false);
     });
 
-    it('undefined cap never applies a total-SUM rejection (the separate at-most-one-cost-4 slot rule still applies regardless)', () => {
-        const combo = [gear(1, 4), gear(1, 3), gear(1, 3), gear(1, 3), gear(1, 3)]; // sum 16, only 1 cost-4 piece
+    it('undefined cap never applies a total-SUM rejection', () => {
+        const combo = [gear(1, 4), gear(1, 3), gear(1, 3), gear(1, 3), gear(1, 3)]; // sum 16
         expect(withinCostBudget(combo, undefined)).toBe(true);
     });
 
@@ -185,22 +196,25 @@ describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes
         expect(withinCostBudget(combo, 12)).toBe(true);
     });
 
-    it('a combo with 2 cost-4 pieces is rejected even when the total is well within budget (impossible in-game: only 1 slot can hold a cost-4 piece)', () => {
-        const combo = [gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1), gear(1, 1)]; // sum 11, under any real cap
-        expect(withinCostBudget(combo, 12)).toBe(false);
-    });
-
-    it('a combo with 2 cost-4 pieces is rejected regardless of maxTotalCost, including undefined', () => {
-        const combo = [gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1), gear(1, 1)];
-        expect(withinCostBudget(combo, undefined)).toBe(false);
-    });
-
-    it('a combo with exactly 1 cost-4 piece is never rejected by the slot-shape rule', () => {
-        const combo = [gear(1, 4), gear(1, 3), gear(1, 3), gear(1, 1), gear(1, 1)];
+    // CORRECTED 2026-07-25 — this function used to also reject any combo
+    // with 2+ cost-4 pieces, believing only one of WW's 5 slots could ever
+    // hold one. That's wrong: real guides list `4-4-1-1-1` (total cost 11)
+    // as a legitimate, if usually inefficient, configuration — the game's
+    // cost system is a pure total-budget check across all 5 slots, with NO
+    // per-slot cost ceiling. See mainSlotEchoBuffs's doc comment for why
+    // running 2+ cost-4 pieces is inefficient anyway (only ONE echo can
+    // ever be the "main slot" and receive its bonus) without being illegal.
+    it('a combo with 2 cost-4 pieces is legal as long as the total stays within budget (real example: 4-4-1-1-1 = 11)', () => {
+        const combo = [gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1), gear(1, 1)]; // sum 11
         expect(withinCostBudget(combo, 12)).toBe(true);
     });
 
-    it('a GI-style combo (no piece has a cost field) is unaffected by the slot-shape rule', () => {
+    it('a combo with 2 cost-4 pieces is still rejected once the TOTAL exceeds budget, same as any other combo', () => {
+        const combo = [gear(1, 4), gear(1, 4), gear(1, 4), gear(1, 1), gear(1, 1)]; // sum 14 > 12
+        expect(withinCostBudget(combo, 12)).toBe(false);
+    });
+
+    it('a GI-style combo (no piece has a cost field) is unaffected', () => {
         const combo = [gear(1), gear(1), gear(1), gear(1), gear(1)];
         expect(withinCostBudget(combo, undefined)).toBe(true);
     });

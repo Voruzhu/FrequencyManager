@@ -338,6 +338,14 @@ function GearView({ g }: { g: GearData }) {
     // Falls back to the snapshot for unowned catalog sample gear.
     const live = owned.gear.find((x) => x.id === g.id) ?? g;
     const { openWindow, closeWindow } = useWindowStore();
+    const calc = useCalcStore();
+    // "Set as Main Slot" only makes sense when this piece is equipped on the
+    // Calculator's CURRENTLY ACTIVE character — that's the only loadout this
+    // screen can edit here. A piece equipped on some OTHER character (or not
+    // equipped at all) needs that character selected first, same as any
+    // other Calculator edit.
+    const isOnActiveChar = calc.equipped.gearIds.includes(live.id);
+    const isExplicitMain = calc.equipped.mainSlotGearId === live.id;
     const meta = live.cost != null ? `Cost ${live.cost} · ${live.rarity}★` : `${live.slot ?? ''} · ${live.rarity}★`;
     const edit = () => openWindow(
         `Edit ${data.gearLabel.toLowerCase()}`,
@@ -417,6 +425,17 @@ function GearView({ g }: { g: GearData }) {
                             );
                         })}
                     </div>
+                    {isOnActiveChar && (
+                        isExplicitMain ? (
+                            <Button variant="outline" size="sm" className="mt-2 border-primary/40 text-primary" onClick={() => calc.setMainSlotEcho(undefined)}>
+                                ✓ Main Slot echo — click to unset
+                            </Button>
+                        ) : (
+                            <Button variant="secondary" size="sm" className="mt-2" onClick={() => calc.setMainSlotEcho(live.id)}>
+                                Set as Main Slot echo
+                            </Button>
+                        )
+                    )}
                 </section>
             )}
         </div>
@@ -452,12 +471,11 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
     // is a glance away instead of a scroll through the whole collection —
     // everything else keeps its existing (filtered/sorted) relative order.
     const ordered = [...filtered].sort((a, b) => Number(equipped.gearIds.includes(b.id)) - Number(equipped.gearIds.includes(a.id)));
-    // Resolved once for the whole list — `mainSlotEchoId` isn't just "the
-    // cost-4 piece" anymore (see its doc comment), so which equipped piece
-    // is actually main has to be derived from the full 5-piece loadout, not
-    // any single card's own cost.
+    // Resolved once for the whole list — which equipped piece is main is no
+    // longer inferrable from cost at all (see mainSlotEchoId's doc comment),
+    // it's this character's own explicit choice.
     const equippedGear = equipped.gearIds.map((id) => owned.gear.find((x) => x.id === id)).filter((x): x is GearData => !!x);
-    const trueMainSlotId = mainSlotEchoId(equippedGear);
+    const trueMainSlotId = mainSlotEchoId(equippedGear, equipped.mainSlotGearId);
 
     return (
         <div className="space-y-3">

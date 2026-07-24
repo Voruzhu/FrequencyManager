@@ -419,23 +419,24 @@ export function setBonusBuffEntries(gear: GearEntry[], setBonuses: SetBonusEntry
  * the combo's own main slot varies per combo — see `computeBaseLoadouts`,
  * the one caller.
  *
- * WHICH piece occupies the main slot: a cost-4 piece, if equipped, is
- * FORCED there (the other 4 slots cap at cost 3, so a cost-4 piece has
- * nowhere else to go) — `withinCostBudget`'s at-most-one-cost-4-piece rule
- * guarantees at most one candidate here, no tie-break needed. But the real
- * game does NOT restrict the main slot to cost-4 — any cost (1/3/4) can
- * occupy it, and several cost-3 "Elite" echoes carry their own Main Slot
- * bonus (e.g. Capitaneus — FIXED 2026-07-24, see the dated comment in
- * `echo-set-names.ts` for the sourcing). So when no cost-4 piece is
- * equipped, this treats whichever OTHER piece actually has authored Main
- * Slot buffs as occupying the slot — a piece with none contributes
- * identical stats whether main or sub, so this is exact in the (by far
- * most common) single-candidate case. If two-or-more candidates are
- * equipped simultaneously with no cost-4 piece present (rare), picks the
- * first found in gear order rather than trying both and keeping the
- * better — a documented simplification, not a full slot-assignment search;
- * the renderer's `mainSlotEchoId` (`src/renderer/src/lib/selfBuffs.ts`)
- * mirrors this same rule so the two stay consistent.
+ * WHICH piece occupies the main slot: CORRECTED 2026-07-25 — WW's echo
+ * system has NO per-slot cost ceiling at all (see `withinCostBudget`'s doc
+ * comment for the sourcing), so this is a genuinely free choice among the
+ * 5 equipped pieces, not something derivable from cost even as a
+ * heuristic. `forcedMainId` is that choice — `computeBaseLoadouts` (the
+ * one real caller) already searches every candidate piece that has an
+ * authored Main Slot bonus and picks whichever scores best for that
+ * combo, passing the winner in here explicitly. When `forcedMainId` is
+ * omitted (or doesn't match anything in `gear` — e.g. a stale id), this
+ * falls back to whichever equipped piece actually has authored Main Slot
+ * buffs — a piece with none contributes identical stats whether main or
+ * sub, so this is exact in the single-candidate case, and it's what lets
+ * this function still be called with just `(gear, characterName)` from
+ * tests/other call sites without needing to duplicate the search logic.
+ * The renderer's `mainSlotEchoId` (`src/renderer/src/lib/selfBuffs.ts`)
+ * mirrors this same fallback rule so the two stay consistent when THAT
+ * caller has no explicit choice either (e.g. an old saved loadout from
+ * before `mainSlotGearId` existed).
  *
  * Directly imports `WW_ECHO_SELF_BUFFS` rather than threading it through
  * `OptimizeConfig` as a generic parameter — GI has no equivalent mechanic,
@@ -449,8 +450,10 @@ export function mainSlotEchoBuffs(
     gear: GearEntry[],
     characterName?: string,
     selfBuffs: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = WW_ECHO_SELF_BUFFS,
+    forcedMainId?: string,
 ): BuffEntry[] {
-    const mainSlot = gear.find((g) => g.cost === 4) ?? gear.find((g) => (selfBuffs[g.name]?.length ?? 0) > 0);
+    const mainSlot = (forcedMainId ? gear.find((g) => g.id === forcedMainId) : undefined)
+        ?? gear.find((g) => (selfBuffs[g.name]?.length ?? 0) > 0);
     if (!mainSlot) return [];
     return (selfBuffs[mainSlot.name] ?? [])
         .filter((sb) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
@@ -547,6 +550,13 @@ export interface Loadout {
     score: number;
     meets: boolean;
     failed: string[];
+    /** WW only — which piece in `gear` (if any) `computeBaseLoadouts` chose
+     * as the main-slot echo for this specific combo (searched, not assumed
+     * — see `mainSlotEchoBuffs`'s doc comment). The UI passes this straight
+     * into `calcStore.equipLoadout` on "Equip to character" so the applied
+     * build matches exactly what was scored, instead of falling back to a
+     * generic guess. */
+    mainSlotGearId?: string;
 }
 
 /**
@@ -808,20 +818,21 @@ export function gearSlotsFor(poolSize: number): number {
 }
 
 /** Whether a gear combo stays within the real in-game total-cost budget (WuWa's
- * 12, across 5 echoes costing 1/3/4 each — see `OptimizeConfig.maxTotalCost`)
- * AND obeys the real per-slot cost ceiling (WuWa's 5 slots are capped at
- * [4, 3, 3, 1, 1] — only ONE slot can ever hold a cost-4 piece, so a combo
- * with 2+ cost-4 pieces is illegal even if their total sum fits the budget,
- * e.g. two cost-4 + three cost-1 = 11, under any real cap, but physically
- * impossible to equip). The cost-4 check runs unconditionally (not gated
- * behind maxTotalCost) since it's a slot-SHAPE constraint, not a budget
- * number — it would still apply even for a hypothetical game module with no
- * total-cost cap at all. Always true for GI (no piece ever has a `cost`
- * field, so neither check ever fires) or a piece with no `cost` (same
- * reason). Exported so the worker path can apply the identical filter to
- * its own generated slice of combos. */
+ * 12, across up to 5 echoes costing 1/3/4 each — see `OptimizeConfig.maxTotalCost`).
+ *
+ * CORRECTED 2026-07-25 — this used to also reject any combo with 2+ cost-4
+ * pieces, on the belief that only one of the 5 slots could ever hold a
+ * cost-4 echo. That's wrong: WuWa's echo system is a pure total-cost
+ * budget across all 5 slots with NO per-slot cost ceiling — real guides
+ * list `4-4-1-1-1` (total 11) as a legitimate, if inefficient,
+ * configuration (running 2+ cost-4 pieces just burns budget on stats,
+ * since only ONE echo can ever occupy the "main slot" and receive its
+ * kit-specific Main Slot bonus — see `mainSlotEchoBuffs`). So the only
+ * real constraint here is the total-cost sum; there is no slot-shape rule
+ * to also enforce. Always true for GI (no piece ever has a `cost` field)
+ * or a piece with no `cost`. Exported so the worker path can apply the
+ * identical filter to its own generated slice of combos. */
 export function withinCostBudget(combo: GearEntry[], maxTotalCost: number | undefined): boolean {
-    if (combo.filter((g) => g.cost === 4).length > 1) return false;
     if (maxTotalCost == null) return true;
     let total = 0;
     for (const g of combo) total += g.cost ?? 0;
@@ -843,6 +854,7 @@ export type BaseLoadout = Omit<Loadout, 'score' | 'meets'>;
  */
 export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], config: OptimizeConfig, idOffset = 0): BaseLoadout[] {
     const minTargets = config.targets.filter((t) => t.mode === 'min');
+    const maxTargets = config.targets.filter((t) => t.mode === 'max');
     const kitScopedBuffs = config.buffs.filter(isScopedBuff);
     const baseCtx: Omit<SkillContext, 'scopedBuffs'> = {
         mode: config.critMode,
@@ -853,32 +865,61 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
         charLevel: config.charLevel,
         characterElement: c.element,
     };
-    return combos.map((gear, idx) => {
-        // Set-bonus buffs depend on THIS combo's own real piece counts (a
-        // different combo can activate different sets/tiers entirely) — must
-        // be derived per combo, same reason as `gearScopedBuffs` below, not
-        // assumed once upfront from a caller's "intended sets" hint.
+
+    // Everything BUT the main-slot echo bonus, for one candidate `mainId`
+    // (possibly undefined — "no piece is main"). Pulled out of the combo
+    // loop below so it can be called once per candidate when a combo has
+    // more than one, instead of duplicating this whole block inline twice.
+    const buildFor = (gear: GearEntry[], mainId: string | undefined) => {
         const comboSetBuffs = config.setBonuses ? setBonusBuffEntries(gear, config.setBonuses, c.name) : [];
-        // Main-slot echo bonus (WW only) — same "depends on this combo's own
-        // real gear" reasoning as comboSetBuffs above; withinCostBudget
-        // guarantees at most one cost-4 piece ever reaches a scored combo.
-        const comboGearBuffs = mainSlotEchoBuffs(gear, c.name);
+        const comboGearBuffs = mainSlotEchoBuffs(gear, c.name, WW_ECHO_SELF_BUFFS, mainId);
         const allBuffs = [...config.buffs, ...comboSetBuffs, ...comboGearBuffs];
         const stats = computeBuildStats(c, gear, allBuffs, config.weapon, config.catalog);
-        // Per-attack-type DMG% sub-stats (e.g. WW's "Basic Attack DMG Bonus")
-        // vary per combo, unlike kit/weapon buffs — must be recomputed here,
-        // not folded into `kitScopedBuffs` above (see `gearScopedBuffs`).
         const comboScopedBuffs = [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...comboGearBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)];
         const ctx: SkillContext = { ...baseCtx, scopedBuffs: comboScopedBuffs };
-        // Surface the TOTAL Basic/Heavy/Skill/Liberation DMG Bonus (kit +
-        // weapon + gear) as plain stats too — display + Optimizer targets,
-        // see `withScopedDmgTotals`. Purely additive to `stats`; doesn't
-        // change how `skillDamage` above already applies these correctly.
         withScopedDmgTotals(stats, comboScopedBuffs);
         const skillDmg: Record<string, number> = {};
         for (const skill of c.skills) skillDmg[skill.id] = skillDamage(stats, skill, ctx);
+        return { stats, skillDmg };
+    };
+    // Compares 2 candidate main-slot choices for the SAME 5 pieces — the
+    // only thing that ever differs between them is comboGearBuffs, so a
+    // simple raw (non-normalized) sum over the user's own maximize targets
+    // is a safe, cheap proxy for "which is actually better" here; it only
+    // needs to be correct locally (within one combo's own candidates), not
+    // globally comparable across different combos the way the real `score`
+    // (computed later in `scoreAndRank`, after every combo is known) is.
+    // Mirrors `scoreAndRank`'s own "no maximize targets -> rank by ATK"
+    // fallback for consistency.
+    const localValue = (b: { stats: BuildStats; skillDamage: Record<string, number> }) =>
+        maxTargets.length > 0
+            ? maxTargets.reduce((sum, t) => sum + targetValue(t, b.stats, b.skillDamage), 0)
+            : (b.stats.atk ?? 0);
+
+    return combos.map((gear, idx) => {
+        // WHICH piece (if any) occupies the main slot is a genuinely free
+        // choice — WW has no per-slot cost ceiling (see `withinCostBudget`'s
+        // doc comment), so every equipped piece that carries its own Main
+        // Slot bonus is a real candidate, not just whichever happens to be
+        // cost-4. A piece with no bonus never needs to be tried — it
+        // contributes identical stats whether main or not — so the search
+        // space here is bounded by how many DIFFERENT bonus-carrying pieces
+        // this specific combo happens to contain (almost always 0 or 1;
+        // rarely 2+, since that needs multiple distinct named echoes with a
+        // bonus in the very same 5-piece build).
+        const candidates = gear.filter((piece) => (WW_ECHO_SELF_BUFFS[piece.name]?.length ?? 0) > 0);
+        let mainId = candidates[0]?.id;
+        let built = buildFor(gear, mainId);
+        for (const cand of candidates.slice(1)) {
+            const alt = buildFor(gear, cand.id);
+            if (localValue({ stats: alt.stats, skillDamage: alt.skillDmg }) > localValue({ stats: built.stats, skillDamage: built.skillDmg })) {
+                mainId = cand.id;
+                built = alt;
+            }
+        }
+        const { stats, skillDmg } = built;
         const failed = minTargets.filter((t) => targetValue(t, stats, skillDmg) < (t.min ?? 0)).map((t) => t.label);
-        return { id: `lo-${idOffset + idx}`, gear, stats, skillDamage: skillDmg, failed };
+        return { id: `lo-${idOffset + idx}`, gear, stats, skillDamage: skillDmg, failed, mainSlotGearId: mainId };
     });
 }
 

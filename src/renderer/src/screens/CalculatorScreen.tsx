@@ -488,7 +488,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     // actual damage calc — see `setBonusBuffEntries`), so this preview never
     // silently disagrees with the real "calculate current" numbers below.
     const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
-    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear, {}, c.name)];
+    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear, {}, c.name, equipped.mainSlotGearId)];
     const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
     // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
     // same reasoning as the set-bonus buffs above, keeps this preview honest.
@@ -640,7 +640,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                             </div>
                         )}
                         {(() => {
-                            const mainSlotId = mainSlotEchoId(gear);
+                            const mainSlotId = mainSlotEchoId(gear, equipped.mainSlotGearId);
                             const gearWithBuffs = gear.filter((g) => g.id === mainSlotId).filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name))));
                             if (gearWithBuffs.length === 0) return null;
                             return (
@@ -776,7 +776,7 @@ function LoadoutRow({ rank, loadout, targets, character, data }: { rank: number;
     const totalCost = loadout.gear.reduce((sum, g) => sum + (g.cost ?? 0), 0);
 
     const equip = () => {
-        equipLoadout(loadout.gear.map((g) => g.id));
+        equipLoadout(loadout.gear.map((g) => g.id), loadout.mainSlotGearId);
         toast.success('Equipped loadout to character');
     };
 
@@ -795,16 +795,21 @@ function LoadoutRow({ rank, loadout, targets, character, data }: { rank: number;
                 <Button size="sm" className="ml-auto" onClick={equip}>Equip to character</Button>
             </div>
 
-            {/* Gear — click to inspect */}
+            {/* Gear — click to inspect. Which piece this specific loadout chose
+                as its Main Slot echo (computeBaseLoadouts searched this, not
+                assumed cost-4 — see mainSlotEchoBuffs) is shown directly here,
+                since that was previously impossible to tell from this list at
+                all. */}
             <div className="mt-3 flex flex-wrap gap-2">
                 {loadout.gear.map((g) => (
                     <button key={g.id} onClick={() => showItem(g)} title={`Inspect ${g.name}`}
-                        className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 transition-colors hover:bg-surface-2">
+                        className={cn('flex items-center gap-2 rounded-md border bg-card px-2 py-1 transition-colors hover:bg-surface-2', g.id === loadout.mainSlotGearId ? 'border-primary/50' : 'border-border')}>
                         <ItemIcon kind={g.kind} size="sm" rarity={g.rarity} src={iconSrc(activeGameId, gearIcon(data, g))} badgeSrc={echoItemIconFor(g) ? iconSrc(activeGameId, setIconFor(data, g)) : undefined} />
                         <div className="text-left text-xs">
                             <div className="font-medium text-foreground">{g.name}</div>
                             <div className="text-muted-foreground">{g.mainStat.label}</div>
                         </div>
+                        {g.id === loadout.mainSlotGearId && <Badge variant="secondary" className="ml-1">Main</Badge>}
                     </button>
                 ))}
             </div>

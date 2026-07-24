@@ -153,27 +153,37 @@ export function conditionalConstellationBuffs(character: CharacterData | null, s
 export const gearBuffId = (gearId: string, sb: { stat: string; appliesTo?: string[] }, i: number) =>
     `gear-${gearId}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`;
 
-/** The character's single "main slot" echo id, if any. A cost-4 piece, if equipped, is FORCED into Slot 1 (the other 4 slots cap at cost 3, so it has nowhere else to go) — `calcStore`'s equip-time exclusivity (Task 4) keeps at most one cost-4 piece equipped going forward; this guards stale/imported loadouts that somehow have more than one, by treating only the first as active.
+/** The character's single "main slot" echo id, if any.
  *
- * The real game does NOT restrict Slot 1 to cost-4, though — any cost can
- * occupy it, and several cost-3 "Elite" echoes (e.g. Capitaneus — FIXED
- * 2026-07-24, see `echo-set-names.ts`) carry their own Main Slot bonus. So
- * when no cost-4 piece is equipped, this falls back to whichever OTHER
+ * CORRECTED 2026-07-25 — WW's echo system has NO per-slot cost ceiling at
+ * all (a `4-4-1-1-1` loadout is legal, if usually inefficient — see
+ * `withinCostBudget`'s doc comment in `shared/calc/optimizer.ts` for the
+ * sourcing), so "which piece is main" can no longer be inferred from cost
+ * in any way, not even as a fallback. It's a genuine, free choice the
+ * player makes among their 5 equipped pieces, tracked explicitly per
+ * character in `CharacterLoadout.mainSlotGearId` (`loadoutStore.ts`).
+ *
+ * `explicitId` should be that stored choice — pass it whenever the caller
+ * has a real loadout to read from. If it's missing, or points at a piece
+ * that isn't actually in `gear` (stale data), this falls back to whichever
  * equipped piece actually has authored Main Slot buffs — a piece with none
  * contributes identical stats whether main or sub, so this is exact in the
- * (by far most common) single-candidate case. Two-or-more simultaneous
- * candidates with no cost-4 piece present (rare) picks the first found in
- * gear order — mirrors `mainSlotEchoBuffs` in `shared/calc/optimizer.ts`,
- * kept consistent on purpose so the Calculator and Optimizer never
- * disagree about the same 5-piece loadout. */
-export function mainSlotEchoId(gear: GearData[]): string | undefined {
-    return gear.find((g) => g.cost === 4)?.id ?? gear.find((g) => gearSelfBuffs(g).length > 0)?.id;
+ * (by far most common) single-candidate case, and it means existing saved
+ * loadouts (from before this field existed) don't silently lose a bonus
+ * they already had. Two-or-more simultaneous candidates with no explicit
+ * choice made (rare) picks the first found in gear order — mirrors
+ * `mainSlotEchoBuffs` in `shared/calc/optimizer.ts`, kept consistent on
+ * purpose so the Calculator and Optimizer never disagree about the same
+ * 5-piece loadout. */
+export function mainSlotEchoId(gear: GearData[], explicitId?: string): string | undefined {
+    if (explicitId && gear.some((g) => g.id === explicitId)) return explicitId;
+    return gear.find((g) => gearSelfBuffs(g).length > 0)?.id;
 }
 
-/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot bonus (any cost, not just cost-4 — see `mainSlotEchoId`'s doc comment), so any equipped piece that isn't the (single) main-slot one is skipped entirely. */
-export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string) {
+/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot bonus (any cost — see `mainSlotEchoId`'s doc comment), so any equipped piece that isn't the (single) main-slot one is skipped entirely. `mainSlotGearId` is the loadout's own explicit choice — see `mainSlotEchoId`. */
+export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string, mainSlotGearId?: string) {
     const out: Array<{ id: string; name: string; source: string; stat: string; value: number; appliesTo?: string[] }> = [];
-    const mainSlotId = mainSlotEchoId(gear);
+    const mainSlotId = mainSlotEchoId(gear, mainSlotGearId);
     for (const g of gear) {
         if (g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
@@ -184,10 +194,10 @@ export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> =
     return out;
 }
 
-/** Conditional (opt-in) self-buffs from specific named equipped gear pieces' own "Echo Skill" — mirrors `gearAutoBuffs`, including the same main-slot exclusivity guard. `characterName` gates entries with `restrictedToCharacters`. */
-export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string) {
+/** Conditional (opt-in) self-buffs from specific named equipped gear pieces' own "Echo Skill" — mirrors `gearAutoBuffs`, including the same main-slot exclusivity guard and explicit `mainSlotGearId`. `characterName` gates entries with `restrictedToCharacters`. */
+export function conditionalGearBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string, mainSlotGearId?: string) {
     const out: Array<{ id: string; name: string; source: string; stat: string; label?: string; value: number; appliesTo?: string[]; autoTrigger?: { skillIds: string[]; durationSeconds: number } }> = [];
-    const mainSlotId = mainSlotEchoId(gear);
+    const mainSlotId = mainSlotEchoId(gear, mainSlotGearId);
     for (const g of gear) {
         if (g.id !== mainSlotId) continue;
         gearSelfBuffs(g)

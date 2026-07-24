@@ -164,8 +164,8 @@ export function EquipScannedGearWindow({ characterId, characterName, gearId }: {
                 return;
             }
             // Routes through the same exclusivity rules as the Calculator's
-            // own equip action (one-cost-4-echo, one-artifact-per-slot,
-            // maxGear cap) — see computeEquippedGearIds's doc comment.
+            // own equip action (one-artifact-per-slot, maxGear cap) — see
+            // computeEquippedGearIds's doc comment.
             const gearIds = computeEquippedGearIds(gameId, current.gearIds, gearId);
             const equipped = { ...current, gearIds };
             useLoadoutStore.getState().setLoadout(gameId, characterId, equipped);

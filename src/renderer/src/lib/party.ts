@@ -48,6 +48,9 @@ export interface PartyMemberResolved {
     weapon?: WeaponEntry;
     /** The wielded weapon's refinement rank (R1-R5) — undefined/1 means R1, the baseline `weapon.buffs`/`selfBuffs` values already reflect. */
     weaponRefine?: number;
+    /** WW only — this member's own explicit "main slot" echo choice, for
+     * `gearAutoBuffs`/`conditionalGearBuffs`'s `mainSlotEchoId` lookup. */
+    mainSlotGearId?: string;
     /**
      * Constellation/Sequence level (0-6) — persisted per-character via
      * `sequenceStore` for BOTH the active character (`calcStore.sequence`,
@@ -210,6 +213,9 @@ export interface ResolvedLoadout {
     weaponId?: string;
     weaponRefine?: number;
     gearIds: string[];
+    /** WW only — which equipped gearId is this character's own "main slot"
+     * choice (see `mainSlotEchoId`'s doc comment in `lib/selfBuffs.ts`). */
+    mainSlotGearId?: string;
 }
 
 /**
@@ -237,19 +243,20 @@ export function resolveParty(
     targetStatuses?: Record<string, boolean>,
 ): { members: PartyMemberResolved[]; effects: PartyEffect[]; enabledBuffs: BuffEntry[] } {
     const weaponOf = (id?: string) => (id ? data.weapons.find((w) => w.id === id) : undefined);
-    // The active character's own weaponRefine also lives in loadoutStore
-    // (calcStore mirrors every equip mutation into it) — reuse `getLoadout`
-    // instead of adding a parallel param that could drift out of sync.
-    const activeWeaponRefine = getLoadout(activeChar.id).weaponRefine;
+    // The active character's own weaponRefine (and mainSlotGearId) also live
+    // in loadoutStore (calcStore mirrors every equip mutation into it) —
+    // reuse `getLoadout` instead of adding parallel params that could drift
+    // out of sync.
+    const activeLoadout = getLoadout(activeChar.id);
     const members: PartyMemberResolved[] = [
-        { id: 'active', character: activeChar, gear: equippedGear, setBonuses: activeSetBonuses(equippedGear, data.setBonuses, activeChar.name), weapon: weaponOf(activeWeaponId), weaponRefine: activeWeaponRefine, sequence: activeSequence, isActive: true },
+        { id: 'active', character: activeChar, gear: equippedGear, setBonuses: activeSetBonuses(equippedGear, data.setBonuses, activeChar.name), weapon: weaponOf(activeWeaponId), weaponRefine: activeLoadout.weaponRefine, mainSlotGearId: activeLoadout.mainSlotGearId, sequence: activeSequence, isActive: true },
     ];
     for (const t of party.teammates) {
         const c = data.characters.find((x) => x.id === t.characterId);
         if (!c) continue;
         const loadout = getLoadout(t.characterId);
         const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
-        members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, sequence: getSequence?.(t.characterId) });
+        members.push({ id: t.id, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, mainSlotGearId: loadout.mainSlotGearId, sequence: getSequence?.(t.characterId) });
     }
     const effects = partyEffects(data, members);
     return { members, effects, enabledBuffs: enabledPartyBuffs(effects, party.disabled, targetStatuses) };
@@ -277,7 +284,7 @@ export function resolveNamedParty(
             if (!c) return null;
             const loadout = getLoadout(characterId);
             const gear = loadout.gearIds.map((gid) => ownedGear.find((g) => g.id === gid)).filter(Boolean) as GearEntry[];
-            return { id: `member-${i}`, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, sequence: getSequence?.(characterId) };
+            return { id: `member-${i}`, character: c, gear, setBonuses: activeSetBonuses(gear, data.setBonuses, c.name), weapon: weaponOf(loadout.weaponId), weaponRefine: loadout.weaponRefine, mainSlotGearId: loadout.mainSlotGearId, sequence: getSequence?.(characterId) };
         })
         .filter((m): m is PartyMemberResolved => m != null);
     const effects = partyEffects(data, members);

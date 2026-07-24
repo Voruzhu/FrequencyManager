@@ -29,13 +29,19 @@ describe('computeEquippedGearIds / isGearAtCapacity', () => {
         expect(isGearAtCapacity(WW, ['e1'], 'e2')).toBe(false);
     });
 
-    it('WW: equipping a 2nd cost-4 echo swaps out the first — not a capacity refusal, even though the net length is unchanged', () => {
+    // CORRECTED 2026-07-25 — this used to assert equipping a 2nd cost-4 echo
+    // auto-swapped out the first, on the wrong belief that only one of WW's
+    // 5 slots could ever hold a cost-4 piece. WW's echo system has no
+    // per-slot cost ceiling at all (see withinCostBudget's doc comment in
+    // shared/calc/optimizer.ts for the real-source sourcing) — a 2nd cost-4
+    // piece is a plain, ordinary add, same as any other gear, up to the
+    // 5-piece cap. Only ONE of them can ever be the "main slot" echo and
+    // get its bonus (see mainSlotEchoId), but that's a separate, explicit
+    // choice (mainSlotGearId), not an equip-time exclusivity rule.
+    it('WW: equipping a 2nd cost-4 echo is a plain add — both stay equipped', () => {
         seed(WW, [echo('cost4-a', 4), echo('cost4-b', 4)]);
         const result = computeEquippedGearIds(WW, ['cost4-a'], 'cost4-b');
-        expect(result).toEqual(['cost4-b']);
-        expect(result).not.toContain('cost4-a');
-        // Regression: naive "same length as before" comparison would have
-        // wrongly reported this legal swap as "at capacity".
+        expect(result).toEqual(['cost4-a', 'cost4-b']);
         expect(isGearAtCapacity(WW, ['cost4-a'], 'cost4-b')).toBe(false);
     });
 

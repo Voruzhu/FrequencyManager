@@ -16,13 +16,23 @@ export const MAX_SKILL_LEVEL = 10;
 
 /**
  * The single source of truth for "what does a character's `gearIds` array
- * become after equipping `id`" — enforces GI's one-artifact-per-slot rule,
- * WW's one-cost-4-echo ("main slot") rule, and the `maxGear` cap. Every
- * equip path in the app (the Calculator's `equipGear` action below, and the
- * OCR scanner's post-scan "Equip to character" flow in `ScanWindows.tsx`)
- * MUST go through this — a second, ad-hoc reimplementation is exactly how a
- * scanned echo can end up equipped alongside an existing cost-4/same-slot
- * piece, an impossible-in-game state.
+ * become after equipping `id`" — enforces GI's one-artifact-per-slot rule
+ * and the `maxGear` cap. Every equip path in the app (the Calculator's
+ * `equipGear` action below, and the OCR scanner's post-scan "Equip to
+ * character" flow in `ScanWindows.tsx`) MUST go through this.
+ *
+ * CORRECTED 2026-07-25 — this used to also auto-unequip any other cost-4
+ * echo when equipping a new one, on the (wrong) belief that only one of
+ * WW's 5 slots could ever hold a cost-4 piece. WW's echo system has no
+ * per-slot cost ceiling at all, just a total-cost budget (see
+ * `withinCostBudget` in `shared/calc/optimizer.ts` for the sourcing) — a
+ * combo like `4-4-1-1-1` is legal (if usually inefficient, since only ONE
+ * echo can ever be the "main slot" piece regardless of its own cost — see
+ * `mainSlotEchoId`). So there's no cost-4 exclusivity to enforce here
+ * either. Note this function still does NOT enforce the total-cost budget
+ * for manual equips (it never did, even before this fix) — only the
+ * Optimizer's search checks that; a manually-built over-budget loadout is
+ * a known, pre-existing gap, not something this change introduces.
  */
 export function computeEquippedGearIds(gameId: string, currentGearIds: string[], id: string): string[] {
     const gd = getGameData(gameId);
@@ -32,16 +42,11 @@ export function computeEquippedGearIds(gameId: string, currentGearIds: string[],
     let gearIds = currentGearIds;
     // GI artifacts are one-per-slot: equipping a piece unequips whatever else
     // occupies the same slot (Flower/Plume/Sands/Goblet/Circlet). WuWa echoes
-    // have no per-slot exclusivity (cost-budget), so this only applies to artifacts.
+    // have no per-slot exclusivity at all (just a total-cost budget), so this
+    // only applies to artifacts.
     const incoming = resolve(id);
     if (gd.gearKind === 'artifact' && incoming?.slot) {
         gearIds = gearIds.filter((gid) => resolve(gid)?.slot !== incoming.slot);
-    }
-    // WuWa cost-4 echoes are one-per-character: Slot 1 (the only slot that
-    // can hold one) is the "main slot" — equipping a 2nd cost-4 echo
-    // auto-unequips the first, mirroring the GI artifact-slot rule above.
-    if (gd.gearKind === 'echo' && incoming?.cost === 4) {
-        gearIds = gearIds.filter((gid) => resolve(gid)?.cost !== 4);
     }
     // At capacity with no exclusivity rule having freed a slot for this
     // piece — refuse the equip rather than silently evicting whichever
@@ -57,8 +62,8 @@ export function computeEquippedGearIds(gameId: string, currentGearIds: string[],
  * Whether equipping `id` (a piece not already equipped) would hit
  * `computeEquippedGearIds`'s capacity refusal — lets UI disable the control
  * instead of letting the click silently no-op. A successful equip (whether
- * a plain add, or a legal same-slot/cost-4 swap that frees a slot first)
- * always ends with `id` present in the result; only a genuine refusal
+ * a plain add, or a legal same-slot swap that frees a slot first) always
+ * ends with `id` present in the result; only a genuine refusal
  * leaves the array unchanged, so checking for `id`'s absence — not just
  * comparing lengths — is what actually distinguishes "refused" from "a
  * swap that happens to net the same length as before".
@@ -74,7 +79,7 @@ export function isGearAtCapacity(gameId: string, currentGearIds: string[], id: s
  */
 interface CalcState {
     characterId: string;
-    equipped: { weaponId?: string; weaponRefine?: number; gearIds: string[] };
+    equipped: { weaponId?: string; weaponRefine?: number; gearIds: string[]; mainSlotGearId?: string };
     buffs: Buff[];
     targets: Target[];
     critMode: CritMode;
@@ -139,8 +144,13 @@ interface CalcState {
     unequipGear: (id: string) => void;
     equipWeapon: (id: string) => void;
     setWeaponRefine: (refine: number) => void;
-    equipLoadout: (gearIds: string[]) => void;
+    equipLoadout: (gearIds: string[], mainSlotGearId?: string) => void;
     isEquipped: (id: string) => boolean;
+    /** WW only — designate which currently-equipped gearId occupies the
+     * "main slot" (pass `undefined`/`null` to clear it). Any cost is
+     * eligible; only ONE echo can be main at a time, so this simply
+     * overwrites whatever was chosen before. */
+    setMainSlotEcho: (id: string | undefined) => void;
     addBuff: (b: Buff) => void;
     removeBuff: (id: string) => void;
     updateBuffValue: (id: string, value: number) => void;
@@ -198,7 +208,7 @@ export const useCalcStore = create<CalcState>()(
         const loadout = useLoadoutStore.getState().getLoadout(gameId, c.id);
         set({
             characterId: c.id,
-            equipped: { weaponId: loadout.weaponId, weaponRefine: loadout.weaponRefine, gearIds: [...loadout.gearIds] },
+            equipped: { weaponId: loadout.weaponId, weaponRefine: loadout.weaponRefine, gearIds: [...loadout.gearIds], mainSlotGearId: loadout.mainSlotGearId },
             buffs: [],
             targets: [],
             critMode: 'average',
@@ -223,7 +233,13 @@ export const useCalcStore = create<CalcState>()(
         }),
     unequipGear: (id) =>
         set((s) => {
-            const equipped = { ...s.equipped, gearIds: s.equipped.gearIds.filter((g) => g !== id) };
+            const equipped = {
+                ...s.equipped,
+                gearIds: s.equipped.gearIds.filter((g) => g !== id),
+                // Don't leave mainSlotGearId pointing at a piece that's no
+                // longer equipped.
+                ...(s.equipped.mainSlotGearId === id ? { mainSlotGearId: undefined } : {}),
+            };
             useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
             return { equipped };
         }),
@@ -241,13 +257,27 @@ export const useCalcStore = create<CalcState>()(
             useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
             return { equipped };
         }),
-    equipLoadout: (gearIds) =>
+    equipLoadout: (gearIds, mainSlotGearId) =>
         set((s) => {
-            const equipped: CharacterLoadout = { ...s.equipped, gearIds: [...gearIds] };
+            // `mainSlotGearId` comes from an Optimizer result (see
+            // `Loadout.mainSlotGearId` in shared/calc/optimizer.ts) — it
+            // already searched which piece is best as main for THIS combo,
+            // so applying it here keeps what the Calculator shows in sync
+            // with what the Optimizer promised, instead of falling back to
+            // mainSlotEchoId's generic guess. Omitted entirely (undefined)
+            // clears any previous choice — a fresh loadout with no bonus
+            // candidate shouldn't keep a stale main-slot pointer around.
+            const equipped: CharacterLoadout = { ...s.equipped, gearIds: [...gearIds], mainSlotGearId };
             useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
             return { equipped };
         }),
     isEquipped: (id) => get().equipped.gearIds.includes(id),
+    setMainSlotEcho: (id) =>
+        set((s) => {
+            const equipped = { ...s.equipped, mainSlotGearId: id ?? undefined };
+            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
+            return { equipped };
+        }),
 
     addBuff: (b) => set((s) => (s.buffs.some((x) => x.id === b.id) ? s : { buffs: [...s.buffs, b] })),
     removeBuff: (id) => set((s) => ({ buffs: s.buffs.filter((b) => b.id !== id) })),

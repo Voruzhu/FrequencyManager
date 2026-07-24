@@ -30,14 +30,15 @@ export function InventoryScreen() {
     const gameLoadouts = useLoadoutStore((s) => s.byGame[activeGameId]) ?? {};
     // A gear piece can only be equipped by one character at a time, so at
     // most one loadout ever contains it — resolve THAT character's full
-    // 5-piece gear to ask `mainSlotEchoId` whether this specific piece is
-    // the one occupying their main slot (not just "is it cost-4", since
-    // that's no longer the whole rule — see `mainSlotEchoId`'s doc comment).
+    // 5-piece gear + their own explicit main-slot choice to ask
+    // `mainSlotEchoId` whether this specific piece is the one occupying it
+    // (cost has nothing to do with eligibility anymore — see
+    // `mainSlotEchoId`'s doc comment).
     const isMainSlotFor = (gearId: string) => {
         const loadout = Object.values(gameLoadouts).find((l) => l.gearIds.includes(gearId));
         if (!loadout) return false;
         const resolved = loadout.gearIds.map((id) => owned.gear.find((x) => x.id === id)).filter((x): x is GearData => !!x);
-        return mainSlotEchoId(resolved) === gearId;
+        return mainSlotEchoId(resolved, loadout.mainSlotGearId) === gearId;
     };
     const selectedId = content?.kind === 'item' ? content.item.id : null;
 
