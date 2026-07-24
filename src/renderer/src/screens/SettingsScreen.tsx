@@ -21,7 +21,7 @@ import { newGearId } from '../components/InventoryWindows';
 import { hasBlockingIssues, buildGearEntryFromDraft, gearIdentityKey } from '../lib/ocrMapping';
 import { mapGoodArtifactToDraft, type GoodFile } from '../lib/goodImport';
 import type { GearEntry } from '@shared/types/game-bundle';
-import { hasElectronBridge } from '@/lib/platform';
+import { hasElectronBridge, openExternalLink } from '@/lib/platform';
 import { downloadTextFile, pickTextFile } from '@/lib/fileIO';
 
 interface AppUpdateInfo {
@@ -825,7 +825,7 @@ export function SettingsScreen() {
                             <CardDescription>FrequencyManager is free and made in spare time. If it's useful to you, a coffee helps keep it going.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button variant="secondary" onClick={() => updateBridge()?.openExternal?.('https://buymeacoffee.com/voruzhu')}>
+                            <Button variant="secondary" onClick={() => openExternalLink('https://buymeacoffee.com/voruzhu')}>
                                 <Coffee className="w-4 h-4 mr-2" />
                                 Buy me a coffee
                             </Button>
