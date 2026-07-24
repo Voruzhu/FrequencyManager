@@ -39,15 +39,25 @@ Do **not** gate on `typeof window !== 'undefined'` or similar — that's true in
 ### 4a. Window chrome
 `WindowControls.tsx` (custom minimize/maximize/close buttons for Electron's frameless window) renders `null` when `!hasElectronBridge()` — the browser supplies its own window chrome.
 
+### 4a-2. Landing screen
+The `'dashboard'` nav slot (`screens/registry.tsx`) shows a different component per platform: Electron gets `DashboardScreen` (module/health stats, recent activity — describes the desktop app's internal plugin system, meaningless on a fresh web visit). Web gets `WelcomeScreen` instead — what the app does, an explicit "your data stays in this browser" note, a link to the desktop app, and the same quick-action shortcuts. Same nav position/icon either way, so `useUIStore`'s persisted `activeScreen` needs no special handling.
+
 ### 4b. Settings screen
 - The **Updates** tab (checks GitHub releases, downloads/installs updates) doesn't exist on web — there's no installer to update; a page reload always serves whatever CI last deployed. The tab and its content are both gated out entirely, not just disabled.
 - **Data import/export** (Settings → Data): Electron uses native save/open dialogs over the bridge; web uses `src/renderer/src/lib/fileIO.ts`'s `downloadTextFile`/`pickTextFile` (a browser download and an `<input type="file">` picker, respectively). Same JSON shape either way.
 - **"Open logs folder"**: Electron-only button (there's a real log file on disk). Web shows a note pointing at the browser DevTools console (F12) instead.
 
 ### 4c. Game data source
-Electron fetches the active game's full `GameBundle` from the `game-loader` module over IPC — including any **community-installed game package** the user has added via the in-app installer. The web build has no main process, no installer, and no IPC: it *always* uses the embedded fallback bundles in `src/renderer/src/data/gameData.ts` (`WUTHERING_WAVES` / `GENSHIN_IMPACT`). These were originally written as a "dev-in-browser" fallback for when the bridge hadn't resolved yet, but for the web build they are the **only** data source that will ever exist — there's nothing to fall back *from*. Anything a community game package could add (a third game, a modified roster) is Electron-only.
+Electron fetches the active game's full `GameBundle` from the `game-loader` module over IPC — including any **community-installed game package** the user has added via the in-app installer. The web build has no main process, no installer, and no IPC: it *always* uses the embedded fallback bundles in `src/renderer/src/data/gameData.ts` (`EMBEDDED['wuthering-waves']` / `EMBEDDED['genshin-impact']`) — there's nothing to fall back *from*. Anything a community game package could add (a third game, a modified roster) is Electron-only.
 
-Because of this, those embedded bundles must carry **real, accurate data**, not rough approximations — including OCR rules (see §4d). If you add a new per-game data field the web build needs, it has to be wired into `gameData.ts`'s embedded consts directly; there's no backend to patch instead.
+These embedded bundles are `wutheringWavesBundle`/`genshinImpactBundle`, imported directly from `adapters/game-definitions/<game>/bundle.ts` — the **exact same, complete, pre-derived `GameBundle`** (`buildGameBundle(...)`, full 55/121-character roster, real icon paths, real OCR rules) Electron gets over IPC once a game package is installed, not a hand-written approximation. That module chain (`bundle.ts` → `characters.ts`/`weapons.ts`/`skills.ts`/etc. → `shared/game-data/derive.ts`) has zero Node/Electron dependency, so importing it directly into the renderer costs nothing and can never drift from what Electron ships. If you add a new per-game data field, it flows through automatically from the adapter source — there's no separate web copy to remember to update.
+
+### 4c-2. Icons
+`src/renderer/src/lib/icons.ts`'s `iconSrc(gameId, iconPath)` resolves per-platform:
+- **Electron**: `fm-icon://<gameId>/<path>`, served by the main process's `protocol.handle`, reading from the installed game package's `icons/` folder on disk (`<userData>/game-modules/<id>/icons/`). Structurally impossible in a browser tab (scheme registration is main-process-only) — never even attempt this on web.
+- **Web**: `https://cdn.jsdelivr.net/gh/Voruzhu/FrequencyManager@v<version>/adapters/game-definitions/<gameId>/<path>` — jsDelivr's GitHub-CDN feature, serving the icon file straight from this **public** repo's own `adapters/*/icons/` source folders (the same ~36MB of art that `scripts/build-game-package.js` zips for the Electron installer — nothing extra to maintain). Pinned to the release tag (`__APP_VERSION__`, injected via `vite.web.config.ts`'s `define` from `package.json` at build time — declared for TS in `src/renderer/src/vite-env.d.ts`) rather than `@main`/`@latest`, so the URL is immutable and cacheable forever by every browser and jsDelivr's own edge cache — this is the web build's entire "image caching strategy," and it needs no service worker or custom cache layer to get it. Requires the repo to stay public and `img-src` to allow `cdn.jsdelivr.net` (see §4f).
+
+`<ItemIcon>` itself is platform-blind either way — it just renders whatever `src` it's given, or falls back to a placeholder glyph on a load error (`onError`). All the platform logic lives in `iconSrc()`.
 
 ### 4d. OCR scanner — the biggest behavioral difference
 
@@ -61,7 +71,7 @@ Because of this, those embedded bundles must carry **real, accurate data**, not 
 | Language data | `eng.traineddata` bundled with the app | `eng.traineddata` bundled in `src/renderer/public/tessdata/` (avoids a repeat download) |
 | Engine/worker code | Bundled with the app | Fetched from tesseract.js's default CDN (`cdn.jsdelivr.net`) the first time OCR runs in a session — **requires internet access** |
 
-Both paths call the exact same `parseEchoData(text, confidence, ocrRules)` — a regex/string-only function extracted specifically so a parsing bugfix can't apply to one platform and not the other. `OcrRules` themselves are threaded through `GameBundle.ocr` (added for this work — `shared/game-data/derive.ts`'s `buildGameBundle` and `gameData.ts`'s embedded consts both set it from the real `adapters/game-definitions/<game>/definition.ts` module, not a hand-duplicated copy).
+Both paths call the exact same `parseEchoData(text, confidence, ocrRules)` — a regex/string-only function extracted specifically so a parsing bugfix can't apply to one platform and not the other. `OcrRules` themselves are threaded through `GameBundle.ocr` (`shared/game-data/derive.ts`'s `buildGameBundle` sets it from the real `GameDefinition.ocr`, which is how it ends up on `wutheringWavesBundle`/`genshinImpactBundle` per §4c — not a hand-duplicated copy).
 
 **Practical consequence**: because the web path has no crop/upscale preprocessing, a full uncropped screenshot generally OCRs worse than the same shot would through Electron's pipeline. Users get better results cropping close to the gear panel before uploading. This is a known, accepted limitation, not a bug — replicating Electron's crop pipeline in the browser (canvas-based cropping against a UI layout Electron currently hardcodes) is out of scope unless someone asks for it.
 
@@ -77,7 +87,7 @@ Both builds already shared one storage layer before this work: the renderer's st
 ```
 script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
 worker-src 'self' blob:;
-img-src 'self' data: blob:;
+img-src 'self' data: blob: https://cdn.jsdelivr.net;
 connect-src 'self' https://cdn.jsdelivr.net data:;
 ```
 - `worker-src blob:` — tesseract.js spawns its worker from a same-origin `blob:` URL (the standard workaround for `new Worker()` not accepting a cross-origin script URL directly).
@@ -85,6 +95,7 @@ connect-src 'self' https://cdn.jsdelivr.net data:;
 - `script-src 'wasm-unsafe-eval'` — required by Chromium-based browsers to instantiate WebAssembly at all under a CSP that doesn't otherwise allow `unsafe-eval`.
 - `connect-src data:` — the WASM core's Emscripten glue script embeds the actual `.wasm` binary as a base64 `data:` URI and `fetch()`s it from there instead of a second network round-trip.
 - `img-src blob:` — the scanned-screenshot preview thumbnail is `URL.createObjectURL(file)`, not a `data:` URL like Electron's `readImagePreview` produces.
+- `img-src https://cdn.jsdelivr.net` — character/weapon/gear icons (§4c-2), fetched from the same CDN host (a second, independent reason to trust it, not related to OCR).
 
 If you ever see a CSP violation in the browser console for a web-only feature, it's almost always this file that needs an addition — check `index.web.html`, not `index.html`.
 
