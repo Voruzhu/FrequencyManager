@@ -44,6 +44,7 @@ The `'dashboard'` nav slot (`screens/registry.tsx`) shows a different component 
 
 ### 4b. Settings screen
 - The **Updates** tab (checks GitHub releases, downloads/installs updates) doesn't exist on web — there's no installer to update; a page reload always serves whatever CI last deployed. The tab and its content are both gated out entirely, not just disabled.
+- The **Scanner** tab (global hotkey, capture-display/monitor picker) also doesn't exist on web — both are Electron-only concepts (`globalShortcut`, `desktopCapturer`) with no equivalent in the web build's upload-only Scanner. Gated the same way as Updates.
 - **Data import/export** (Settings → Data): Electron uses native save/open dialogs over the bridge; web uses `src/renderer/src/lib/fileIO.ts`'s `downloadTextFile`/`pickTextFile` (a browser download and an `<input type="file">` picker, respectively). Same JSON shape either way.
 - **"Open logs folder"**: Electron-only button (there's a real log file on disk). Web shows a note pointing at the browser DevTools console (F12) instead.
 
