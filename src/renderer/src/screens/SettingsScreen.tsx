@@ -354,7 +354,10 @@ export function SettingsScreen() {
                     <TabsTrigger value="appearance">Appearance</TabsTrigger>
                     <TabsTrigger value="game">Game</TabsTrigger>
                     <TabsTrigger value="calculator">Calculator</TabsTrigger>
-                    <TabsTrigger value="scanner">Scanner</TabsTrigger>
+                    {/* Hotkey + capture-display settings are both Electron-only
+                     * concepts (global hotkey, desktopCapturer monitor picker) —
+                     * the web build's Scanner is upload-only, nothing here applies. */}
+                    {isElectron && <TabsTrigger value="scanner">Scanner</TabsTrigger>}
                     <TabsTrigger value="modules">Modules</TabsTrigger>
                     {/* Auto-update / game-package install are Electron-only —
                      * a web build always serves the latest code and can't
@@ -450,7 +453,8 @@ export function SettingsScreen() {
                     </Card>
                 </TabsContent>
 
-                {/* ── Scanner ── */}
+                {/* ── Scanner (Electron-only — see the TabsTrigger above) ── */}
+                {isElectron && (
                 <TabsContent value="scanner" className="space-y-4">
                     <Card>
                         <CardHeader>
@@ -501,6 +505,7 @@ export function SettingsScreen() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                )}
 
                 {/* ── Modules ── */}
                 <TabsContent value="modules" className="space-y-4">
