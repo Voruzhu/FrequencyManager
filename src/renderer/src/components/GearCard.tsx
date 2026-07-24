@@ -42,7 +42,7 @@ export function GearCard({
     actions?: React.ReactNode;
     /** Highlight ring, e.g. "currently equipped". */
     highlight?: boolean;
-    /** WW only — true when this is the character's equipped cost-4 "main slot" echo. */
+    /** WW only — true when this is the wearer's equipped "main slot" echo (see `mainSlotEchoId`'s doc comment — not necessarily the cost-4 piece). */
     mainSlot?: boolean;
 }) {
     const data = useGameData(gameId);

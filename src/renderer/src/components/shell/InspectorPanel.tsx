@@ -17,7 +17,7 @@ import { usePartyStore } from '../../stores/partyStore';
 import { useLoadoutStore } from '../../stores/loadoutStore';
 import { useSequenceStore } from '../../stores/sequenceStore';
 import type { getGameData} from '../../data/gameData';
-import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
+import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, getSequenceLabel, SEQUENCE_MAX, type CharacterData, type WeaponData, type GearData } from '../../data/gameData';
 import { getBuffs } from '../../data/buffs';
 import { computeBuildStats, elemKey, activeSetBonuses } from '../../data/optimizer';
 import { getWeaponScaling, atkAtLevel, secAtLevel, refineMul, hasRefinement } from '../../data/weaponScaling';
@@ -27,6 +27,7 @@ import { GearCard, GearStatsList } from '../GearCard';
 import { GearFilterBar } from '../GearFilterBar';
 import { AddGearWindow } from '../InventoryWindows';
 import { gearToInitial } from '@/lib/gearEdit';
+import { mainSlotEchoId } from '@/lib/selfBuffs';
 
 export function InspectorPanel() {
     const { content, setOpen } = useSelectionStore();
@@ -342,6 +343,18 @@ function GearView({ g }: { g: GearData }) {
         `Edit ${data.gearLabel.toLowerCase()}`,
         <AddGearWindow initial={gearToInitial(live, data.gearCatalog)} editingId={live.id} onDone={closeWindow} />,
     );
+    // Same set-bonus data + row rendering as `SetBonusPicker` (2pc / full-set
+    // rows), just read-only here — this is "what does THIS piece's set do,"
+    // not a search-constraint picker.
+    const setBonus = data.setBonuses.find((sb) => sb.name === live.setName);
+    // WW only (`gearSelfBuffs` reads `WW_ECHO_SELF_BUFFS`; empty for GI
+    // artifacts, so this section simply doesn't render there) — the echo's
+    // own kit bonus, unfiltered by any specific character (mirrors how
+    // `WeaponView` below shows a weapon's passive independent of wielder).
+    // Every entry here only actually applies while `live` is the equipped
+    // character's Main Slot echo (see `mainSlotEchoId`'s doc comment) — that
+    // caveat is shown once rather than repeated per row.
+    const ownBuffs = gearSelfBuffs(live);
     return (
         <div className="space-y-4">
             <Header kind={live.kind} name={live.name} rarity={live.rarity} meta={meta} src={iconSrc(activeGameId, gearIcon(data, live))} badgeSrc={echoItemIconFor(live) ? iconSrc(activeGameId, setIconFor(data, live)) : undefined} />
@@ -350,6 +363,62 @@ function GearView({ g }: { g: GearData }) {
             </div>
             <GearStatsList g={live} />
             <Button variant="secondary" className="w-full" onClick={edit}>Edit {data.gearLabel.toLowerCase()}</Button>
+
+            {setBonus && (setBonus.twoPieceBuffs.length > 0 || setBonus.fullSetOnlyBuffs.length > 0) && (
+                <section>
+                    <SectionLabel>Set effect — {setBonus.name}</SectionLabel>
+                    <div className="space-y-1.5 rounded-md border border-border bg-surface p-2.5">
+                        {setBonus.twoPieceBuffs.length > 0 && (
+                            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">2pc</span>
+                                {setBonus.twoPieceBuffs.map((b, i) => (
+                                    <span key={i} className="text-[11px] text-muted-foreground">
+                                        {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {setBonus.fullSetOnlyBuffs.length > 0 && (
+                            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">{setBonus.pieces}pc</span>
+                                {setBonus.fullSetOnlyBuffs.map((b, i) => (
+                                    <span key={i} className="text-[11px] text-muted-foreground">
+                                        {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {setBonus.restrictedToCharacters && (
+                            <p className="flex items-center gap-1 text-[11px] text-warning">
+                                <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                                Only works for {setBonus.restrictedToCharacters.join(' / ')}.
+                            </p>
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {ownBuffs.length > 0 && (
+                <section>
+                    <SectionLabel>{live.name}'s bonus</SectionLabel>
+                    <p className="mb-1.5 text-[11px] text-muted-foreground">Only active while this is the equipped character's Main Slot echo.</p>
+                    <div className="flex flex-wrap gap-1">
+                        {ownBuffs.map((sb, i) => {
+                            const unconditional = sb.conditional === false;
+                            return (
+                                <span
+                                    key={i}
+                                    className={cn('rounded-md border px-2 py-0.5 text-xs', unconditional ? 'border-primary/40 bg-primary/10 text-foreground' : 'border-dashed border-border bg-surface text-muted-foreground')}
+                                    title={unconditional ? 'Always active in the Main Slot' : 'Conditional — triggered in combat (e.g. just used its Echo Skill)'}
+                                >
+                                    {sb.label} +{sb.value}
+                                    {sb.restrictedToCharacters ? ` (${sb.restrictedToCharacters.join(' / ')} only)` : ''}
+                                </span>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
         </div>
     );
 }
@@ -383,6 +452,12 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
     // is a glance away instead of a scroll through the whole collection —
     // everything else keeps its existing (filtered/sorted) relative order.
     const ordered = [...filtered].sort((a, b) => Number(equipped.gearIds.includes(b.id)) - Number(equipped.gearIds.includes(a.id)));
+    // Resolved once for the whole list — `mainSlotEchoId` isn't just "the
+    // cost-4 piece" anymore (see its doc comment), so which equipped piece
+    // is actually main has to be derived from the full 5-piece loadout, not
+    // any single card's own cost.
+    const equippedGear = equipped.gearIds.map((id) => owned.gear.find((x) => x.id === id)).filter((x): x is GearData => !!x);
+    const trueMainSlotId = mainSlotEchoId(equippedGear);
 
     return (
         <div className="space-y-3">
@@ -402,7 +477,7 @@ function GearPicker({ data }: { data: ReturnType<typeof getGameData> }) {
                             g={g}
                             gameId={activeGameId}
                             highlight={here}
-                            mainSlot={here && g.cost === 4}
+                            mainSlot={here && g.id === trueMainSlotId}
                             expanded={expanded.has(g.id)}
                             onToggleExpand={() => toggle(g.id)}
                             actions={
@@ -721,6 +796,148 @@ function PartySetup({ data, character }: { data: ReturnType<typeof getGameData>;
 }
 
 type PartyEffectCat = 'kit' | 'set' | 'weapon';
+
+// ── Set bonus picker ────────────────────────────────────────────────────────
+// RESTORED 2026-07-24 — this component (and its `content?.kind === 'set-bonus'`
+// render call above) has existed since 1.0.0, but got accidentally deleted in
+// 8ec7f05 while extracting EnemyPicker into its own file — the usage above
+// survived, the definition didn't, leaving a dead `ReferenceError` behind
+// that `tsc` would have caught if the renderer's own tsconfig were ever
+// typechecked (it wasn't wired into any npm script until the web-build work
+// surfaced it). Restored verbatim from git history (8ec7f05~1).
+
+/**
+ * Lets the user declare which Sonata/Artifact sets they want the optimizer
+ * to build toward — narrows the search POOL to just these sets' pieces (see
+ * `run()` in `CalculatorScreen.tsx`); the resulting bonus itself is derived
+ * from each candidate combo's own real gear (`activeSetBonuses` in the
+ * shared engine), not assumed from this selection. Empty selection (the
+ * default) keeps the old, unconstrained free-search behavior.
+ *
+ * How many sets can be selected at once depends on each set's OWN piece
+ * threshold, not a flat count: a normal set needs at least 2 pieces for any
+ * bonus, so two of those already use up 4 of the 5 slots. But a real
+ * 1pc-threshold set (WW's Shadow of Shattered Dreams, Lucy/Rebecca-only)
+ * only costs 1 slot, leaving room for two more 2pc sets — 1+2+2 = 5, a
+ * genuinely valid and often-optimal split for those two characters. Tracked
+ * via `minPiecesFor`/`usedBudget` below rather than a hardcoded "2 sets max".
+ */
+function SetBonusPicker({ data, character }: { data: ReturnType<typeof getGameData>; character: CharacterData | null }) {
+    const { requiredSets, setRequiredSets } = useCalcStore();
+    const [query, setQuery] = useState('');
+    const q = query.trim().toLowerCase();
+    const filtered = q ? data.setBonuses.filter((s) => s.name.toLowerCase().includes(q)) : data.setBonuses;
+    // The real minimum piece cost to get ANY bonus from a set — 1 for a real
+    // 1pc-threshold set, 2 for any normal 2pc/5pc-tier set (a single piece of
+    // those grants nothing).
+    const minPiecesFor = (sb: { pieces: number }) => Math.min(sb.pieces, 2);
+    const usedBudget = requiredSets.reduce((sum, name) => {
+        const sb = data.setBonuses.find((s) => s.name === name);
+        return sum + (sb ? minPiecesFor(sb) : 2);
+    }, 0);
+    const ownElemKey = character ? elemKey(character.element) : null;
+
+    // A set's per-attack-element DMG buff (e.g. Sierra Gale's Aero DMG) only
+    // ever benefits a character who actually deals that element — a
+    // mismatched one (Lucy, Spectro, running an Aero set) gets none of it,
+    // even though the set's OTHER stats (ATK%, Crit Rate, etc.) still apply
+    // normally. Detected by stat key shape: any `<element>Dmg` key that
+    // isn't the generic `elemDmg` slot and isn't the character's own.
+    const hasMismatchedElementDmg = (buffs: Array<{ stat: string }>) =>
+        !!ownElemKey && buffs.some((b) => b.stat.endsWith('Dmg') && b.stat !== 'elemDmg' && b.stat !== ownElemKey);
+
+    // Character-exclusive collab sets (e.g. Shadow of Shattered Dreams,
+    // Rebecca/Lucy-only) never activate for anyone else, and unlike an
+    // off-element mismatch there's no other stat left to gain — selecting
+    // one for an ineligible character would narrow the optimizer's search
+    // to gear that provides ZERO real benefit, so this is disabled outright
+    // rather than just warned about.
+    const restrictedOut = (sb: (typeof data.setBonuses)[number]) =>
+        !!sb.restrictedToCharacters && !!character && !sb.restrictedToCharacters.includes(character.name);
+
+    const toggle = (name: string) => {
+        setRequiredSets(requiredSets.includes(name) ? requiredSets.filter((s) => s !== name) : [...requiredSets, name]);
+    };
+
+    return (
+        <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+                Tell the optimizer which set(s) you want active — it narrows the search to gear from these sets; the bonus actually counted always matches what your build's real piece counts earn. Pick 1 normal set to search toward its full 5pc, or 2 to split 2pc + 2pc. A 1pc-threshold set (like Shadow of Shattered Dreams) only costs 1 slot, so it can join alongside two 2pc sets. Leave empty to search freely, with no set assumed.
+            </p>
+            {requiredSets.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {requiredSets.map((s) => (
+                        <Badge key={s} variant="secondary" className="gap-1">
+                            {s}
+                            <button onClick={() => toggle(s)} className="ml-0.5 text-muted-foreground hover:text-foreground" aria-label={`Remove ${s}`}><X className="h-3 w-3" /></button>
+                        </Badge>
+                    ))}
+                    <Button size="sm" variant="ghost" onClick={() => setRequiredSets([])}>Clear</Button>
+                </div>
+            )}
+            <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input className="pl-8" placeholder="Search sets…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+                {filtered.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No sets match "{query}".</p>}
+                {filtered.map((sb) => {
+                    const active = requiredSets.includes(sb.name);
+                    const restricted = restrictedOut(sb);
+                    const disabled = !active && (restricted || usedBudget + minPiecesFor(sb) > 5);
+                    return (
+                        <button
+                            key={sb.name}
+                            onClick={() => toggle(sb.name)}
+                            disabled={disabled}
+                            className={cn(
+                                'flex w-full flex-col gap-1 rounded-md border p-2 text-left transition-colors',
+                                active ? 'border-primary bg-primary/5' : disabled ? 'cursor-not-allowed border-border bg-surface opacity-50' : 'border-border bg-surface hover:bg-surface-2',
+                            )}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-foreground">{sb.name}</span>
+                                <Badge variant="outline">{sb.pieces}pc</Badge>
+                            </div>
+                            {sb.twoPieceBuffs.length > 0 && (
+                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">2pc</span>
+                                    {sb.twoPieceBuffs.map((b, i) => (
+                                        <span key={i} className="text-[11px] text-muted-foreground">
+                                            {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {sb.fullSetOnlyBuffs.length > 0 && (
+                                <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">{sb.pieces}pc</span>
+                                    {sb.fullSetOnlyBuffs.map((b, i) => (
+                                        <span key={i} className="text-[11px] text-muted-foreground">
+                                            {b.label ?? statLabel(b.stat)} +{b.value}{scopeLabel(b.appliesTo) ? ` (${scopeLabel(b.appliesTo)})` : ''}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {(hasMismatchedElementDmg(sb.twoPieceBuffs) || hasMismatchedElementDmg(sb.fullSetOnlyBuffs)) && character && (
+                                <div className="flex items-center gap-1 text-[11px] text-warning">
+                                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                                    <span>This set's elemental DMG bonus doesn't match {character.name}'s {character.element} — only its other stats would help.</span>
+                                </div>
+                            )}
+                            {restricted && character && (
+                                <div className="flex items-center gap-1 text-[11px] text-warning">
+                                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                                    <span>Only works for {sb.restrictedToCharacters!.join(' / ')} — {character.name} can't use this set.</span>
+                                </div>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 // ── shared bits ─────────────────────────────────────────────────────────────
 

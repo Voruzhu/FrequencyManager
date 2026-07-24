@@ -12,8 +12,9 @@ import { useSelectionStore } from '../stores/selectionStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
+import { mainSlotEchoId } from '@/lib/selfBuffs';
 import { useCalcStore } from '../stores/calcStore';
-import { useGameData } from '../data/gameData';
+import { useGameData, type GearData } from '../data/gameData';
 import { AddCharacterWindow, AddWeaponWindow, AddGearWindow } from '../components/InventoryWindows';
 import { GearCard } from '../components/GearCard';
 import { GearFilterBar } from '../components/GearFilterBar';
@@ -25,9 +26,19 @@ export function InventoryScreen() {
     const { content, showItem } = useSelectionStore();
     const { openWindow, closeWindow } = useWindowStore();
     const { removeCharacter, removeWeapon, removeGear } = useInventoryStore();
-    // Reactive to every character's loadout, to know which owned cost-4 echo (if any) is someone's "main slot" piece.
+    // Reactive to every character's loadout, to know which owned echo (if any) is someone's "main slot" piece.
     const gameLoadouts = useLoadoutStore((s) => s.byGame[activeGameId]) ?? {};
-    const isEquippedAnywhere = (gearId: string) => Object.values(gameLoadouts).some((l) => l.gearIds.includes(gearId));
+    // A gear piece can only be equipped by one character at a time, so at
+    // most one loadout ever contains it — resolve THAT character's full
+    // 5-piece gear to ask `mainSlotEchoId` whether this specific piece is
+    // the one occupying their main slot (not just "is it cost-4", since
+    // that's no longer the whole rule — see `mainSlotEchoId`'s doc comment).
+    const isMainSlotFor = (gearId: string) => {
+        const loadout = Object.values(gameLoadouts).find((l) => l.gearIds.includes(gearId));
+        if (!loadout) return false;
+        const resolved = loadout.gearIds.map((id) => owned.gear.find((x) => x.id === id)).filter((x): x is GearData => !!x);
+        return mainSlotEchoId(resolved) === gearId;
+    };
     const selectedId = content?.kind === 'item' ? content.item.id : null;
 
     // `removeGear` already strips the id out of every OTHER character's
@@ -222,7 +233,7 @@ export function InventoryScreen() {
                                     g={g}
                                     gameId={activeGameId}
                                     highlight={selectedId === g.id}
-                                    mainSlot={g.cost === 4 && isEquippedAnywhere(g.id)}
+                                    mainSlot={isMainSlotFor(g.id)}
                                     expanded={expandedGear.has(g.id)}
                                     onToggleExpand={() => toggleGear(g.id)}
                                     onClick={() => showItem(g)}
