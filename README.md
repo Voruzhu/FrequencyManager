@@ -13,7 +13,7 @@ are trademarks of their respective owners.*
 
 ## What is FrequencyManager?
 
-FrequencyManager is a free desktop companion app for gacha-RPG players who
+FrequencyManager is a free companion app — desktop or [in your browser](#-try-it-in-your-browser) — for gacha-RPG players who
 want to get the most out of their characters' builds. Instead of manually
 theorycrafting stats in a spreadsheet, you tell the app what you own
 (characters, weapons, gear) and what you're trying to maximize, and it does
@@ -47,6 +47,19 @@ The app checks for new versions automatically and will prompt you to update
 when one is available. **Windows only** for now.
 
 Want to build it yourself instead? See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+## 🌐 Try it in your browser
+
+No install needed — a lighter web version runs at
+**[voruzhu.github.io/FrequencyManager](https://voruzhu.github.io/FrequencyManager/)**,
+automatically kept in sync with every release. It's missing a few things the
+desktop app has (a hotkey for scanning gear straight out of the game,
+automatic updates, community game packages) — everything else works the
+same, and your data stays local to your browser, never uploaded anywhere.
+See [docs/WEB_VERSION.md](./docs/WEB_VERSION.md) for the full list of
+differences.
 
 ---
 
