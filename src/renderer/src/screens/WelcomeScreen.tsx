@@ -99,7 +99,12 @@ export function WelcomeScreen() {
             </Card>
 
             <div className="flex justify-end pb-2">
-                <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => openExternalLink(COFFEE_URL)}>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-success/40 text-muted-foreground hover:bg-success/10 hover:text-success"
+                    onClick={() => openExternalLink(COFFEE_URL)}
+                >
                     <Coffee className="h-4 w-4" /> Buy me a coffee
                 </Button>
             </div>
