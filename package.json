@@ -7,6 +7,8 @@
         "dev": "electron .",
         "start": "electron .",
         "build:renderer": "vite build --config src/renderer/vite.config.ts",
+        "build:web": "vite build --config src/renderer/vite.web.config.ts && node scripts/finalize-web-build.js",
+        "dev:web": "vite --config src/renderer/vite.web.config.ts",
         "build:main": "tsc && tsc-alias && node scripts/copy-manifests.js",
         "build": "npm run build:renderer && npm run build:main && electron-builder --win nsis --publish never",
         "build:dev": "npm run build:renderer && npm run build:main && electron-builder --dir",

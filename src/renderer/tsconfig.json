@@ -26,6 +26,9 @@
             ],
             "@shared/*": [
                 "../../shared/*"
+            ],
+            "@adapters/*": [
+                "../../adapters/*"
             ]
         }
     },

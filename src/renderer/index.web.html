@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!--
+  FrequencyManager - Web Entry Point
+  ──────────────────────────────────────────────────────────────────────────
+  Same renderer bundle (src/main.tsx, App.tsx, everything under src/renderer/src)
+  as the Electron build — there is no separate "web" source tree. This file
+  only differs from index.html in ways a plain browser actually needs: no
+  `fm-icon:` custom-protocol CSP source (Electron-only), and this comment.
+  See docs/WEB_VERSION.md for what's different in the web build overall.
+-->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <!--
+          WHY a strict CSP: same defence-in-depth rationale as the Electron
+          build's index.html. `fm-icon:` is dropped — that custom protocol
+          only exists inside Electron, so it's meaningless (and would be
+          silently ignored either way) in a browser.
+
+          Extra allowances beyond the Electron build, both for the browser
+          OCR path (lib/ocrBrowser.ts):
+          - `worker-src blob:` — tesseract.js's browser worker is spawned
+            from a same-origin-inherited `blob:` URL (the standard workaround
+            for the fact that `new Worker()` can't load a cross-origin script
+            URL directly).
+          - `script-src`/`connect-src` allow cdn.jsdelivr.net — only
+            `eng.traineddata` is bundled locally; tesseract.js's own
+            worker/wasm-core engine files are still fetched from its default
+            CDN the first time OCR runs in a session (see ocrBrowser.ts).
+          - `script-src 'wasm-unsafe-eval'` — required by Chromium-based
+            browsers to instantiate the WebAssembly OCR engine at all.
+          - `img-src blob:` — the scanned-screenshot preview thumbnail is a
+            `URL.createObjectURL(file)` blob, not a `data:` URL like
+            Electron's `readImagePreview` produces.
+          - `connect-src data:` — the WASM core's Emscripten glue script
+            embeds the actual `.wasm` binary as a base64 `data:` URI and
+            `fetch()`s it from there instead of a second network request.
+        -->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net data:;" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrequencyManager</title>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
