@@ -821,7 +821,13 @@ export function SettingsScreen() {
                         <CardContent className="space-y-1 text-sm text-muted-foreground">
                             <p className="font-medium text-foreground">Version {appVersion}</p>
                             <p>Multi-game build optimizer for gacha RPGs.</p>
-                            <p className="pt-2 text-xs opacity-70">Built with Electron · React · shadcn/ui · Tailwind</p>
+                            <p className="pt-2 text-xs opacity-70">
+                                Independent fan-made project — not affiliated with, endorsed by, or
+                                sponsored by Kuro Games, HoYoverse, or any other game developer/publisher.
+                                Wuthering Waves, Genshin Impact, and all related assets are trademarks of
+                                their respective owners.
+                            </p>
+                            <p className="text-xs opacity-70">Built with {isElectron ? 'Electron · ' : ''}React · shadcn/ui · Tailwind</p>
                         </CardContent>
                     </Card>
                     <Card>

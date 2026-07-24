@@ -23,6 +23,15 @@ export function WelcomeScreen() {
                 description="Free, open-source damage calculator & gear optimizer for Wuthering Waves and Genshin Impact."
             />
 
+            {/* GitHub's README carries this too, but a web visitor may never see
+             * that page — this is the one surface everyone reaches. */}
+            <p className="text-xs text-muted-foreground">
+                FrequencyManager is an independent fan-made project and is not affiliated with,
+                endorsed by, or sponsored by Kuro Games, HoYoverse, or any other game
+                developer/publisher. Wuthering Waves, Genshin Impact, and all related assets are
+                trademarks of their respective owners.
+            </p>
+
             <Card>
                 <CardHeader><CardTitle>What it does</CardTitle></CardHeader>
                 <CardContent>
