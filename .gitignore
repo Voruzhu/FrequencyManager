@@ -97,6 +97,7 @@ tmp/
 *.d.ts
 !shared/types/**/*.d.ts
 !core/**/*.d.ts
+!src/renderer/src/**/*.d.ts
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Personal workflow docs (NOT for public contributors)

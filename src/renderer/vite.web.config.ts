@@ -13,6 +13,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
+
+// Read directly rather than `import ... from '../../package.json'` — avoids
+// relying on a JSON-import-assertion syntax whose exact form varies by Node
+// version; this works identically everywhere.
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
 
 export default defineConfig({
     plugins: [react()],
@@ -21,6 +27,12 @@ export default defineConfig({
     // Explicit (matches Vite's own default) — src/renderer/public/tessdata/
     // bundles eng.traineddata for the browser OCR path (see lib/ocrBrowser.ts).
     publicDir: 'public',
+    // Lets lib/icons.ts pin its jsDelivr CDN icon URLs to this exact release
+    // tag (v${version}) for an immutable, cache-forever URL — see its doc
+    // comment. Declared for TS in src/renderer/src/vite-env.d.ts.
+    define: {
+        __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     build: {
         outDir: '../../dist/web',
         emptyOutDir: true,

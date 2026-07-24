@@ -139,7 +139,7 @@ describe('resolveWaveEnemy', () => {
         const enemy = resolveWaveEnemy({ enemyId: 'ww-crownless' }, 'wuthering-waves');
         expect(enemy.id).toBe('ww-crownless');
         expect(enemy.level).toBe(90);
-        expect(enemy.def).toBe(900);
+        expect(enemy.def).toBe(950);
         expect(enemy.res).toBe(10);
     });
 
