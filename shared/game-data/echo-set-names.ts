@@ -947,4 +947,55 @@ export const WW_ECHO_SELF_BUFFS: Record<string, Array<{ stat: string; label: str
         { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
         { stat: 'dmgBonus', label: 'Res. Skill DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['skill'] },
     ],
+    // FIXED 2026-07-24 — every entry above this point is cost-4, which had
+    // silently become an unstated assumption ("only cost-4 echoes carry a
+    // Main Slot bonus") baked into the ENGINE (`mainSlotEchoId`/
+    // `mainSlotEchoBuffs` both derive "which piece is main" from
+    // `cost === 4`). That assumption is wrong — the real game lets ANY cost
+    // (1/3/4) occupy the main slot, and several cost-3 "Elite" echoes carry
+    // their own Main Slot bonus in their kit text, same mechanic as the
+    // cost-4 ones above. A user-reported case (Capitaneus) surfaced this;
+    // cross-checked every cost-3 echo's Echo Skill text (game8.co's cost-3
+    // list page shows full skill descriptions for all of them at once) and
+    // confirmed exact values via wutheringlab.com/wuthering.gg individual
+    // pages. Every cost-1 echo was checked too (game8.co's cost-1 list) —
+    // none have Main Slot text; they're all plain "summon and deal damage"
+    // kits with no kit-specific passive. See the `mainSlotEchoId`/
+    // `mainSlotEchoBuffs` fix (selfBuffs.ts, optimizer.ts) for the engine
+    // side of this — it no longer assumes cost-4.
+    'Capitaneus': [
+        { stat: 'spectroDmg', label: 'Spectro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Heavy Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['heavy'] },
+    ],
+    'Corrosaurus': [
+        { stat: 'fusionDmg', label: 'Fusion DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Echo Skill DMG Bonus (Main Slot)', value: 20, conditional: false, appliesTo: ['echo'] },
+    ],
+    'Forbidden Bastion': [
+        { stat: 'healingBonus', label: 'Healing Bonus (Main Slot)', value: 10, conditional: false },
+    ],
+    'Twin Nova: Collapsar Blade': [
+        { stat: 'electroDmg', label: 'Electro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Basic Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['basic'] },
+    ],
+    'Twin Nova: Nebulous Cannon': [
+        { stat: 'spectroDmg', label: 'Spectro DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Basic Attack DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['basic'] },
+    ],
+    'Abyssal Patricius': [
+        { stat: 'glacioDmg', label: 'Glacio DMG Bonus (Main Slot)', value: 12, conditional: false },
+    ],
+    'Kerasaur': [
+        { stat: 'aeroDmg', label: 'Aero DMG Bonus (Main Slot)', value: 12, conditional: false },
+        { stat: 'dmgBonus', label: 'Liberation DMG Bonus (Main Slot)', value: 12, conditional: false, appliesTo: ['ult'] },
+    ],
+    'Vitreum Dancer': [
+        { stat: 'electroDmg', label: 'Electro DMG Bonus (Main Slot)', value: 12, conditional: false },
+    ],
+    // Glommoth (cost-3) deliberately excluded — its "Glacio DMG Bonus to the
+    // incoming Resonator" is a TRIGGERED effect ("Casting Outro Skill within
+    // 15s after summoning Glommoth grants..."), not a passive Main Slot
+    // bonus. Different mechanic (outro-swap trigger) with no home in this
+    // table; would need the same engine work as any other outro-triggered
+    // buff, not a `conditional: false` main-slot entry.
 };
