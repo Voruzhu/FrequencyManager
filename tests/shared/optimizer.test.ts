@@ -113,6 +113,55 @@ describe('optimize — single-threaded reference path', () => {
         const pool = Array.from({ length: 30 }, (_, i) => gear(i + 1));
         expect(() => optimize(char(), pool, baseConfig({ topN: 5 }))).not.toThrow();
     }, 20000);
+
+    // Direct answer to a real user question: "does the optimizer actually
+    // COMPARE combos with vs. without a cost-4 piece, or does it just always
+    // treat cost-4-as-main as the assumed-best choice?" It compares — a
+    // cost-4 piece is only ever forced main WHEN a combo happens to include
+    // one (mechanically true: cost-4 has nowhere else to fit), but nothing
+    // in the ranking prefers combos that include one. `combinations()` and
+    // `withinCostBudget()` don't touch scoring at all; `optimize()` sorts
+    // purely by each combo's own real `score`. This uses the REAL
+    // WW_ECHO_SELF_BUFFS table (computeBaseLoadouts calls mainSlotEchoBuffs
+    // with no override) with the real 'Capitaneus' entry, so it's an actual
+    // end-to-end proof, not just a unit test of the lookup function alone.
+    it('drops an available cost-4 piece in favor of a cost-3 main-slot bonus when that scores higher on the maximized stat', () => {
+        const fillerCost4: GearEntry = {
+            kind: 'echo', id: 'filler4', name: 'Unnamed Filler Echo', setName: 'Void Thunder', rarity: 5, cost: 4,
+            mainStat: { key: 'atk', label: 'ATK', value: 500 }, subStats: [],
+        };
+        const capitaneus: GearEntry = {
+            kind: 'echo', id: 'cap', name: 'Capitaneus', setName: 'Eternal Radiance', rarity: 5, cost: 3,
+            mainStat: { key: 'atk', label: 'ATK', value: 100 }, subStats: [],
+        };
+        // Plain filler pieces carry no spectroDmg at all, so ONLY a combo
+        // that includes Capitaneus-as-main (no cost-4 piece competing for
+        // that slot) can score anything above 0 on this target.
+        const fillers = [gear(50, 1), gear(50, 1), gear(50, 3), gear(50, 3), gear(50, 1)];
+        const pool = [fillerCost4, capitaneus, ...fillers];
+
+        // Capitaneus's own bonus is `spectroDmg` — since the test character
+        // is ALSO Spectro-element, `computeBuildStats`'s `apply()` collapses
+        // that into the generic `elemDmg` catalog slot (own-element DMG
+        // bonuses share that bucket; only a MISMATCHED element's bonus stays
+        // under its own specific key, inert). So `elemDmg` — not a raw
+        // `spectroDmg` key — is the real stat this shows up on.
+        const target: Target = { id: 't1', kind: 'stat', key: 'elemDmg', label: 'Elemental DMG', mode: 'max' };
+        const result = optimize(char(), pool, baseConfig({ targets: [target], topN: 10 }));
+
+        expect(result.length).toBeGreaterThan(0);
+        const top = result[0];
+        expect(top.gear).toContainEqual(expect.objectContaining({ id: 'cap' }));
+        expect(top.gear).not.toContainEqual(expect.objectContaining({ id: 'filler4' }));
+        expect(top.stats.elemDmg).toBeGreaterThan(0);
+
+        // Confirm the "with cost-4 instead" alternative genuinely exists
+        // among the ranked results (so this isn't just "the cost-4 piece
+        // was never a candidate") and that it scored strictly lower.
+        const withCost4 = result.find((l) => l.gear.some((g) => g.id === 'filler4'));
+        expect(withCost4).toBeDefined();
+        expect(withCost4!.stats.elemDmg ?? 0).toBeLessThan(top.stats.elemDmg ?? 0);
+    });
 });
 
 describe('withinCostBudget — WuWa\'s real 12-cost cap across 5 equipped echoes', () => {
