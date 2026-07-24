@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { Minus, Square, X } from 'lucide-react';
+import { hasElectronBridge } from '@/lib/platform';
 
 /**
- * Frameless-window min/max/close controls. The window:* IPC does not exist yet,
- * so each handler optional-chains a preload method and is a harmless no-op until
- * that wiring is added (out of scope for the UI pass).
+ * Frameless-window min/max/close controls. Electron-only — a browser tab
+ * already has its own window chrome, so this renders nothing at all in the
+ * web build rather than showing controls that'd no-op.
  */
 function invokeWindow(method: string): void {
     const api = (window as unknown as { frequencyManager?: Record<string, undefined | (() => void)> }).frequencyManager;
@@ -15,6 +16,7 @@ function invokeWindow(method: string): void {
 const btn = 'inline-flex h-8 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground';
 
 export function WindowControls() {
+    if (!hasElectronBridge()) return null;
     return (
         <div className="flex items-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <button aria-label="Minimize" className={btn} onClick={() => invokeWindow('windowMinimize')}>

@@ -21,6 +21,8 @@ import { newGearId } from '../components/InventoryWindows';
 import { hasBlockingIssues, buildGearEntryFromDraft, gearIdentityKey } from '../lib/ocrMapping';
 import { mapGoodArtifactToDraft, type GoodFile } from '../lib/goodImport';
 import type { GearEntry } from '@shared/types/game-bundle';
+import { hasElectronBridge } from '@/lib/platform';
+import { downloadTextFile, pickTextFile } from '@/lib/fileIO';
 
 interface AppUpdateInfo {
     repo: string;
@@ -84,6 +86,7 @@ const dataBridge = () => (window as unknown as {
 }).frequencyManager;
 
 export function SettingsScreen() {
+    const isElectron = hasElectronBridge();
     const { theme, presets, setTheme } = useThemeStore();
     const { modules, enableModule, disableModule } = useModuleStore();
     const { devMode, toggleDevMode } = useDevStore();
@@ -175,11 +178,16 @@ export function SettingsScreen() {
     };
     const saveToFile = async () => {
         if (!exportText) return;
-        const path = await dataBridge()?.saveJsonFile?.('frequency-manager-backup.json', exportText);
-        if (path) toast.success('Saved backup file');
+        if (isElectron) {
+            const path = await dataBridge()?.saveJsonFile?.('frequency-manager-backup.json', exportText);
+            if (path) toast.success('Saved backup file');
+            return;
+        }
+        downloadTextFile('frequency-manager-backup.json', exportText);
+        toast.success('Downloaded backup file');
     };
     const loadFromFile = async () => {
-        const res = await dataBridge()?.openJsonFile?.();
+        const res = isElectron ? await dataBridge()?.openJsonFile?.() : await pickTextFile();
         if (res?.content) { setImportText(res.content); toast.success('Loaded file — review, then Import'); }
     };
     const doImport = async () => {
@@ -239,11 +247,16 @@ export function SettingsScreen() {
     };
     const saveGameToFile = async () => {
         if (!gameExportText) return;
-        const path = await dataBridge()?.saveJsonFile?.(`${activeGameId}-backup.json`, gameExportText);
-        if (path) toast.success('Saved backup file');
+        if (isElectron) {
+            const path = await dataBridge()?.saveJsonFile?.(`${activeGameId}-backup.json`, gameExportText);
+            if (path) toast.success('Saved backup file');
+            return;
+        }
+        downloadTextFile(`${activeGameId}-backup.json`, gameExportText);
+        toast.success('Downloaded backup file');
     };
     const loadGameFromFile = async () => {
-        const res = await dataBridge()?.openJsonFile?.();
+        const res = isElectron ? await dataBridge()?.openJsonFile?.() : await pickTextFile();
         if (res?.content) { setGameImportText(res.content); toast.success('Loaded file — review, then Import'); }
     };
     const doGameImport = () => {
@@ -291,7 +304,7 @@ export function SettingsScreen() {
     const addGearBatch = useInventoryStore((s) => s.addGearBatch);
     const [goodImportText, setGoodImportText] = useState('');
     const loadGoodFromFile = async () => {
-        const res = await dataBridge()?.openJsonFile?.();
+        const res = isElectron ? await dataBridge()?.openJsonFile?.() : await pickTextFile();
         if (res?.content) { setGoodImportText(res.content); toast.success('Loaded file — review, then Import'); }
     };
     const doGoodImport = () => {
@@ -343,7 +356,10 @@ export function SettingsScreen() {
                     <TabsTrigger value="calculator">Calculator</TabsTrigger>
                     <TabsTrigger value="scanner">Scanner</TabsTrigger>
                     <TabsTrigger value="modules">Modules</TabsTrigger>
-                    <TabsTrigger value="updates">Updates</TabsTrigger>
+                    {/* Auto-update / game-package install are Electron-only —
+                     * a web build always serves the latest code and can't
+                     * download+extract a .zip package to a local folder. */}
+                    {isElectron && <TabsTrigger value="updates">Updates</TabsTrigger>}
                     <TabsTrigger value="data">Data</TabsTrigger>
                     <TabsTrigger value="developer">Developer</TabsTrigger>
                     <TabsTrigger value="about">About</TabsTrigger>
@@ -508,7 +524,8 @@ export function SettingsScreen() {
                     </Card>
                 </TabsContent>
 
-                {/* ── Updates ── */}
+                {/* ── Updates (Electron-only — see the TabsTrigger above) ── */}
+                {isElectron && (
                 <TabsContent value="updates" className="space-y-4">
                     {/* Sources */}
                     <Card>
@@ -663,6 +680,7 @@ export function SettingsScreen() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                )}
 
                 {/* ── Data ── */}
                 <TabsContent value="data" className="space-y-4">
@@ -823,7 +841,11 @@ export function SettingsScreen() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Button variant="secondary" onClick={() => { void dataBridge()?.openLogsFolder?.(); }}>Open logs folder</Button>
+                            {isElectron ? (
+                                <Button variant="secondary" onClick={() => { void dataBridge()?.openLogsFolder?.(); }}>Open logs folder</Button>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">The web build has no log file — check your browser's DevTools console (F12) instead.</p>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
