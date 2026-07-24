@@ -16,6 +16,10 @@
  * the UI renders without further computation.
  */
 
+// Type-only — erased at compile time, doesn't violate this file's own
+// "no heavy imports" goal (see the header comment above).
+import type { OcrRules } from './game-definition';
+
 /** A stat the game exposes to the UI. Drives every stat-driven surface. */
 export interface StatDef {
     key: string;
@@ -539,4 +543,14 @@ export interface GameBundle {
      * penalized for an omission.
      */
     ocrVerified?: boolean;
+    /**
+     * The active game's real OCR regex rules — historically only read by the
+     * Electron main process directly off `GameDefinition`. Exposed here too
+     * so the web build's browser-side OCR path (which has no main process,
+     * no `GameDefinition` access — only ever sees a `GameBundle`) can scan
+     * against the same real patterns instead of a hardcoded guess. Omitted
+     * entirely (rather than defaulting to a fallback) means this game
+     * package doesn't support OCR gear scanning at all.
+     */
+    ocr?: OcrRules;
 }

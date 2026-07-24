@@ -5,6 +5,8 @@ import {
     toast,
 } from '../components/ui';
 import { cn } from '@/lib/utils';
+import { hasElectronBridge } from '@/lib/platform';
+import { scanImageInBrowser } from '@/lib/ocrBrowser';
 import { useWindowStore } from '../stores/windowStore';
 import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
@@ -58,6 +60,8 @@ const bridge = () => (window as unknown as { frequencyManager?: Bridge }).freque
 const fileNameOf = (p: string) => p.split(/[\\/]/).pop() ?? p;
 
 export function ScannerScreen() {
+    const isElectron = hasElectronBridge();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [results, setResults] = useState<ScanHistoryEntry[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [scanning, setScanning] = useState(false);
@@ -299,7 +303,59 @@ export function ScannerScreen() {
         }
     };
 
+    /** Web build's only scan source — no main process means no hotkey/
+     * live-capture/native-dialog paths, just a plain file input. Runs the
+     * exact same tesseract.js parsing (`parseEchoData`, via `ocrBrowser.ts`)
+     * against the active game's real `OcrRules` (`data.ocr`), and records
+     * into the SAME `results` history the Electron paths use, so the
+     * detail pane / "Add to inventory" / duplicate-detection all work
+     * unchanged regardless of platform. */
+    const runBrowserScanFlow = async (file: File, token: number, silent = false) => {
+        const id = `scan-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const imageName = file.name;
+        const previewUrl = URL.createObjectURL(file);
+        if (!data.ocr) {
+            setResults((rs) => [{ id, imagePath: imageName, imageName, previewUrl, timestamp: Date.now(), status: 'failed', error: 'This game has no OCR rules configured yet.' }, ...rs]);
+            setSelectedId(id);
+            return;
+        }
+        const result = await scanImageInBrowser(file, data.ocr);
+        if (scanTokenRef.current !== token) return; // stopped while OCR was running
+        if (result.success && result.echo) {
+            setResults((rs) => [{ id, imagePath: imageName, imageName, previewUrl, timestamp: Date.now(), status: 'success', echo: result.echo }, ...rs]);
+            setSelectedId(id);
+            if (!silent) toast.success('Scan complete', { description: result.echo.setName ? `${result.echo.setName} detected` : 'Echo detected' });
+        } else {
+            setResults((rs) => [{ id, imagePath: imageName, imageName, previewUrl, timestamp: Date.now(), status: 'failed', error: result.error, rawText: result.rawText }, ...rs]);
+            setSelectedId(id);
+            if (!silent) toast.error('Scan failed', { description: result.error });
+        }
+    };
+
+    const handleFilesChosen = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        const token = ++scanTokenRef.current;
+        setScanning(true);
+        try {
+            for (const file of Array.from(files)) {
+                if (scanTokenRef.current !== token) break; // stopped mid-batch
+                await runBrowserScanFlow(file, token, files.length > 1);
+            }
+            if (scanTokenRef.current === token && files.length > 1) {
+                toast.success(`Scanned ${files.length} images`);
+            }
+        } catch (err) {
+            toast.error('Scan failed', { description: err instanceof Error ? err.message : 'An unexpected error occurred.' });
+        } finally {
+            if (scanTokenRef.current === token) setScanning(false);
+        }
+    };
+
     const deleteEntry = (id: string) => {
+        // Revoke the browser-only object URL (the Electron path's previewUrl
+        // is a `data:` URL from `readImagePreview`, which needs no cleanup).
+        const entry = results.find((r) => r.id === id);
+        if (entry?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(entry.previewUrl);
         setResults((rs) => rs.filter((r) => r.id !== id));
         setSelectedId((cur) => (cur === id ? null : cur));
     };
@@ -318,7 +374,9 @@ export function ScannerScreen() {
         <div className="mx-auto flex h-full max-w-6xl flex-col gap-6 p-6">
             <PageHeader
                 title="OCR Scanner"
-                description="Extract gear stats from game screenshots — arm the scanner, then press the global hotkey (set in Settings) anytime without switching away from the game, or scan a saved screenshot."
+                description={isElectron
+                    ? 'Extract gear stats from game screenshots — arm the scanner, then press the global hotkey (set in Settings) anytime without switching away from the game, or scan a saved screenshot.'
+                    : 'Extract gear stats from a game screenshot — upload one or more saved screenshots to scan them.'}
                 actions={
                     <div className="flex gap-2">
                         <Button
@@ -328,27 +386,48 @@ export function ScannerScreen() {
                         >
                             <Download /> Auto import from latest
                         </Button>
-                        <Button
-                            variant="secondary"
-                            onClick={() => useWindowStore.getState().openWindow('Browse', <ScanTypeWindow onPickEchoes={() => { void browseAndScan(); }} />)}
-                            disabled={scanning}
-                        >
-                            <FolderOpen /> Browse…
-                        </Button>
-                        <Button
-                            onClick={() => useWindowStore.getState().openWindow('Scan', <ScanTypeWindow onPickEchoes={() => activateScanner('echoes')} />)}
-                            disabled={scannerActive || scanning}
-                        >
-                            <ScanLine /> {scannerActive ? 'Active' : 'Scan'}
-                        </Button>
-                        <Button variant="secondary" onClick={deactivateScanner} disabled={!scannerActive}>
-                            <Square /> Stop
-                        </Button>
+                        {isElectron ? (
+                            <>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => useWindowStore.getState().openWindow('Browse', <ScanTypeWindow onPickEchoes={() => { void browseAndScan(); }} />)}
+                                    disabled={scanning}
+                                >
+                                    <FolderOpen /> Browse…
+                                </Button>
+                                <Button
+                                    onClick={() => useWindowStore.getState().openWindow('Scan', <ScanTypeWindow onPickEchoes={() => activateScanner('echoes')} />)}
+                                    disabled={scannerActive || scanning}
+                                >
+                                    <ScanLine /> {scannerActive ? 'Active' : 'Scan'}
+                                </Button>
+                                <Button variant="secondary" onClick={deactivateScanner} disabled={!scannerActive}>
+                                    <Square /> Stop
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => { void handleFilesChosen(e.target.files); e.target.value = ''; }}
+                                />
+                                <Button
+                                    onClick={() => useWindowStore.getState().openWindow('Scan', <ScanTypeWindow onPickEchoes={() => fileInputRef.current?.click()} />)}
+                                    disabled={scanning}
+                                >
+                                    <FolderOpen /> Upload screenshot…
+                                </Button>
+                            </>
+                        )}
                     </div>
                 }
             />
 
-            {scannerActive && (
+            {isElectron && scannerActive && (
                 <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm text-primary">
                     <ScanLine className="h-4 w-4 flex-shrink-0" />
                     <span>
@@ -367,7 +446,15 @@ export function ScannerScreen() {
                     </CardHeader>
                     <CardContent className="min-h-0 flex-1 p-0">
                         {results.length === 0 ? (
-                            <div className="p-4"><EmptyState icon={FileSearch} title="No scans yet" description="Press Scan to arm the scanner, then use the global hotkey in-game — or Browse for a saved screenshot." /></div>
+                            <div className="p-4">
+                                <EmptyState
+                                    icon={FileSearch}
+                                    title="No scans yet"
+                                    description={isElectron
+                                        ? 'Press Scan to arm the scanner, then use the global hotkey in-game — or Browse for a saved screenshot.'
+                                        : 'Press Upload screenshot… to scan a saved screenshot.'}
+                                />
+                            </div>
                         ) : (
                             <ScrollArea className="h-full">
                                 <ul className="p-2">

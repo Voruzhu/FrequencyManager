@@ -24,6 +24,14 @@ import type {
 import { WW_GEAR_CATALOG, GI_GEAR_CATALOG, STARTER_CHARACTER } from '@shared/game-data/gear-catalogs';
 import { WW_ECHO_SELF_BUFFS, WW_ECHO_ITEM_ICONS } from '@shared/game-data/echo-set-names';
 import { useGameDataStore } from '../stores/gameDataStore';
+// Both definition.ts files have exactly ONE import each (a type-only import
+// of GameDefinition), so pulling the real OcrRules in here for the embedded
+// fallback bundles below adds no Node/Electron weight to the renderer bundle
+// — see docs/WEB_VERSION.md for why these embedded consts (not just a
+// dev-in-browser fallback) are the web build's ONLY source of game data,
+// including OCR rules.
+import { wutheringWaves } from '@adapters/game-definitions/wuthering-waves/definition';
+import { genshinImpact } from '@adapters/game-definitions/genshin-impact/definition';
 
 // Renderer-facing type aliases (kept for call-site compatibility).
 export type ItemKind = 'character' | 'weapon' | 'echo' | 'artifact';
@@ -143,7 +151,8 @@ const WUTHERING_WAVES: GameBundle = {
         { name: 'Molten Rift', pieces: 5, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 30 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
         { name: 'Moonlit Clouds', pieces: 5, buffs: [{ stat: 'atkPct', label: 'ATK%', value: 22.5 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
     ],
-    ocrVerified: true,
+    ocr: wutheringWaves.ocr,
+    ocrVerified: wutheringWaves.ocr?.verified,
 };
 
 const GENSHIN_IMPACT: GameBundle = {
@@ -259,7 +268,8 @@ const GENSHIN_IMPACT: GameBundle = {
         { name: 'Crimson Witch of Flames', pieces: 4, buffs: [{ stat: 'elemDmg', label: 'Elemental DMG', value: 15 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
         { name: 'Emblem of Severed Fate', pieces: 4, buffs: [{ stat: 'atkPct', label: 'ATK%', value: 25 }, { stat: 'energyRegen', label: 'Energy Recharge', value: 20 }], twoPieceBuffs: [], fullSetOnlyBuffs: [] },
     ],
-    ocrVerified: false,
+    ocr: genshinImpact.ocr,
+    ocrVerified: genshinImpact.ocr?.verified,
 };
 
 const EMBEDDED: Record<string, GameBundle> = {

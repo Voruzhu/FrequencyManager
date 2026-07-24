@@ -27,7 +27,7 @@
 import type {
     GameBundle, GameCatalogSupplements, CharacterEntry, WeaponEntry, SkillDef, SetBonusEntry, ConstellationNode,
 } from '../types/game-bundle';
-import type { CharacterSkill } from '../types/game-definition';
+import type { CharacterSkill, OcrRules } from '../types/game-definition';
 import { elemKey } from '../calc/optimizer';
 
 // A game module's raw character DB row (WU/GI share these fields).
@@ -376,7 +376,7 @@ interface DefLike {
     combat: { actions: RawAction[] };
     sets?: RawSetBonus[];
     uiOptions?: { characters: Array<{ value: string; label: string }>; setNames: string[] };
-    ocr?: { verified?: boolean };
+    ocr?: OcrRules;
 }
 
 /**
@@ -439,6 +439,7 @@ export function buildGameBundle(input: {
         buffs: s.buffs,
         passives: s.passives,
         setBonuses: deriveSetBonuses(def.sets ?? [], input.setPieces),
+        ocr: def.ocr,
         ocrVerified: def.ocr?.verified,
     };
 }
