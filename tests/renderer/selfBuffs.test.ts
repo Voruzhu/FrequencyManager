@@ -1,5 +1,6 @@
 import { conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalGearBuffs, gearAutoBuffs } from '../../src/renderer/src/lib/selfBuffs';
 import * as gameData from '../../src/renderer/src/data/gameData';
+import { WW_ECHO_SELF_BUFFS } from '../../shared/game-data/echo-set-names';
 
 describe('autoTrigger forwarding', () => {
     const catalog: never[] = [];
@@ -165,5 +166,48 @@ describe('main-slot (cost-4) exclusivity in gearAutoBuffs/conditionalGearBuffs',
         const result = conditionalGearBuffs(gear as never);
         expect(result).toHaveLength(1);
         expect(result[0].source).toBe('Echo A');
+    });
+});
+
+describe("gearAutoBuffs — `echoSkillDeployed` param (Calculator's \"Echo Skill deployed\" master toggle)", () => {
+    // Real WW_ECHO_SELF_BUFFS entries, not synthetic ones — proves the whole
+    // pipeline (gearSelfBuffs' real name-keyed lookup included), not just the
+    // filter predicate in isolation. Both are authored `conditional: true`
+    // (only granted "if the Echo Skill was just used"), so neither shows up
+    // in gearAutoBuffs' output at all without the flag.
+    const fallacy = [{ id: 'g1', name: 'Fallacy of No Return' }];
+    const jue = [{ id: 'g1', name: 'Jué' }];
+
+    it('excludes the conditional buff when echoSkillDeployed is omitted (default false)', () => {
+        expect(gearAutoBuffs(fallacy as never)).toHaveLength(0);
+    });
+
+    it('excludes the conditional buff when echoSkillDeployed is explicitly false', () => {
+        expect(gearAutoBuffs(jue as never, {}, undefined, undefined, false)).toHaveLength(0);
+    });
+
+    it('includes Fallacy of No Return\'s Energy Regen buff when echoSkillDeployed is true', () => {
+        const result = gearAutoBuffs(fallacy as never, {}, undefined, undefined, true);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('energyRegen');
+        expect(result[0].value).toBe(WW_ECHO_SELF_BUFFS['Fallacy of No Return'][0].value);
+    });
+
+    it('includes Jué\'s Resonance Skill DMG buff when echoSkillDeployed is true', () => {
+        const result = gearAutoBuffs(jue as never, {}, undefined, undefined, true);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('dmgBonus');
+        expect(result[0].value).toBe(WW_ECHO_SELF_BUFFS['Jué'][0].value);
+        expect(result[0].appliesTo).toEqual(['skill']);
+    });
+
+    it('an unconditional gear buff still applies regardless of echoSkillDeployed (unchanged behavior)', () => {
+        jest.spyOn(gameData, 'gearSelfBuffs').mockReturnValue([
+            { stat: 'atk', label: 'Test', value: 5, conditional: false } as never,
+        ]);
+        const gear = [{ id: 'g1', name: 'Test Echo' }];
+        expect(gearAutoBuffs(gear as never, {}, undefined, undefined, false)).toHaveLength(1);
+        expect(gearAutoBuffs(gear as never, {}, undefined, undefined, true)).toHaveLength(1);
+        jest.restoreAllMocks();
     });
 });

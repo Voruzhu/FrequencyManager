@@ -120,19 +120,18 @@ interface CalcState {
     skillStacks: Record<string, number>;
     /** buffId -> user-chosen stack count, for self/party buffs with `stacksMax` (e.g. Galbrena's Afterflame-scaled Crit DMG). Absent means "assume max stacks". */
     buffStacks: Record<string, number>;
-    /** skillId -> whether a `type: 'echo'` skill (e.g. Lucy/Rebecca's Adam
-     * Smasher Echo Skill move) is included in the Calculator's SKILLS list.
-     * Absent means off — unlike `skillTreeInvested`'s "assume invested"
-     * default, these require a real, easy-to-forget echo (Reminiscence -
-     * Nightmare: Adam Smasher) in the Main Slot, so the safe default is
-     * excluded until the player confirms it. */
-    echoSkillEnabled: Record<string, boolean>;
     /** WW's "Skill Tree" stat nodes (labeled "Skill Tree: ..." in selfBuffs) are a
      * fixed "fully invested" assumption every serious build reaches — default true
      * so they count without the player individually toggling each one, unlike
      * genuinely situational conditional self-buffs. One master switch (the Talents
      * window's "Skill Tree bonuses" toggle) instead of per-stat chips. */
     skillTreeInvested: boolean;
+    /** WW only — assumes the Main Slot echo's own Echo Skill (and any
+     * conditional self-buff it grants, e.g. Fallacy of No Return's Energy
+     * Regen) is active. Default true — the main echo slot is always
+     * deployed in practice, mirroring `skillTreeInvested`'s "assume
+     * invested" convention rather than requiring an opt-in per buff. */
+    echoSkillDeployed: boolean;
     sequence: number;                     // 0..6 constellation / sequence level
     reaction: ReactionType;               // elemental reaction applied to skill damage
     /** Which WW reaction/Negative-Status debuffs the user has marked as active on the current enemy — a reference toggle, not auto-wired to any buff yet. Defaults to all on (matches this project's existing "assume active" convention for target-conditional buffs). */
@@ -144,9 +143,9 @@ interface CalcState {
     setSkillLevel: (id: string, level: number) => void;
     setSkillStacks: (id: string, stacks: number, max: number) => void;
     setBuffStacks: (id: string, stacks: number, max: number) => void;
-    toggleEchoSkillEnabled: (id: string) => void;
     toggleTargetStatus: (id: string) => void;
     setSkillTreeInvested: (v: boolean) => void;
+    setEchoSkillDeployed: (v: boolean) => void;
     setSequence: (n: number) => void;
     equipGear: (id: string) => void;
     unequipGear: (id: string) => void;
@@ -189,8 +188,8 @@ export const useCalcStore = create<CalcState>()(
     skillLevels: {},
     skillStacks: {},
     buffStacks: {},
-    echoSkillEnabled: {},
     skillTreeInvested: true,
+    echoSkillDeployed: true,
     sequence: 0,
     reaction: 'none',
     targetStatuses: { frazzle: true, erosion: true, chafe: true, flare: true, bane: true, fusionburst: true },
@@ -200,9 +199,9 @@ export const useCalcStore = create<CalcState>()(
     setSkillLevel: (id, level) => set((s) => ({ skillLevels: { ...s.skillLevels, [id]: Math.max(1, Math.min(MAX_SKILL_LEVEL, level)) } })),
     setSkillStacks: (id, stacks, max) => set((s) => ({ skillStacks: { ...s.skillStacks, [id]: Math.max(0, Math.min(max, stacks)) } })),
     setBuffStacks: (id, stacks, max) => set((s) => ({ buffStacks: { ...s.buffStacks, [id]: Math.max(0, Math.min(max, stacks)) } })),
-    toggleEchoSkillEnabled: (id) => set((s) => ({ echoSkillEnabled: { ...s.echoSkillEnabled, [id]: !s.echoSkillEnabled[id] } })),
     toggleTargetStatus: (id) => set((s) => ({ targetStatuses: { ...s.targetStatuses, [id]: !s.targetStatuses[id] } })),
     setSkillTreeInvested: (v) => set({ skillTreeInvested: v }),
+    setEchoSkillDeployed: (v) => set({ echoSkillDeployed: v }),
     setSequence: (n) => set((s) => {
         const level = Math.max(0, Math.min(6, n));
         useSequenceStore.getState().setSequence(useGameStore.getState().activeGameId, s.characterId, level);
@@ -226,8 +225,8 @@ export const useCalcStore = create<CalcState>()(
             skillLevels: {},
             skillStacks: {},
             buffStacks: {},
-            echoSkillEnabled: {},
             skillTreeInvested: true,
+            echoSkillDeployed: true,
             sequence: useSequenceStore.getState().getSequence(gameId, c.id),
             reaction: 'none',
         });
@@ -326,8 +325,8 @@ export const useCalcStore = create<CalcState>()(
                 skillLevels: s.skillLevels,
                 skillStacks: s.skillStacks,
                 buffStacks: s.buffStacks,
-                echoSkillEnabled: s.echoSkillEnabled,
                 skillTreeInvested: s.skillTreeInvested,
+                echoSkillDeployed: s.echoSkillDeployed,
                 sequence: s.sequence,
                 reaction: s.reaction,
                 requiredSets: s.requiredSets,

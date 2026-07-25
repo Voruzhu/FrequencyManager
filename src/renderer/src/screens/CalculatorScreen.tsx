@@ -18,10 +18,10 @@ import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
-import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, gearBuffId, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue, mainSlotEchoId } from '@/lib/selfBuffs';
+import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import type { getGameData} from '../data/gameData';
-import { useGameData, gearIcon, setIconFor, echoItemIconFor, gearSelfBuffs, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
+import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
 import { gearSlotsFor, totalCombinations } from '@shared/calc/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
@@ -144,37 +144,6 @@ function BuffStackStepper({ id, max, buffStacks, setBuffStacks, perStack, on, up
     );
 }
 
-/**
- * True unless `skill` is an Echo Skill move (e.g. Lucy/Rebecca's Adam
- * Smasher move, `type: 'echo'`) that hasn't been manually confirmed via
- * `echoSkillEnabled` — see calcStore. Shared by `skillOpts` (the Targets
- * dropdown), the "Add target" default, and `buildConfig`'s target list so
- * a disabled Echo Skill can't be selected as — or silently keep counting
- * as — an optimization target.
- */
-export function isSkillCurrentlyActive(skill: { id: string; type: string }, echoSkillEnabled: Record<string, boolean>): boolean {
-    return skill.type !== 'echo' || !!echoSkillEnabled[skill.id];
-}
-
-/** `skillOpts`'s underlying list, filtered per `isSkillCurrentlyActive`. */
-export function activeSkillOpts(skills: Array<{ id: string; name: string; type: string }>, echoSkillEnabled: Record<string, boolean>): Array<{ key: string; label: string }> {
-    return skills.filter((s) => isSkillCurrentlyActive(s, echoSkillEnabled)).map((s) => ({ key: s.id, label: s.name }));
-}
-
-/**
- * Drops any existing skill-kind target pointing at an Echo Skill move that
- * is no longer enabled — without this, a target added while the toggle was
- * on would keep counting toward Optimize/Calculate current loadout after
- * the player switched it back off.
- */
-export function activeSkillTargets(targets: Target[], skills: Array<{ id: string; type: string }>, echoSkillEnabled: Record<string, boolean>): Target[] {
-    return targets.filter((t) => {
-        if (t.kind !== 'skill') return true;
-        const skill = skills.find((s) => s.id === t.key);
-        return !skill || isSkillCurrentlyActive(skill, echoSkillEnabled);
-    });
-}
-
 export function CalculatorScreen() {
     const activeGameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(activeGameId);
@@ -188,7 +157,7 @@ export function CalculatorScreen() {
     const character = data.characters.find((c) => c.id === calc.characterId) ?? null;
     const partyTeammateCount = usePartyStore((s) => (character ? s.byGame[activeGameId]?.[character.id]?.teammates.length ?? 0 : 0));
 
-    const skillOpts = useMemo(() => activeSkillOpts(character?.skills ?? [], calc.echoSkillEnabled), [character, calc.echoSkillEnabled]);
+    const skillOpts = useMemo(() => character?.skills.map((s) => ({ key: s.id, label: s.name })) ?? [], [character]);
     // Targetable stats come straight from the game module's stat catalog.
     const statOpts = useMemo(
         () => data.statCatalog.map((s) => ({ key: s.key, label: catalogStatLabel(s, character?.element) })),
@@ -234,7 +203,7 @@ export function CalculatorScreen() {
         // threshold on its own. `requiredSets` still restricts the search
         // POOL below (only search gear from these sets) — it just no longer
         // fakes the resulting bonus.
-        const config = { targets: activeSkillTargets(calc.targets, character.skills, calc.echoSkillEnabled), buffs: [...stripAutoSkillTreeBuffs(calc.buffs, character, calc.skillTreeInvested), ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog, {}, calc.skillTreeInvested)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
+        const config = { targets: calc.targets, buffs: [...stripAutoSkillTreeBuffs(calc.buffs, character, calc.skillTreeInvested), ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog, {}, calc.skillTreeInvested)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
         return { config, equippedGear };
     };
 
@@ -455,9 +424,9 @@ export function CalculatorScreen() {
                                     </div>
                                 ))}
                                 <Button variant="secondary" className="w-full" onClick={() => {
-                                    const firstSkill = skillOpts[0];
+                                    const firstSkill = character.skills[0];
                                     if (!firstSkill) return;
-                                    calc.addTarget({ id: nextId(), kind: 'skill', key: firstSkill.key, label: firstSkill.label, mode: 'max' });
+                                    calc.addTarget({ id: nextId(), kind: 'skill', key: firstSkill.id, label: firstSkill.name, mode: 'max' });
                                 }}><Plus /> Add target</Button>
                             </div>
 
@@ -468,6 +437,15 @@ export function CalculatorScreen() {
                                 </div>
                                 <Switch id="only-unequipped" checked={calc.onlyUnequipped} onCheckedChange={calc.setOnlyUnequipped} />
                             </div>
+                            {activeGameId === 'wuthering-waves' && (
+                                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2">
+                                    <div>
+                                        <Label htmlFor="echo-skill-deployed">Echo Skill deployed</Label>
+                                        <p className="text-xs text-muted-foreground">Assumes your Main Slot echo's own Echo Skill — and any conditional buff it grants (e.g. Fallacy of No Return's Energy Regen) — is active.</p>
+                                    </div>
+                                    <Switch id="echo-skill-deployed" checked={calc.echoSkillDeployed} onCheckedChange={calc.setEchoSkillDeployed} />
+                                </div>
+                            )}
 
                             <div className="flex flex-wrap gap-2">
                                 <Button className="flex-1" onClick={() => { void run(); }} disabled={calc.optimizeProgress !== null}>
@@ -499,7 +477,7 @@ export function CalculatorScreen() {
 function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<typeof getGameData> }) {
     const activeGameId = useGameStore((s) => s.activeGameId);
     const owned = useOwnedInventory(activeGameId);
-    const { equipped, buffs, sequence, skillLevels, skillStacks, setSkillStacks, buffStacks, setBuffStacks, removeBuff, addBuff, updateBuffValue, hasBuff, targetStatuses, skillTreeInvested, echoSkillEnabled, toggleEchoSkillEnabled } = useCalcStore();
+    const { equipped, buffs, sequence, skillLevels, skillStacks, setSkillStacks, buffStacks, setBuffStacks, removeBuff, addBuff, updateBuffValue, hasBuff, targetStatuses, skillTreeInvested, echoSkillDeployed } = useCalcStore();
     const { showItem, showGearPicker, showWeaponPicker, showBuffs } = useSelectionStore();
     const openWindow = useWindowStore((s) => s.openWindow);
     const weapon = data.weapons.find((w) => w.id === equipped.weaponId);
@@ -520,7 +498,7 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
     // actual damage calc — see `setBonusBuffEntries`), so this preview never
     // silently disagrees with the real "calculate current" numbers below.
     const setBuffs = setBonusBuffEntries(gear, data.setBonuses, c.name);
-    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear, {}, c.name, equipped.mainSlotGearId)];
+    const allStatBuffs = [...stripAutoSkillTreeBuffs(buffs, c, skillTreeInvested), ...partyBuffs, ...setBuffs, ...weaponAutoBuffs(weapon, c, gear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(c, sequence, gear, weapon, data.statCatalog), ...characterAutoBuffs(c, gear, weapon, data.statCatalog, {}, skillTreeInvested), ...gearAutoBuffs(gear, {}, c.name, equipped.mainSlotGearId, echoSkillDeployed)];
     const stats = computeBuildStats(c, gear, allStatBuffs, weapon, data.statCatalog);
     // Basic/Heavy/Skill/Liberation DMG Bonus totals (see `withScopedDmgTotals`) —
     // same reasoning as the set-bonus buffs above, keeps this preview honest.
@@ -561,55 +539,33 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                         <SummaryLabel>Skills</SummaryLabel>
                         <div className="space-y-1.5">
                             {c.skills.map((s) => {
-                                // Echo Skill moves (e.g. Lucy/Rebecca's Adam Smasher move) only
-                                // exist in-game with a specific echo in the Main Slot, which the
-                                // engine has no way to auto-detect — off by default, manually
-                                // toggled per calcStore's `echoSkillEnabled`. Row stays visible
-                                // (with just the toggle) so it can be switched on; its multiplier/
-                                // badges only render once confirmed on, same "hidden until
-                                // confirmed" treatment as everywhere else this app relies on
-                                // manual judgment for a condition it can't verify.
-                                const isEchoSkill = s.type === 'echo';
-                                const echoOn = echoSkillEnabled[s.id] ?? false;
                                 const level = skillLevels[s.id] ?? DEFAULT_SKILL_LEVEL;
                                 const stacks = s.stackMax != null ? (skillStacks[s.id] ?? s.stackMax) : undefined;
                                 const mult = effectiveSkillMultiplier(s, level, stacks);
                                 return (
                                     <div key={s.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5">
-                                        <span className="flex min-w-0 items-center gap-2">
-                                            {isEchoSkill && (
-                                                <Switch
-                                                    checked={echoOn}
-                                                    onCheckedChange={() => toggleEchoSkillEnabled(s.id)}
-                                                    aria-label={`Include ${s.name} in the Skills list`}
-                                                    title="Off by default — only turn on if this echo is actually in the Main Slot."
-                                                />
+                                        <span className="min-w-0 truncate text-sm text-foreground">{s.name}</span>
+                                        <span className="flex flex-shrink-0 items-center gap-2">
+                                            <Badge variant="secondary">{s.type}</Badge>
+                                            {s.scaling && s.scaling !== 'atk' && <Badge variant="outline" title={`Scales off ${s.scaling.toUpperCase()}`}>{s.scaling.toUpperCase()}</Badge>}
+                                            {s.approx && <Badge variant="outline" title="Generic value — no precise data authored for this character yet">generic</Badge>}
+                                            {s.stackMax != null && (
+                                                <span className="flex items-center gap-1" title={`Stacks this skill's damage scales with — defaults to max (${s.stackMax}), the same "assume best-case" convention used for buffs.`}>
+                                                    <button
+                                                        onClick={() => setSkillStacks(s.id, (stacks ?? 0) - 1, s.stackMax!)}
+                                                        className="flex h-5 w-5 items-center justify-center rounded border border-border text-xs text-muted-foreground hover:bg-surface-2"
+                                                        aria-label={`Decrease ${s.name} stacks`}
+                                                    >−</button>
+                                                    <span className="w-10 text-center text-xs tabular-nums text-foreground">{stacks}/{s.stackMax}</span>
+                                                    <button
+                                                        onClick={() => setSkillStacks(s.id, (stacks ?? 0) + 1, s.stackMax!)}
+                                                        className="flex h-5 w-5 items-center justify-center rounded border border-border text-xs text-muted-foreground hover:bg-surface-2"
+                                                        aria-label={`Increase ${s.name} stacks`}
+                                                    >+</button>
+                                                </span>
                                             )}
-                                            <span className="min-w-0 truncate text-sm text-foreground">{s.name}</span>
+                                            <span className="text-xs text-primary">×{mult.toFixed(1)}</span>
                                         </span>
-                                        {(!isEchoSkill || echoOn) && (
-                                            <span className="flex flex-shrink-0 items-center gap-2">
-                                                <Badge variant="secondary">{s.type}</Badge>
-                                                {s.scaling && s.scaling !== 'atk' && <Badge variant="outline" title={`Scales off ${s.scaling.toUpperCase()}`}>{s.scaling.toUpperCase()}</Badge>}
-                                                {s.approx && <Badge variant="outline" title="Generic value — no precise data authored for this character yet">generic</Badge>}
-                                                {s.stackMax != null && (
-                                                    <span className="flex items-center gap-1" title={`Stacks this skill's damage scales with — defaults to max (${s.stackMax}), the same "assume best-case" convention used for buffs.`}>
-                                                        <button
-                                                            onClick={() => setSkillStacks(s.id, (stacks ?? 0) - 1, s.stackMax!)}
-                                                            className="flex h-5 w-5 items-center justify-center rounded border border-border text-xs text-muted-foreground hover:bg-surface-2"
-                                                            aria-label={`Decrease ${s.name} stacks`}
-                                                        >−</button>
-                                                        <span className="w-10 text-center text-xs tabular-nums text-foreground">{stacks}/{s.stackMax}</span>
-                                                        <button
-                                                            onClick={() => setSkillStacks(s.id, (stacks ?? 0) + 1, s.stackMax!)}
-                                                            className="flex h-5 w-5 items-center justify-center rounded border border-border text-xs text-muted-foreground hover:bg-surface-2"
-                                                            aria-label={`Increase ${s.name} stacks`}
-                                                        >+</button>
-                                                    </span>
-                                                )}
-                                                <span className="text-xs text-primary">×{mult.toFixed(1)}</span>
-                                            </span>
-                                        )}
                                     </div>
                                 );
                             })}
@@ -693,38 +649,6 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                                 </div>
                             </div>
                         )}
-                        {(() => {
-                            const mainSlotId = mainSlotEchoId(gear, equipped.mainSlotGearId);
-                            const gearWithBuffs = gear.filter((g) => g.id === mainSlotId).filter((g) => gearSelfBuffs(g).some((sb) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name))));
-                            if (gearWithBuffs.length === 0) return null;
-                            return (
-                                <div>
-                                    <SummaryLabel>Echo passives</SummaryLabel>
-                                    <div className="mt-1 flex flex-wrap gap-1">
-                                        {gearWithBuffs.flatMap((g) =>
-                                            gearSelfBuffs(g)
-                                                .map((sb, i) => ({ sb, i }))
-                                                .filter(({ sb }) => sb.conditional !== false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(c.name)))
-                                                .map(({ sb, i }) => {
-                                                    const id = gearBuffId(g.id, sb, i);
-                                                    const on = hasBuff(id);
-                                                    const value = resolveConditionalValue(sb, id, buffStacks, 0);
-                                                    return (
-                                                        <button
-                                                            key={id}
-                                                            onClick={() => (on ? removeBuff(id) : addBuff({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, value, ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }))}
-                                                            className={`rounded-md border px-2 py-0.5 text-xs transition-colors ${on ? 'border-primary/50 bg-primary/15 text-foreground' : 'border-dashed border-border bg-surface text-muted-foreground hover:bg-surface-2'}`}
-                                                            title={`${g.name} — conditional, toggle if its Echo Skill was just used`}
-                                                        >
-                                                            {on ? '✓ ' : '+ '}{sb.label} +{value}
-                                                        </button>
-                                                    );
-                                                }),
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })()}
                         {c.selfBuffs && c.selfBuffs.some((sb) => sb.conditional !== false && !isSkillTreeBuff(sb)) && (
                             <div>
                                 <SummaryLabel>Passive talent</SummaryLabel>

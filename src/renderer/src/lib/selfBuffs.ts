@@ -180,15 +180,15 @@ export function mainSlotEchoId(gear: GearData[], explicitId?: string): string | 
     return gear.find((g) => gearSelfBuffs(g).length > 0)?.id;
 }
 
-/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot bonus (any cost — see `mainSlotEchoId`'s doc comment), so any equipped piece that isn't the (single) main-slot one is skipped entirely. `mainSlotGearId` is the loadout's own explicit choice — see `mainSlotEchoId`. */
-export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string, mainSlotGearId?: string) {
+/** Unconditional self-buffs from specific named equipped gear pieces' own "Echo Skill" (WW) — always applied. Iterates every equipped piece, not just one. `characterName` gates entries with `restrictedToCharacters` (e.g. a main-slot bonus restricted to specific wielders). Every entry in `WW_ECHO_SELF_BUFFS` is a main-slot bonus (any cost — see `mainSlotEchoId`'s doc comment), so any equipped piece that isn't the (single) main-slot one is skipped entirely. `mainSlotGearId` is the loadout's own explicit choice — see `mainSlotEchoId`. `echoSkillDeployed` additionally includes buffs authored `conditional: true` (e.g. Fallacy of No Return's Energy Regen) — mirrors `characterAutoBuffs`'s `skillTreeInvested` param; only the Calculator passes the real `calcStore.echoSkillDeployed` value (default true there). */
+export function gearAutoBuffs(gear: GearData[], stacks: Record<string, number> = {}, characterName?: string, mainSlotGearId?: string, echoSkillDeployed = false) {
     const out: Array<{ id: string; name: string; source: string; stat: string; value: number; appliesTo?: string[] }> = [];
     const mainSlotId = mainSlotEchoId(gear, mainSlotGearId);
     for (const g of gear) {
         if (g.id !== mainSlotId) continue;
         gearSelfBuffs(g)
             .map((sb, i) => ({ sb, i }))
-            .filter(({ sb }) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
+            .filter(({ sb }) => (sb.conditional === false || echoSkillDeployed) && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
             .forEach(({ sb, i }) => { const id = gearBuffId(g.id, sb, i); out.push({ id, name: `${g.name} (Echo Skill)`, source: g.name, stat: sb.stat, value: resolveStackedValue(id, { value: sb.value }, stacks), ...(sb.appliesTo ? { appliesTo: sb.appliesTo } : {}) }); });
     }
     return out;

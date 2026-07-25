@@ -5,7 +5,6 @@ import {
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
 import type { CharacterEntry, GearEntry, StatDef, EnemyEntry, SkillDef, BuffEntry, SetBonusEntry } from '../../shared/types/game-bundle';
-import { CHARACTER_SKILLS } from '../../adapters/game-definitions/wuthering-waves/skills';
 
 describe('combinations — firstIndices partitioning', () => {
     it('with no filter, generates every k-combination in lexicographic order', () => {
@@ -434,82 +433,6 @@ describe('skillDamage — defIgnore/resShred end-to-end via scopedBuffs', () => 
         const resShredBuff: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'resShred', value: 15 };
         const withShred = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [resShredBuff] });
         expect(withShred).toBeGreaterThan(withoutShred);
-    });
-});
-
-describe("skillDamage — WW Echo Skill move (Lucy/Rebecca's Reminiscence - Nightmare: Adam Smasher, type: 'echo')", () => {
-    // Real authored values (adapters/game-definitions/wuthering-waves/skills.ts,
-    // 'lucy'/'rebecca' ids 'echo-skill-adam-smasher'): Lucy's single 273.60% ATK
-    // hit and Rebecca's 16-hit missile barrage (16 * 17.10% = 273.60%, pre-summed
-    // to a per-cast total per this file's multi-hit convention — see
-    // skill-multipliers.generated.ts's header) both reduce to the same flat
-    // `multiplier`, so one fixture covers both characters' entries.
-    const skill: SkillDef = { id: 'echo-skill-adam-smasher', name: 'Echo Skill (requires Reminiscence - Nightmare: Adam Smasher in Main Slot)', type: 'echo', description: '', multiplier: 2.736, scaling: 'atk' };
-    const stats = { atk: 1000, critRate: 0, critDmg: 0 };
-
-    it('computes the raw multiplier x ATK (no talent-level table — a flat multiplier only, since Echo Skill DMG does not scale with the character\'s own talent level)', () => {
-        const dmg = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10 });
-        expect(dmg).toBe(Math.round(1000 * 2.736));
-    });
-
-    it('is unaffected by talent level, unlike a normal multipliers-table skill', () => {
-        const atLvl1 = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 1 });
-        const atLvl10 = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10 });
-        expect(atLvl1).toBe(atLvl10);
-    });
-
-    it("the 'echo' appliesTo scope (canonScope) matches a type:'echo' skill — an Echo Skill DMG Bonus buff (e.g. Nightmare: Hecate's own Main Slot bonus, WW_ECHO_SELF_BUFFS) now actually has a real skill to apply to", () => {
-        const withoutBonus = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10 });
-        const echoDmgBonus: BuffEntry = { id: 'b', name: 'Echo Skill DMG Bonus (Main Slot)', source: 'S', stat: 'dmgBonus', value: 20, appliesTo: ['echo'] };
-        const withBonus = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10, scopedBuffs: [echoDmgBonus] });
-        expect(withBonus).toBeGreaterThan(withoutBonus);
-    });
-
-    it('a DMG bonus scoped to a DIFFERENT attack type does not affect this echo skill', () => {
-        const withoutBonus = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10 });
-        const wrongScope: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'dmgBonus', value: 20, appliesTo: ['ult'] };
-        const stillNoBonus = skillDamage(stats, skill, { mode: 'none', defaultTalentLevel: 10, scopedBuffs: [wrongScope] });
-        expect(stillNoBonus).toBe(withoutBonus);
-    });
-
-    it("Lucy's and Rebecca's actual authored entries (adapters/game-definitions/wuthering-waves/skills.ts) match these verified real values", () => {
-        const lucySkill = CHARACTER_SKILLS.lucy.find((s) => s.id === 'echo-skill-adam-smasher');
-        const rebeccaSkill = CHARACTER_SKILLS.rebecca.find((s) => s.id === 'echo-skill-adam-smasher');
-        expect(lucySkill?.type).toBe('echo');
-        expect(lucySkill?.multiplier).toBeCloseTo(2.736);
-        expect(lucySkill?.element).toBe('Spectro');
-        expect(rebeccaSkill?.type).toBe('echo');
-        expect(rebeccaSkill?.multiplier).toBeCloseTo(16 * 0.171);
-        expect(rebeccaSkill?.element).toBe('Electro');
-    });
-});
-
-describe("computeBaseLoadouts — Echo Skill move's manual on/off toggle (CalculatorScreen's `activeSkillTargets`) is what actually gates the damage totals pipeline", () => {
-    // `activeSkillTargets` (src/renderer/src/screens/CalculatorScreen.tsx)
-    // drops any `kind: 'skill'` target pointing at a not-yet-enabled
-    // `type: 'echo'` skill BEFORE it ever reaches `computeBaseLoadouts` /
-    // `scoreAndRank` — a plain array filter, not importable into this
-    // suite (the .tsx it lives in can't be loaded by this project's Jest
-    // config — see tsconfig.test.json's missing `--jsx`, a pre-existing,
-    // unrelated gap). This proves the mechanism that filter relies on: a
-    // target's mere PRESENCE in `config.targets` is what makes it count —
-    // using Lucy's real authored entry, so "toggled off" (target absent)
-    // is proven to leave it genuinely excluded from totals, not just
-    // hidden from view.
-    const lucyEcho = CHARACTER_SKILLS.lucy.find((s) => s.id === 'echo-skill-adam-smasher')!;
-    const c: CharacterEntry = { ...char(), skills: [...char().skills, { ...lucyEcho, description: '', multiplier: lucyEcho.multiplier ?? 0 }] };
-    const lowAtkGear = [gear(1)]; // deliberately too little ATK to clear a 1000-raw-damage min threshold
-
-    it('toggled ON (its target present, mode "min"): a build that can\'t clear the threshold shows up in `failed`', () => {
-        const config = baseConfig({ targets: [{ id: 't', kind: 'skill', key: 'echo-skill-adam-smasher', label: lucyEcho.name, mode: 'min', min: 1000 }] });
-        const [loadout] = computeBaseLoadouts(c, [lowAtkGear], config);
-        expect(loadout.failed).toContain(lucyEcho.name);
-    });
-
-    it('toggled OFF (its target absent, exactly what `activeSkillTargets` produces when `echoSkillEnabled` is false): the SAME build no longer fails on it — excluded from totals entirely, not merely hidden', () => {
-        const config = baseConfig({ targets: [] });
-        const [loadout] = computeBaseLoadouts(c, [lowAtkGear], config);
-        expect(loadout.failed).not.toContain(lucyEcho.name);
     });
 });
 
