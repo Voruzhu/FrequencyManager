@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Search, Plus, Trash2, ChevronsUpDown } from 'lucide-react';
 import {
     Input, Button, Badge, Label, ItemIcon, DialogFooter, DialogClose,
@@ -16,6 +17,29 @@ import type { AddGearInitial, SubDraft } from '@/lib/gearEdit';
 let gearSeq = 0;
 export const newGearId = (gameId: string) => `own-${gameId}-${Date.now()}-${++gearSeq}`;
 
+/** Tracks whether the viewport is at/above Tailwind's `sm` breakpoint
+ * (640px), so row-virtualized grids below can chunk items into rows using
+ * the SAME column count Tailwind's own `grid-cols-N sm:grid-cols-M` classes
+ * actually render — there's no way to read a CSS breakpoint from JS other
+ * than mirroring it via matchMedia. */
+function useIsSmAndUp(): boolean {
+    const subscribe = (onChange: () => void) => {
+        const mql = window.matchMedia('(min-width: 640px)');
+        mql.addEventListener('change', onChange);
+        return () => mql.removeEventListener('change', onChange);
+    };
+    return useSyncExternalStore(subscribe, () => window.matchMedia('(min-width: 640px)').matches, () => false);
+}
+
+/** Splits a flat item list into rows of `columns` items — virtualizing a
+ * wrapping CSS grid means virtualizing whole rows (there's no per-cell
+ * equivalent), each rendered as its own small grid. */
+function chunkIntoRows<T>(items: T[], columns: number): T[][] {
+    const rows: T[][] = [];
+    for (let i = 0; i < items.length; i += columns) rows.push(items.slice(i, i + columns));
+    return rows;
+}
+
 // ── Add character (from the game catalog) ────────────────────────────────────
 
 export function AddCharacterWindow({ onDone }: { onDone: () => void }) {
@@ -24,6 +48,7 @@ export function AddCharacterWindow({ onDone }: { onDone: () => void }) {
     const owned = useOwnedInventory(gameId);
     const addCharacter = useInventoryStore((s) => s.addCharacter);
     const [q, setQ] = useState('');
+    const parentRef = useRef<HTMLDivElement>(null);
 
     const ownedIds = new Set(owned.characters.map((c) => c.id));
     const query = q.trim().toLowerCase();
@@ -31,26 +56,53 @@ export function AddCharacterWindow({ onDone }: { onDone: () => void }) {
         .filter((c) => !ownedIds.has(c.id) && (!query || c.name.toLowerCase().includes(query)))
         .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
 
+    // Rows, not individual cards, are what gets virtualized — matches
+    // Tailwind's own grid-cols-3 sm:grid-cols-4 breakpoint so chunking here
+    // never disagrees with what's actually laid out.
+    const columns = useIsSmAndUp() ? 4 : 3;
+    const rows = useMemo(() => chunkIntoRows(pool, columns), [pool, columns]);
+    const virtualizer = useVirtualizer({
+        count: rows.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 132,
+        overscan: 4,
+    });
+
     return (
         <div className="space-y-3">
             <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-8" placeholder="Search characters…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
             </div>
-            <div className="grid max-h-[60vh] grid-cols-3 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-4">
-                {pool.length === 0 && <p className="col-span-full py-6 text-center text-sm text-muted-foreground">Nothing left to add.</p>}
-                {pool.map((c) => (
-                    <button key={c.id} onClick={() => { addCharacter(gameId, c.id); toast.success(`Added ${c.name}`); }}
-                        className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-card p-3 text-center transition-colors hover:bg-surface-2">
-                        <ItemIcon kind="character" size="lg" rarity={c.rarity} src={iconSrc(gameId, c.icon)} />
-                        <span className="line-clamp-1 text-sm font-medium text-foreground">{c.name}</span>
-                        <span className="flex flex-wrap justify-center gap-1">
-                            <Badge variant="secondary">{c.element}</Badge>
-                            {c.approx && <Badge variant="outline" title="Base stats are rarity defaults — no per-character data in the game module yet">approx</Badge>}
-                        </span>
-                    </button>
-                ))}
-            </div>
+            {pool.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">Nothing left to add.</p>
+            ) : (
+                <div ref={parentRef} className="max-h-[60vh] overflow-y-auto scrollbar-thin">
+                    <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+                        {virtualizer.getVirtualItems().map((vRow) => (
+                            <div
+                                key={vRow.key}
+                                ref={virtualizer.measureElement}
+                                data-index={vRow.index}
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
+                                className="grid grid-cols-3 gap-2 pb-2 sm:grid-cols-4"
+                            >
+                                {rows[vRow.index].map((c) => (
+                                    <button key={c.id} onClick={() => { addCharacter(gameId, c.id); toast.success(`Added ${c.name}`); }}
+                                        className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-card p-3 text-center transition-colors hover:bg-surface-2">
+                                        <ItemIcon kind="character" size="lg" rarity={c.rarity} src={iconSrc(gameId, c.icon)} />
+                                        <span className="line-clamp-1 text-sm font-medium text-foreground">{c.name}</span>
+                                        <span className="flex flex-wrap justify-center gap-1">
+                                            <Badge variant="secondary">{c.element}</Badge>
+                                            {c.approx && <Badge variant="outline" title="Base stats are rarity defaults — no per-character data in the game module yet">approx</Badge>}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
             <DialogFooter><DialogClose asChild><Button onClick={onDone}>Done</Button></DialogClose></DialogFooter>
         </div>
     );
@@ -66,6 +118,7 @@ export function AddWeaponWindow({ onDone }: { onDone: () => void }) {
     const [q, setQ] = useState('');
     const [type, setType] = useState('all');
     const [rarity, setRarity] = useState('all');
+    const parentRef = useRef<HTMLDivElement>(null);
 
     // Filter options derived from the game's own weapon roster.
     const types = Array.from(new Set(data.weapons.map((w) => w.weaponType))).sort();
@@ -81,6 +134,15 @@ export function AddWeaponWindow({ onDone }: { onDone: () => void }) {
             (rarity === 'all' || w.rarity === Number(rarity)),
         )
         .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+
+    const columns = useIsSmAndUp() ? 3 : 2;
+    const rows = useMemo(() => chunkIntoRows(pool, columns), [pool, columns]);
+    const virtualizer = useVirtualizer({
+        count: rows.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 68,
+        overscan: 6,
+    });
 
     return (
         <div className="space-y-3">
@@ -104,19 +166,34 @@ export function AddWeaponWindow({ onDone }: { onDone: () => void }) {
                     </SelectContent>
                 </Select>
             </div>
-            <div className="grid max-h-[60vh] grid-cols-2 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-3">
-                {pool.length === 0 && <p className="col-span-full py-6 text-center text-sm text-muted-foreground">No weapons match these filters.</p>}
-                {pool.map((w) => (
-                    <button key={w.id} onClick={() => { addWeapon(gameId, w.id); toast.success(`Added ${w.name}`); }}
-                        className="flex items-center gap-2 rounded-lg border border-border bg-card p-2 text-left transition-colors hover:bg-surface-2">
-                        <ItemIcon kind="weapon" size="md" rarity={w.rarity} src={iconSrc(gameId, w.icon)} />
-                        <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-foreground">{w.name}</div>
-                            <div className="text-xs text-muted-foreground">{w.weaponType} · {w.rarity}★</div>
-                        </div>
-                    </button>
-                ))}
-            </div>
+            {pool.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">No weapons match these filters.</p>
+            ) : (
+                <div ref={parentRef} className="max-h-[60vh] overflow-y-auto scrollbar-thin">
+                    <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+                        {virtualizer.getVirtualItems().map((vRow) => (
+                            <div
+                                key={vRow.key}
+                                ref={virtualizer.measureElement}
+                                data-index={vRow.index}
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}
+                                className="grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3"
+                            >
+                                {rows[vRow.index].map((w) => (
+                                    <button key={w.id} onClick={() => { addWeapon(gameId, w.id); toast.success(`Added ${w.name}`); }}
+                                        className="flex items-center gap-2 rounded-lg border border-border bg-card p-2 text-left transition-colors hover:bg-surface-2">
+                                        <ItemIcon kind="weapon" size="md" rarity={w.rarity} src={iconSrc(gameId, w.icon)} />
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-medium text-foreground">{w.name}</div>
+                                            <div className="text-xs text-muted-foreground">{w.weaponType} · {w.rarity}★</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
             <DialogFooter><DialogClose asChild><Button onClick={onDone}>Done</Button></DialogClose></DialogFooter>
         </div>
     );

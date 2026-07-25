@@ -74,7 +74,7 @@ export function ItemIcon({ kind, size = 'md', rarity, src, badgeSrc, className, 
             {...props}
         >
             {showImg ? (
-                <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
+                <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" onError={() => setFailed(true)} />
             ) : (
                 <Icon className="h-1/2 w-1/2" />
             )}
@@ -82,6 +82,8 @@ export function ItemIcon({ kind, size = 'md', rarity, src, badgeSrc, className, 
                 <img
                     src={badgeSrc}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className={cn('absolute bottom-0 right-0 translate-x-[15%] translate-y-[15%] rounded-full border border-border bg-surface object-cover shadow-sm', BADGE_SIZE[size])}
                     onError={() => setBadgeFailed(true)}
                 />
