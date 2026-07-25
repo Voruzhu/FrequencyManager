@@ -2252,6 +2252,21 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.2, 1.2984, 1.3968, 1.5348, 1.6332, 1.7464, 1.9036, 2.0612, 2.2188, 2.386] },
         { id: 'introOutdatedHallucination', name: 'Intro Skill: Outdated Hallucination', type: 'Intro Skill', scaling: 'atk', element: 'Spectro',
             multipliers: [0.6956, 0.7526, 0.8096, 0.8896, 0.9466, 1.0122, 1.1034, 1.1946, 1.2858, 1.3828] },
+        // Echo Skill move exclusive to Reminiscence - Nightmare: Adam Smasher
+        // equipped in Lucy's Main Slot — replaces her generic Echo Skill
+        // entirely (Tap and Hold both deal this same DMG; Hold additionally
+        // applies a movement/slow utility effect this app doesn't simulate).
+        // 273.60% ATK Spectro DMG, verified 2026-07-25 via wuthering.gg /
+        // game8.co / wutheringlab.com (all three agree). Flat `multiplier`
+        // only (no `multipliers` table) since Echo Skill damage doesn't
+        // scale with Lucy's own talent level. `type: 'echo'` is the scope
+        // `canonScope()` already recognizes (shared/calc/optimizer.ts) — the
+        // Calculator gates this row behind a manual toggle rather than
+        // auto-detecting the echo (see calcStore's `echoSkillEnabled`),
+        // since the engine has no way to know if the player really has this
+        // echo main-slotted.
+        { id: 'echo-skill-adam-smasher', name: 'Echo Skill (requires Reminiscence - Nightmare: Adam Smasher in Main Slot)', type: 'echo', scaling: 'atk', element: 'Spectro',
+            multiplier: 2.736 },
 ],
     'rebecca': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Electro',
@@ -2316,6 +2331,20 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.36, 1.4719, 1.5837, 1.7397, 1.851, 1.9791, 2.1579, 2.336, 2.5148, 2.704] },
         { id: 'introLeadheadComeNGetMe', name: "Hey, Leadhead, Come 'n' Get Me!", type: 'Intro Skill', scaling: 'atk', element: 'Electro',
             multipliers: [1.02, 1.104, 1.1875, 1.3046, 1.3886, 1.4846, 1.6186, 1.752, 1.886, 2.028] },
+        // Echo Skill move exclusive to Reminiscence - Nightmare: Adam Smasher
+        // equipped in Rebecca's Main Slot — replaces her generic Echo Skill
+        // entirely, firing 16 missiles of 17.10% ATK Electro DMG each.
+        // Pre-summed to a 273.60% per-cast total (16 * 17.10% = 273.60% —
+        // matches Lucy's single-hit total exactly, a good sanity check),
+        // following this file's existing convention for multi-hit WW skills
+        // (see skill-multipliers.generated.ts's header: "multi-hit summed to
+        // a per-cast total") — there is no separate hit-count field on
+        // SkillDef/CharacterSkill to hold "16" distinctly. Verified
+        // 2026-07-25 via wuthering.gg / game8.co / wutheringlab.com (all
+        // three agree). See Lucy's own entry above for the flat-`multiplier`
+        // and toggle-gating rationale (same echo, same mechanic).
+        { id: 'echo-skill-adam-smasher', name: 'Echo Skill (requires Reminiscence - Nightmare: Adam Smasher in Main Slot)', type: 'echo', scaling: 'atk', element: 'Electro',
+            multiplier: 2.736 },
 ],
     'sigrika': [
         { id: 'basic', name: 'Basic Attack', type: 'Basic', scaling: 'atk', element: 'Aero',
