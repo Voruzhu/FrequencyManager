@@ -1,7 +1,8 @@
-import { Calculator, ScanLine, Boxes, Sparkles, Monitor, Coffee, ShieldCheck } from 'lucide-react';
+import { Calculator, ScanLine, Boxes, Sparkles, Monitor, Coffee, ShieldCheck, Rocket } from 'lucide-react';
 import { PageHeader, Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '../components/ui';
 import { useUIStore } from '../stores/uiStore';
 import { openExternalLink } from '@/lib/platform';
+import { latestReleaseNote } from '@shared/releaseNotes';
 
 const REPO_URL = 'https://github.com/Voruzhu/FrequencyManager';
 const COFFEE_URL = 'https://buymeacoffee.com/voruzhu';
@@ -15,6 +16,7 @@ const COFFEE_URL = 'https://buymeacoffee.com/voruzhu';
  */
 export function WelcomeScreen() {
     const setActiveScreen = useUIStore((s) => s.setActiveScreen);
+    const latest = latestReleaseNote();
 
     return (
         <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
@@ -55,6 +57,25 @@ export function WelcomeScreen() {
                     </ul>
                 </CardContent>
             </Card>
+
+            {latest && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> What's new in v{latest.version}</CardTitle>
+                        <CardDescription>{latest.date}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-1.5">
+                            {latest.highlights.map((h, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                    <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-primary" />
+                                    {h}
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
