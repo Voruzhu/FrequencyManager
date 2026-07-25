@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste } from 'lucide-react';
 import {
     PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Badge,
     ItemIcon, EmptyState, Progress, Switch,
@@ -20,6 +20,11 @@ import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
+import { ShareBuildWindow, ImportBuildWindow } from '../components/BuildShareWindows';
+import { buildSharePayload, encodeBuildShareCode } from '@/lib/buildShare';
+import { ShareCodeWindow } from '../components/ShareCodeWindow';
+import { ImportTargetsWindow } from '../components/TargetShareWindows';
+import { encodeTargetsShareCode } from '@/lib/targetShare';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
@@ -341,15 +346,33 @@ export function CalculatorScreen() {
         }
     };
 
+    const shareBuild = () => {
+        if (!character) return;
+        const weapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
+        const equippedGear = calc.equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
+        const payload = buildSharePayload(activeGameId, character, weapon, calc.equipped.weaponRefine, equippedGear, calc.buffs);
+        openWindow('Share build', <ShareBuildWindow code={encodeBuildShareCode(payload)} />);
+    };
+
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
             <PageHeader
                 title="Damage Calculator"
                 description="Pick a character, set targets to maximize or hit, and optimize the best gear loadout."
                 actions={
-                    <Button variant="secondary" onClick={() => openWindow('Select character', <CharacterPickerWindow />)}>
-                        <Users /> {character ? character.name : 'Select character'}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="secondary" onClick={() => openWindow('Select character', <CharacterPickerWindow />)}>
+                            <Users /> {character ? character.name : 'Select character'}
+                        </Button>
+                        {character && (
+                            <Button variant="outline" size="icon" onClick={shareBuild} aria-label="Share this build" title="Share this build as a code">
+                                <Share2 />
+                            </Button>
+                        )}
+                        <Button variant="outline" size="icon" onClick={() => openWindow('Import build code', <ImportBuildWindow />)} aria-label="Import a build code" title="View a shared build code">
+                            <ClipboardPaste />
+                        </Button>
+                    </div>
                 }
             />
 
@@ -395,7 +418,19 @@ export function CalculatorScreen() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Targets</Label>
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label>Targets</Label>
+                                    <div className="flex items-center gap-1.5">
+                                        {calc.targets.length > 0 && (
+                                            <Button variant="ghost" size="sm" onClick={() => openWindow('Share targets', <ShareCodeWindow code={encodeTargetsShareCode(calc.targets)} description="Anyone can paste this into &quot;Import targets&quot; to apply this same target config to their own character." />)}>
+                                                <Share2 /> Share
+                                            </Button>
+                                        )}
+                                        <Button variant="ghost" size="sm" onClick={() => openWindow('Import targets', <ImportTargetsWindow />)}>
+                                            <ClipboardPaste /> Import
+                                        </Button>
+                                    </div>
+                                </div>
                                 {calc.targets.length === 0 && (
                                     <p className="text-xs text-muted-foreground">Add targets — set some to <span className="text-foreground">Maximize</span> (the optimizer balances all of them) and others to a <span className="text-foreground">Minimum</span> threshold like “Energy Regen ≥ 200”.</p>
                                 )}
