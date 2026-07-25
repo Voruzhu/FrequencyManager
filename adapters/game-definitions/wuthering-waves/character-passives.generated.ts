@@ -157,12 +157,17 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "hiyuki": [{"stat":"critDmg","label":"Crit DMG +40%, at 1+ stacks of Snow Rust (Inherent I)","value":40,"conditional":true},{"stat":"atkPct","label":"Once Hiyuki leaves the combat state or recovers after being knocked out, when she stays out of combat for 4s with fewer than 1 point of Snowforged Blade, restore 1 point. (Inherent II)","value":0,"conditional":false}],
     "jianxin": [{"stat":"dmgBonus","label":"Liberation DMG +20% (Inherent I)","value":20,"conditional":false,"appliesTo":["ult"]},{"stat":"atkPct","label":"The Shield obtained from Heavy Attack Primordial Chi Spiral is increased by 20%. (Inherent II)","value":0,"conditional":false}],
     "lucy": [{"stat":"elemDmg","label":"All DMG Amplification +15% (max 2 stacks), via Network Backdoor (Inherent II)","value":15,"conditional":true},{"stat":"elemDmg","label":"Hack DMG Multiplier +15% (max 2 stacks), via Network Backdoor (Inherent II)","value":15,"conditional":true},{"stat":"atkPct","label":"When Lucy is the active Resonator in the team, if she takes no damage for 8s, she gains 1 stacks of Optical Illusion. Max 1 stacks by default.Optical Illusion: When attacked, reduce this instance of DMG by 100%. If Lucy is hit or launched from the attack, she immediately recovers and triggers a successful Dodge if she's on the ground. After this effect is triggered, remove 1 stacks of Optical Illusion. This effect can be triggered up to 1 times every 0.5s. (Inherent I)","value":0,"conditional":false}],
-    // FIXED 2026-07-25 — Inherent II's value:0 placeholder duplicated a REAL,
-    // already-working team buff (cb-ww-rebecca-inherent in bundle.ts's
-    // `character` buff array, "Left an Opening!" ATK+20%/30s) — removed
-    // rather than mirrored into CHARACTER_TEAM_BUFFS below, to avoid
-    // double-counting it.
-    "rebecca": [{"stat":"atkPct","label":"ATK +20% (max 2 stacks), 12s after trigger (Inherent I)","value":20,"conditional":true}],
+    // 2026-07-25 — Inherent II's real numeric buff already lives in bundle.ts's
+    // `character` buff array (cb-ww-rebecca-inherent, "Left an Opening!"
+    // ATK+20%/30s), so it's NOT mirrored here as a live effect (would double-
+    // count). But the Talents window's passive-slot display only reads
+    // selfBuffs/teamBuffs (getPassiveSlotBuffs) — earlier today this entry was
+    // deleted outright, which silently broke that display (generic boilerplate
+    // shown instead of Rebecca's real Inherent II text). Restored as a
+    // value:0/conditional:false placeholder — mathematically inert, same
+    // established convention as Baizhi/Aalto/Carlotta/etc below, purely so the
+    // Talents window has real text to show.
+    "rebecca": [{"stat":"atkPct","label":"ATK +20% (max 2 stacks), 12s after trigger (Inherent I)","value":20,"conditional":true},{"stat":"atkPct","label":"Heavy Attack - Rat-tat-tat!: Huntress and Heavy Attack - Bang-bang-bang!: Guts gain increased resistance to interruption.When Rebecca casts Resonance Liberation - Party 'til Dawn!, the ATK of all nearby Resonators in the team is increased by 20% for 30s. (Inherent II)","value":0,"conditional":false}],
     "rover-aero": [{"stat":"atkPct","label":"ATK +20%, 10s after Intro Skill (Inherent I)","value":20,"conditional":true,"autoTrigger":{"skillIds":["introRelentlessSquall"],"durationSeconds":10}},{"stat":"atkPct","label":"Increase Healing from Resonance Liberation Omega Storm by 20%. (Inherent II)","value":0,"conditional":false}],
     "rover-havoc": [{"stat":"elemDmg","label":"Havoc DMG Bonus +20%, in Dark Surge state (Inherent I)","value":20,"conditional":true},{"stat":"atkPct","label":"While in the Dark Surge state, Basic Attack recovers 1 extra Resonance Energy when it hits a target. This effect can be triggered 1 time per second. (Inherent II)","value":0,"conditional":false}],
     "rover-electro": [{"stat":"dmgBonus","label":"Res. Skill DMG +20%, 20s after held-cast Overshock (Inherent II)","value":20,"conditional":true,"appliesTo":["skill"],"autoTrigger":{"skillIds":["skill"],"durationSeconds":20}},{"stat":"atkPct","label":"Resonance Skill Overshock inflicts 10 stacks of Electro Flare on the target it damages. (Inherent I)","value":0,"conditional":false}],
@@ -176,17 +181,22 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // 3rd clause of "True Names Aligned" added 2026-07-16 (was missing
     // entirely): "For every 1% of Energy Regen over 125%, Sigrika gains 2%
     // Echo Skill DMG Bonus, up to 50%" (wuthering.gg).
-    // REMOVED 2026-07-25 — the trailing value:0 "Inherent II" catch-all
-    // entry duplicated ALL of the above (self elements) plus the team tier
-    // already live in bundle.ts (cb-ww-sigrika/cb-ww-sigrika-echo) — dropped
-    // as dead weight, not moved to CHARACTER_TEAM_BUFFS (that team tier
-    // isn't missing, just wasn't also mirrored here).
-    "sigrika": [{"stat":"elemDmg","label":"Aero DMG Bonus +30%, at 6 stacks of Blessing of Runes (Inherent I)","value":30,"conditional":true},{"stat":"dmgBonus","label":"Echo Skill DMG Bonus +30%, at 6 stacks of Blessing of Runes (Inherent I)","value":30,"conditional":true,"appliesTo":["echo"]},{"stat":"dmgBonus","label":"Echo Skill DMG Bonus (ER-scaled, over 125%)","value":2,"conditional":true,"appliesTo":["echo"],"scaleOff":{"sourceStat":"energyRegen","basis":"total","ratio":2,"offset":125,"cap":50}}],
-    // FIXED 2026-07-25 — Inherent II's value:0 placeholder duplicated a REAL,
-    // already-working team buff (cb-ww-verina in bundle.ts's `character`
-    // buff array, "Gift of Nature" ATK+20%/20s) — removed rather than
-    // mirrored into CHARACTER_TEAM_BUFFS below, to avoid double-counting it.
-    "verina": [{"stat":"atkPct","label":"Verina protects a team member from fatal damage and grants a shield with strength equal to 120% of Verina's ATK, lasting for 10s. This can be triggered 1 time every 10 minutes. (Inherent I)","value":0,"conditional":false}],
+    // 2026-07-25 — the trailing "Inherent II" text duplicates ALL of the above
+    // (self elements) plus the team tier already live in bundle.ts
+    // (cb-ww-sigrika/cb-ww-sigrika-echo) as REAL numeric effects, so it's NOT
+    // mirrored here as a live buff (would double-count). Restored below as a
+    // value:0/conditional:false placeholder ONLY — earlier today this was
+    // deleted entirely as "dead weight," which broke the Talents window's
+    // Inherent II display (getPassiveSlotBuffs only reads selfBuffs/
+    // teamBuffs; the real content lives in neither). Same established
+    // informational-placeholder convention as Baizhi/Aalto/Carlotta below.
+    "sigrika": [{"stat":"elemDmg","label":"Aero DMG Bonus +30%, at 6 stacks of Blessing of Runes (Inherent I)","value":30,"conditional":true},{"stat":"dmgBonus","label":"Echo Skill DMG Bonus +30%, at 6 stacks of Blessing of Runes (Inherent I)","value":30,"conditional":true,"appliesTo":["echo"]},{"stat":"dmgBonus","label":"Echo Skill DMG Bonus (ER-scaled, over 125%)","value":2,"conditional":true,"appliesTo":["echo"],"scaleOff":{"sourceStat":"energyRegen","basis":"total","ratio":2,"offset":125,"cap":50}},{"stat":"atkPct","label":"When any nearby Resonators in the team cast Echo Skill, Sigrika gains a stack of Blessing of Runes, up to 6 stacks. Echoes with the same name can only trigger this effect once. This effect resets upon a lineup change.Blessing of RunesEach stack of Blessing of Runes grants the active Resonator in the team 3% Aero DMG Bonus and 3% Echo Skill DMG Bonus.When Blessing of Runes reaches 6 stacks, Sigrika additionally gains 30% Aero DMG Bonus and Echo Skill DMG Bonus.For every 1% of Sigrika's Energy Regen over 125%, Sigrika gains 2% Echo Skill DMG Bonus for up to 50%. (Inherent II)","value":0,"conditional":false}],
+    // 2026-07-25 — Inherent II's real numeric buff already lives in bundle.ts's
+    // `character` buff array (cb-ww-verina, "Gift of Nature" ATK+20%/20s), so
+    // it's NOT mirrored here as a live effect (would double-count). Restored
+    // as a value:0/conditional:false placeholder ONLY, for the same Talents-
+    // window display reason as Rebecca/Sigrika above.
+    "verina": [{"stat":"atkPct","label":"Verina protects a team member from fatal damage and grants a shield with strength equal to 120% of Verina's ATK, lasting for 10s. This can be triggered 1 time every 10 minutes. (Inherent I)","value":0,"conditional":false},{"stat":"atkPct","label":"When Verina casts Heavy Attack Starflower Blooms, Mid-air Attack Starflower Blooms, Resonance Liberation Arboreal Flourish or Outro Skill Blossom, all team members' ATK are increased by 20% for 20s. (Inherent II)","value":0,"conditional":false}],
     // MOVED 2026-07-25 — Inherent I's real ATK+15%/20s team buff (was a
     // value:0 placeholder) is now a genuine effect in CHARACTER_TEAM_BUFFS
     // below, since it benefits whichever teammate picks up Euphonia, not

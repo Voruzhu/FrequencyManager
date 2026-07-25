@@ -151,3 +151,33 @@ describe('getPassiveSlotBuffs — the raw matches + their original index, for th
         expect(getPassiveSlotBuffs('wuthering-waves', c, 1)).toHaveLength(0);
     });
 });
+
+describe('getPassiveSlotBuffs — also matches character.teamBuffs (e.g. Baizhi\'s Euphonia, Mavuika\'s P2)', () => {
+    it('matches a tagged teamBuffs entry when selfBuffs has nothing for that slot', () => {
+        const c = char({
+            selfBuffs: [{ stat: 'elemDmg', label: 'Havoc DMG Bonus +15% (Inherent I)', value: 15, conditional: false }],
+            teamBuffs: [{ stat: 'atkPct', label: 'ATK +15%, 20s, to whoever picks up Euphonia (Inherent I)', value: 15 }],
+        });
+        const matches = getPassiveSlotBuffs('wuthering-waves', c, 0);
+        expect(matches).toHaveLength(2);
+        expect(matches.some((m) => m.sb.stat === 'atkPct' && m.sb.value === 15)).toBe(true);
+    });
+
+    it('normalizes teamBuffs entries to conditional:false — always "Always active", never a misleading toggle', () => {
+        const c = char({
+            selfBuffs: [],
+            teamBuffs: [{ stat: 'elemDmg', label: 'DMG bonus to active party member (P2)', value: 40 }],
+        });
+        const matches = getPassiveSlotBuffs('genshin-impact', c, 1);
+        expect(matches).toHaveLength(1);
+        expect(matches[0].sb.conditional).toBe(false);
+    });
+
+    it('describePassiveSlot surfaces the real teamBuffs text instead of falling back to generic boilerplate', () => {
+        const c = char({
+            selfBuffs: [],
+            teamBuffs: [{ stat: 'atkPct', label: 'Baizhi heals the lowest-HP ally (Inherent II)', value: 0 }],
+        });
+        expect(describePassiveSlot('wuthering-waves', c, 1)).toBe('Baizhi heals the lowest-HP ally');
+    });
+});
