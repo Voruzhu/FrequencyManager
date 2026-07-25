@@ -22,6 +22,7 @@ import type { UpdateInfo, ProgressInfo } from 'electron-updater';
 import { autoUpdater } from 'electron-updater';
 import { initExternalGameModules, getExternalIconsDir, hasGameDefinition } from '@adapters/game-definitions';
 import AdmZip from 'adm-zip';
+import { SCAN_CROP_REGIONS, resolveCropRect, stackLayout, lumaInvert } from '@shared/ocr/imagePreprocess';
 
 // `StructuredLogger` (used everywhere, including deep in core/modules) only
 // ever calls `console.*` — which for a packaged app launched normally (not
@@ -716,113 +717,54 @@ function runOcrScan(imagePath: string): Promise<{ success: boolean; echo?: unkno
     });
 }
 
-interface CropRect { x: number; y: number; width: number; height: number }
-
-// Fractional (0-1) crop regions per scan type, applied BEFORE upscaling. Each
-// scan type maps to an ORDERED LIST of regions, stacked vertically into one
-// composite image before OCR runs (see `stitchVertically`).
-//
-// Calibrated against real 1920x1080 screenshots of the Resonator's echo-slot
-// detail panel (not the Echo Management grid list): name/level/cost/icon row
-// + full stat list sits at roughly x=1505-1860, y=95-490. Below that,
-// "Echo Skill" (full ability description) and "Sonata Effect" render at
-// VARIABLE height depending on the echo (some descriptions run several
-// lines longer than others) — including that block would both feed a pile
-// of irrelevant flavor text into OCR and, worse, there's no single fixed
-// crop that reliably ends right after it for every echo. The "Equipped by
-// <name>" row is unaffected by that variable height — it's pinned to a
-// fixed footer position (~y=918-977) regardless of how long the skill text
-// above it is, confirmed against four real screenshots with very different
-// skill-description lengths. So: two fixed regions (top stat block, bottom
-// footer row), skipping the variable middle entirely.
-//
-// x narrowed from 0.76 to 0.785 (confirmed against user-supplied close-up
-// crops of the panel): every stat row has a small decorative bullet icon
-// (a "+", or a stat-type glyph for the main stat) immediately to the left
-// of its label, and the row right below Cost has a run of small button
-// icons (lock/notes/etc) — neither carries any text OCR needs, and both
-// were getting misread as garbage characters prefixed onto real labels
-// (e.g. "HP" reading as "Fhe dt ©"). The right edge stays at the screen
-// edge (1.0) since stat VALUES are right-aligned close to it — narrowing
-// that side risks clipping real numbers. (A tighter 0.80/0.98/y=0.10
-// variant was tried and reverted — see chat history 2026-07-12 if
-// revisiting; kept here since it wasn't confirmed to actually help.)
-//
-// A third region (added 2026-07-13, user request) targets the Sonata-set
-// filter chip in the TOP-LEFT of this same loadout screen (e.g. "Celestial
-// Light ⌄") — the only place the game shows the currently-relevant Sonata
-// set as plain, readable text at a FIXED position/height. The right panel's
-// own "Sonata Effect" breakdown (further down, below "Echo Skill") also
-// names the set, but sits in that same variable-height region already
-// excluded above, so it can't be cropped reliably either — this chip is the
-// dependable alternative. Once `setName` resolves from OCR text at all,
-// `mapScannedEchoToGearDraft` already uses it directly ahead of any
-// name-based set inference/ambiguity warning — no mapping-layer change
-// needed, this region just gives that existing path something to find.
-// Estimated from a single reference screenshot (2026-07-13, ~1920x1080),
-// NOT yet confirmed against multiple real captures the way the two regions
-// below were — unlike those, this one may need retuning after real use.
-const SCAN_CROP_REGIONS: Record<string, CropRect[]> = {
-    echoes: [
-        { x: 0.10, y: 0.085, width: 0.22, height: 0.06 },
-        // x widened 0.785 -> 0.77 (2026-07-14, user request): the previous
-        // narrowing (0.76 -> 0.785, see the history above) traded too far —
-        // it was cutting into real label characters on some stat rows, not
-        // just the decorative bullet icons it was meant to exclude. Right
-        // edge stays anchored at 1.0 (width grows to compensate) since stat
-        // VALUES are right-aligned close to the screen edge.
-        { x: 0.77, y: 0.08, width: 0.23, height: 0.38 },
-        { x: 0.77, y: 0.85, width: 0.23, height: 0.055 },
-    ],
-};
+// `SCAN_CROP_REGIONS` (crop coordinates + their calibration history),
+// `resolveCropRect`, `stackLayout`, and `lumaInvert` now live in
+// `shared/ocr/imagePreprocess.ts` (imported above) — extracted so the web
+// build's Canvas-based OCR preprocessing can never silently drift onto
+// different numbers than this file's own pipeline.
 
 /**
  * Stack multiple NativeImages into one, top to bottom. Used to combine
  * non-contiguous crop regions (e.g. a stat block and a footer row, skipping
  * variable-height content between them) into a single image OCR can run on
  * in one pass. Inputs may have DIFFERENT pixel widths — e.g. a full-width
- * filter-chip crop stacked above the narrower right-panel stat block — each
- * row is left-aligned onto a canvas as wide as the widest input, padded with
- * opaque black. `grayscaleAndInvert` (which always runs right after this)
- * turns that padding into plain white margin — harmless blank space for
- * Tesseract, not a dark mark that could read as stray text. When every
- * region already shares the same width (the original, still-common case)
- * this is equivalent to a straight concatenation.
+ * filter-chip crop stacked above the narrower right-panel stat block —
+ * `stackLayout` (shared) computes the left-aligned composite geometry;
+ * leftover horizontal space is padded with opaque black here. `grayscaleAndInvert`
+ * (which always runs right after this) turns that padding into plain white
+ * margin — harmless blank space for Tesseract, not a dark mark that could
+ * read as stray text. When every region already shares the same width (the
+ * original, still-common case) this is equivalent to a straight concatenation.
  */
 function stitchVertically(images: NativeImage[]): NativeImage {
     if (images.length === 1) return images[0];
-    const maxWidth = Math.max(...images.map((img) => img.getSize().width));
-    const totalHeight = images.reduce((sum, img) => sum + img.getSize().height, 0);
-    const combined = Buffer.alloc(maxWidth * totalHeight * 4, 0);
+    const layout = stackLayout(images.map((img) => img.getSize()));
+    const combined = Buffer.alloc(layout.width * layout.height * 4, 0);
     for (let i = 3; i < combined.length; i += 4) combined[i] = 255; // opaque alpha for padded pixels
-    let rowOffset = 0;
-    for (const img of images) {
+    images.forEach((img, index) => {
         const { width, height } = img.getSize();
         const bitmap = img.toBitmap();
         const rowBytes = width * 4;
+        const rowOffset = layout.offsets[index].y;
         for (let y = 0; y < height; y++) {
             const srcStart = y * rowBytes;
-            const dstStart = (rowOffset + y) * maxWidth * 4;
+            const dstStart = (rowOffset + y) * layout.width * 4;
             bitmap.copy(combined, dstStart, srcStart, srcStart + rowBytes);
         }
-        rowOffset += height;
-    }
-    return nativeImage.createFromBitmap(combined, { width: maxWidth, height: totalHeight });
+    });
+    return nativeImage.createFromBitmap(combined, { width: layout.width, height: layout.height });
 }
 
 /**
  * Convert to grayscale and INVERT (light-text-on-dark -> dark-text-on-light)
- * before OCR. Tesseract's bundled English model is trained overwhelmingly on
- * documents with dark text on a light background; WW's UI is the opposite
- * (light/white stat text on a dark panel), which is a real, specific
- * mismatch with what the model expects — not just "more contrast is
- * generally better." No new dependency needed — same raw-bitmap technique
- * already used for `stitchVertically`. Format is platform-dependent per
- * Electron's docs; on Windows this is BGRA, but grayscale luminance only
- * needs to know which byte is which of R/G/B (order doesn't affect
- * inversion), and this is a targeted fix for a known, specific model
- * mismatch, not a general-purpose image filter that needs to be
- * pixel-format-perfect everywhere.
+ * before OCR, via the shared `lumaInvert` formula (see that function's doc
+ * for why Tesseract's model needs this). No new dependency needed — same
+ * raw-bitmap technique already used for `stitchVertically`. Format is
+ * platform-dependent per Electron's docs; on Windows this is BGRA, but
+ * grayscale luminance only needs to know which byte is which of R/G/B
+ * (order doesn't affect inversion), and this is a targeted fix for a known,
+ * specific model mismatch, not a general-purpose image filter that needs to
+ * be pixel-format-perfect everywhere.
  */
 function grayscaleAndInvert(image: NativeImage): NativeImage {
     const { width, height } = image.getSize();
@@ -833,8 +775,7 @@ function grayscaleAndInvert(image: NativeImage): NativeImage {
         const g = bitmap[i + 1];
         const r = bitmap[i + 2];
         const a = bitmap[i + 3];
-        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-        const inverted = 255 - luma;
+        const inverted = lumaInvert(r, g, b);
         out[i] = inverted;
         out[i + 1] = inverted;
         out[i + 2] = inverted;
@@ -857,12 +798,7 @@ function applyCropAndUpscale(source: NativeImage, scanType?: string): NativeImag
     const regions = scanType ? SCAN_CROP_REGIONS[scanType] : undefined;
     if (regions && regions.length > 0) {
         const bounds = source.getSize();
-        const crops = regions.map((r) => source.crop({
-            x: Math.round(bounds.width * r.x),
-            y: Math.round(bounds.height * r.y),
-            width: Math.round(bounds.width * r.width),
-            height: Math.round(bounds.height * r.height),
-        }));
+        const crops = regions.map((r) => source.crop(resolveCropRect(bounds, r)));
         image = stitchVertically(crops);
     }
     if (regions && regions.length > 0) {
