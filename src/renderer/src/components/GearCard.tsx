@@ -2,6 +2,20 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { ItemIcon, Badge } from './ui';
 import { iconSrc } from '@/lib/icons';
 import { formatGearStat, gearIcon, setIconFor, echoItemIconFor, useGameData, type GearData } from '../data/gameData';
+import { gearEfficiency } from '@shared/calc/gearEfficiency';
+
+/** Roll-quality badge: green/amber/red by how well the piece rolled, plus Crit Value when relevant. */
+function EfficiencyBadge({ g, gameId }: { g: GearData; gameId: string }) {
+    const data = useGameData(gameId);
+    const { rollPct, critValue } = gearEfficiency(g, data.gearCatalog);
+    if (g.subStats.length === 0) return null;
+    const tone = rollPct >= 80 ? 'text-success' : rollPct >= 50 ? 'text-warning' : 'text-destructive';
+    return (
+        <Badge variant="outline" className={tone}>
+            {Math.round(rollPct)}% roll{critValue != null ? ` · CV ${critValue.toFixed(1)}` : ''}
+        </Badge>
+    );
+}
 
 /** Main stat + sub-stats, always visible — used inside an expanded GearCard. */
 export function GearStatsList({ g }: { g: GearData }) {
@@ -68,6 +82,7 @@ export function GearCard({
                             {g.cost != null ? <Badge variant="outline">Cost {g.cost}</Badge> : g.slot ? <Badge variant="outline">{g.slot}</Badge> : null}
                             {mainSlot && <Badge variant="secondary">Main Slot</Badge>}
                             <Badge variant="outline">{g.rarity}★</Badge>
+                            <EfficiencyBadge g={g} gameId={gameId} />
                         </div>
                     </div>
                 </button>
