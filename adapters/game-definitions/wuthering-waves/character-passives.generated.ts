@@ -35,8 +35,21 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // combo. Narrowed to Resonating Echoes' 2 unique ids.
     "rover-spectro": [{"stat":"dmgBonus","label":"Basic Atk (Resonating Echoes) DMG +60% (Inherent I)","value":60,"conditional":false,"appliesTo":["basicResonatingEchoesS1","basicResonatingEchoesS2"]},{"stat":"atkPct","label":"ATK +15%, 5s after Heavy Attack Resonance (Inherent II)","value":15,"conditional":true,"autoTrigger":{"skillIds":["heavy-resonance"],"durationSeconds":5}}],
     "jinhsi": [{"stat":"elemDmg","label":"Spectro DMG Bonus +20% (Inherent I)","value":20,"conditional":false},{"stat":"atkPct","label":"DMG Multiplier of Intro Skill Loong's Halo is increased by 50%. (Inherent II)","value":0,"conditional":false}],
-    "yinlin": [{"stat":"critRate","label":"Crit Rate +15%, 5s after Resonance Skill (Inherent I)","value":15,"conditional":true,"autoTrigger":{"skillIds":["skill","skillLightningExecution","electromagneticBlast","judgmentStrike"],"durationSeconds":5}},{"stat":"dmgBonus","label":"Resonance Skill DMG +10% vs Sinner's-Mark targets (Inherent II)","value":10,"conditional":true,"appliesTo":["skill"]},{"stat":"atkPct","label":"ATK +10%, 4s, on Sinner's-Mark trigger (Inherent II)","value":10,"conditional":true}],
-    "changli": [{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, 4 stacks of Enflamement (Inherent I)","value":20,"conditional":true},{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, after Heavy Atk/Liberation cast (Inherent II)","value":20,"conditional":true}],
+    // FIXED 2026-07-25 — Inherent II real text ("Deadly Focus", wuthering.gg)
+    // is "The damage of Resonance Skill Lightning Execution is increased by
+    // 10%..." — names Lightning Execution specifically, not Yinlin's whole
+    // Resonance Skill kit. appliesTo:["skill"] canon-scopes to type:'Skill',
+    // which ALSO matches her base skill/electromagneticBlast/judgmentStrike
+    // (all type:'Skill' per skills.ts) — the same scope-collision bug class
+    // as Rover-Spectro's Resonating-Echoes fix. Narrowed to the one real id.
+    "yinlin": [{"stat":"critRate","label":"Crit Rate +15%, 5s after Resonance Skill (Inherent I)","value":15,"conditional":true,"autoTrigger":{"skillIds":["skill","skillLightningExecution","electromagneticBlast","judgmentStrike"],"durationSeconds":5}},{"stat":"dmgBonus","label":"Resonance Skill DMG +10% vs Sinner's-Mark targets (Inherent II)","value":10,"conditional":true,"appliesTo":["skillLightningExecution"]},{"stat":"atkPct","label":"ATK +10%, 4s, on Sinner's-Mark trigger (Inherent II)","value":10,"conditional":true}],
+    // FIXED 2026-07-25 — Inherent II real text ("Sweeping Force", wuthering.gg
+    // + esports.gg) is "Casting Heavy Attack Flaming Sacrifice or Resonance
+    // Liberation Radiance of Fealty gives 20% Fusion DMG Bonus AND ignores
+    // 15% of the target's DEF when dealing damage" — the DEF-ignore half had
+    // no entry at all. Added as a separate defIgnore row (same trigger/
+    // conditional as its sibling DMG-Bonus row).
+    "changli": [{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, 4 stacks of Enflamement (Inherent I)","value":20,"conditional":true},{"stat":"elemDmg","label":"Fusion DMG Bonus +20%, after Heavy Atk/Liberation cast (Inherent II)","value":20,"conditional":true},{"stat":"defIgnore","label":"DEF Ignore +15%, after Heavy Atk/Liberation cast (Inherent II)","value":15,"conditional":true}],
     "camellya": [{"stat":"elemDmg","label":"Havoc DMG Bonus +15% (Inherent I)","value":15,"conditional":false},{"stat":"dmgBonus","label":"Basic Atk DMG +15% (Inherent II)","value":15,"conditional":false,"appliesTo":["basic"]}],
     "jiyan": [{"stat":"atkPct","label":"ATK +10%, 15s after Intro Skill (Inherent I)","value":10,"conditional":true,"autoTrigger":{"skillIds":["introSkill"],"durationSeconds":15}},{"stat":"critDmg","label":"Crit DMG +12%, 8s on hit (Inherent II)","value":12,"conditional":true}],
     "calcharo": [{"stat":"dmgBonus","label":"Liberation DMG +10%, 15s after Heavy Atk Mercy (Inherent I)","value":10,"conditional":true,"appliesTo":["ult"],"autoTrigger":{"skillIds":["forteMercy"],"durationSeconds":15}},{"stat":"atkPct","label":"When Heavy Attack \"Death Messenger\" hits the target, the damage taken by Calcharo is reduced by 15% for 5s. (Inherent II)","value":0,"conditional":false}],

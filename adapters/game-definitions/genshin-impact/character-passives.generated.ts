@@ -56,7 +56,7 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "sandrone": [{"stat":"elementalMastery","label":"EM · 8% of own ATK, capped (P2)","value":160,"conditional":false,"scaleOff":{"sourceStat":"atk","basis":"total","ratio":0.08,"cap":160}}],
     "tighnari": [{"stat":"elementalMastery","label":"EM · post-Wreath-Arrow (P1)","value":50,"conditional":true},{"stat":"elemDmg","label":"Charged/Burst DMG · 0.06% per own EM point, capped (P2)","value":60,"conditional":false,"appliesTo":["charged","ult"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":0.06,"cap":60}}],
     "varesa": [{"stat":"atkPct","label":"ATK% · post-ally-Nightsoul-Burst, 2 stacks (P2)","value":70,"conditional":true}],
-    "zibai": [{"stat":"defPct","label":"DEF% · 3 other Geo teammates (P2)","value":45,"conditional":true}],
+    "zibai": [{"stat":"defPct","label":"DEF% · 3 other Geo teammates (P2)","value":45,"conditional":true},{"stat":"elementalMastery","label":"EM · 3 other Hydro teammates (P2)","value":180,"conditional":true}],
     "raiden": [{"stat":"elemDmg","label":"Electro DMG · 0.4% per 1% ER above 100% (P2)","value":0,"conditional":false,"scaleOff":{"sourceStat":"energyRegen","basis":"total","ratio":0.4,"offset":100}}],
     "nahida": [{"stat":"elemDmg","label":"Skill DMG · 0.1% per own EM point above 200, capped (P2)","value":0,"conditional":false,"appliesTo":["skill"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":0.1,"offset":200,"cap":80}}],
 };
