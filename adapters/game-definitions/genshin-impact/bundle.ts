@@ -169,6 +169,13 @@ const supplements: GameCatalogSupplements = {
         { id: 'gi-xuanwen-beast', name: 'Xuanwen Beast', level: 90, def: 950, res: 10, resByElement: { Anemo: 50, Hydro: 50 } },
         { id: 'gi-lord-hidden-depths', name: 'Lord of the Hidden Depths', level: 90, def: 950, res: 10 },
         { id: 'gi-fisher-hidden-depths', name: 'Fisher of Hidden Depths', level: 90, def: 950, res: 10 },
+        // Added 2026-07-25 — Sumeru desert Ruin-class puzzle boss, same 70%
+        // Physical RES convention already used for its siblings gi-serpent/
+        // gi-guard above (Fandom, confirmed). A documented temporary "-40%
+        // all elemental RES while paralyzed" state exists but is excluded,
+        // matching this table's existing policy of not baking in
+        // temporary phase-based RES swings (see Raiden/La Signora above).
+        { id: 'gi-mechanical-array', name: 'Perpetual Mechanical Array', level: 90, def: 950, res: 10, resByElement: { Physical: 70 } },
     ],
     buffs: {
         basic: [

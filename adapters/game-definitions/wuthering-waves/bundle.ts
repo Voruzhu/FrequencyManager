@@ -183,6 +183,12 @@ const supplements: GameCatalogSupplements = {
         // exploitable weakness is a collab-exclusive status effect this
         // schema has no concept of.
         { id: 'ww-nightmare-adam-smasher', name: 'Nightmare: Adam Smasher', level: 90, def: 950, res: 10, icon: 'icons/enemies/ww-nightmare-adam-smasher.webp' },
+        // Added 2026-07-25 (Elite Autopuppet Tacet Discord, version 3.5).
+        // Documented (Fandom/Game8) as taking 60% more Echo Skill DMG and
+        // having elevated Fusion RES, but the exact Fusion RES% wasn't
+        // confirmed from a live source (both stat-table fetches failed) —
+        // left at the flat baseline rather than guessing a number.
+        { id: 'ww-fog-lionarch', name: 'Fog Lionarch', level: 90, def: 950, res: 10 },
     ],
     buffs: {
         basic: [
