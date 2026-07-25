@@ -165,6 +165,8 @@ interface CalcState {
     addTarget: (t: Target) => void;
     updateTarget: (id: string, patch: Partial<Target>) => void;
     removeTarget: (id: string) => void;
+    /** Bulk replace — used by "Import targets" to apply a shared target config in one step. */
+    setTargets: (targets: Target[]) => void;
     setCritMode: (m: CritMode) => void;
     setResults: (r: Loadout[] | null) => void;
     setOptimizeProgress: (p: { done: number; total: number } | null) => void;
@@ -297,6 +299,7 @@ export const useCalcStore = create<CalcState>()(
     addTarget: (t) => set((s) => ({ targets: [...s.targets, t] })),
     updateTarget: (id, patch) => set((s) => ({ targets: s.targets.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
     removeTarget: (id) => set((s) => ({ targets: s.targets.filter((t) => t.id !== id) })),
+    setTargets: (targets) => set({ targets }),
 
     setCritMode: (m) => set({ critMode: m }),
 
