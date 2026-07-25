@@ -266,9 +266,32 @@ describe('mainSlotEchoBuffs — WuWa cost-4 echo main-slot bonus, derived per co
         expect(result[0].value).toBe(15);
     });
 
-    it('excludes a conditional:true entry (out of scope — reaches the optimizer via OptimizeConfig.buffs instead)', () => {
+    it('excludes a conditional:true entry when echoSkillDeployed is omitted (defaults false)', () => {
         const gear = [echo('Test Conditional Echo', 'a', 4)];
         expect(mainSlotEchoBuffs(gear, undefined, SELF_BUFFS)).toEqual([]);
+    });
+
+    it('excludes a conditional:true entry when echoSkillDeployed is explicitly false', () => {
+        const gear = [echo('Test Conditional Echo', 'a', 4)];
+        expect(mainSlotEchoBuffs(gear, undefined, SELF_BUFFS, undefined, false)).toEqual([]);
+    });
+
+    // CORRECTED 2026-07-25 — conditional entries used to be permanently out
+    // of reach here (the theory was they'd reach the Optimizer some other
+    // way via OptimizeConfig.buffs — they never actually did, since nothing
+    // ever populated that list with them either). echoSkillDeployed (mirrors
+    // calcStore's master toggle of the same name) is what makes them count.
+    it('includes a conditional:true entry when echoSkillDeployed is true', () => {
+        const gear = [echo('Test Conditional Echo', 'a', 4)];
+        const result = mainSlotEchoBuffs(gear, undefined, SELF_BUFFS, undefined, true);
+        expect(result).toHaveLength(1);
+        expect(result[0].stat).toBe('atk');
+        expect(result[0].value).toBe(100);
+    });
+
+    it('echoSkillDeployed does not affect restrictedToCharacters gating', () => {
+        const gear = [echo('Test Restricted Echo', 'a', 4)];
+        expect(mainSlotEchoBuffs(gear, 'Jinhsi', SELF_BUFFS, undefined, true)).toEqual([]);
     });
 
     it('defaults to the real WW_ECHO_SELF_BUFFS table when no 3rd argument is passed', () => {
@@ -342,6 +365,39 @@ describe('computeBaseLoadouts — main-slot echo bonus is derived PER COMBO, rea
             catalog: CATALOG, topN: 5,
         };
         expect(() => computeBaseLoadouts(c, [[echo('Filler', 'a', 1)]], config)).not.toThrow();
+    });
+
+    // CORRECTED 2026-07-25 — a real conditional-only main-slot bonus (unlike
+    // Adam Smasher's above, which is unconditional) used to never reach the
+    // Optimizer/"Calculate current loadout" results at all, regardless of
+    // config.echoSkillDeployed — only the live Calculator preview (a
+    // completely separate code path, src/renderer/src/lib/selfBuffs.ts's
+    // gearAutoBuffs) knew about it. Proven end to end here via the real
+    // "Fallacy of No Return" entry (Energy Regen +10%, conditional: true,
+    // no restrictedToCharacters) — needs `energyRegen` in the catalog,
+    // unlike the Crit-Rate-based tests above.
+    const CATALOG_WITH_ER: StatDef[] = [...CATALOG, { key: 'energyRegen', label: 'Energy Regen', percent: true }];
+
+    it('a real conditional main-slot bonus (Fallacy of No Return) is excluded when echoSkillDeployed is omitted/false', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG_WITH_ER, topN: 5,
+        };
+        const [result] = computeBaseLoadouts(c, [[echo('Fallacy of No Return', 'a', 4)]], config);
+        expect(result.stats.energyRegen).toBe(100); // BASE_DEFAULTS only, no +10
+    });
+
+    it('a real conditional main-slot bonus (Fallacy of No Return) is included when echoSkillDeployed is true', () => {
+        const c = charFor();
+        const config: OptimizeConfig = {
+            targets: [], buffs: [], critMode: 'none',
+            enemy: { id: 'e', name: 'Dummy', level: 90, def: 0, res: 0 },
+            catalog: CATALOG_WITH_ER, topN: 5, echoSkillDeployed: true,
+        };
+        const [result] = computeBaseLoadouts(c, [[echo('Fallacy of No Return', 'a', 4)]], config);
+        expect(result.stats.energyRegen).toBe(110); // 100 base + 10 from the now-included conditional buff
     });
 });
 

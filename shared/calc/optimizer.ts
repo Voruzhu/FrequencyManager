@@ -104,6 +104,14 @@ export interface OptimizeConfig {
      * not assumed once upfront, since different combos activate different
      * sets/tiers. Omit for a caller that resolves set bonuses itself. */
     setBonuses?: SetBonusEntry[];
+    /** WW only — mirrors `calcStore.echoSkillDeployed` (default true there):
+     * whether the searched/equipped Main Slot echo's own CONDITIONAL self-
+     * buffs (e.g. Fallacy of No Return's Energy Regen, only granted "if the
+     * Echo Skill was just used") count, on top of its always-on ones — see
+     * `mainSlotEchoBuffs`. Undefined behaves like `false` (conditional-only
+     * buffs excluded), matching every pre-existing caller/test that doesn't
+     * know about this flag. */
+    echoSkillDeployed?: boolean;
 }
 
 /** Amplifying-reaction EM bonus: 2.78·EM/(EM+1400). */
@@ -407,12 +415,21 @@ export function setBonusBuffEntries(gear: GearEntry[], setBonuses: SetBonusEntry
 
 /**
  * A gear combo's main-slot echo bonus (WW only) — the UNCONDITIONAL
- * (`conditional:false`) portion of `WW_ECHO_SELF_BUFFS` for whichever cost-4
- * echo is in this combo, gated by `restrictedToCharacters`. Conditional
- * (opt-in) entries are NOT included here — those already reach the
- * Optimizer via the caller's own manually-toggled buff list
- * (`OptimizeConfig.buffs`), the same way conditional weapon/character
- * buffs do.
+ * (`conditional:false`) portion of `WW_ECHO_SELF_BUFFS` for whichever piece
+ * occupies this combo's main slot, gated by `restrictedToCharacters`.
+ *
+ * CORRECTED 2026-07-25 — conditional (`conditional:true`) entries used to be
+ * excluded entirely on the assumption they'd reach the Optimizer some other
+ * way. They don't: those buffs require "the Main Slot echo's own Echo Skill
+ * was just used" (e.g. Fallacy of No Return's Energy Regen, Jué's Resonance
+ * Skill DMG), a condition the Calculator now models as ONE master toggle
+ * (`calcStore.echoSkillDeployed`, default true) instead of per-buff manual
+ * chips — see the renderer's `gearAutoBuffs`' own identical `echoSkillDeployed`
+ * parameter, which this mirrors. `echoSkillDeployed` here (threaded from
+ * `OptimizeConfig.echoSkillDeployed`) additionally includes those
+ * conditional entries when true, so toggling it actually changes what the
+ * Optimizer search / "Calculate current loadout" produce, not just the
+ * on-screen stat preview.
  *
  * Must be computed PER COMBO (unlike kit/weapon buffs, which are the same
  * across every combo during a search) since which echo (if any) occupies
@@ -451,12 +468,13 @@ export function mainSlotEchoBuffs(
     characterName?: string,
     selfBuffs: Record<string, Array<{ stat: string; value: number; conditional?: boolean; appliesTo?: string[]; restrictedToCharacters?: string[] }>> = WW_ECHO_SELF_BUFFS,
     forcedMainId?: string,
+    echoSkillDeployed = false,
 ): BuffEntry[] {
     const mainSlot = (forcedMainId ? gear.find((g) => g.id === forcedMainId) : undefined)
         ?? gear.find((g) => (selfBuffs[g.name]?.length ?? 0) > 0);
     if (!mainSlot) return [];
     return (selfBuffs[mainSlot.name] ?? [])
-        .filter((sb) => sb.conditional === false && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
+        .filter((sb) => (sb.conditional === false || echoSkillDeployed) && (!sb.restrictedToCharacters || sb.restrictedToCharacters.includes(characterName ?? '')))
         .map((sb, i) => ({
             id: `gear-${mainSlot.id}-${sb.stat}-${sb.appliesTo?.join('+') ?? 'all'}-${i}`,
             name: `${mainSlot.name} (Main Slot)`,
@@ -872,7 +890,7 @@ export function computeBaseLoadouts(c: CharacterEntry, combos: GearEntry[][], co
     // more than one, instead of duplicating this whole block inline twice.
     const buildFor = (gear: GearEntry[], mainId: string | undefined) => {
         const comboSetBuffs = config.setBonuses ? setBonusBuffEntries(gear, config.setBonuses, c.name) : [];
-        const comboGearBuffs = mainSlotEchoBuffs(gear, c.name, WW_ECHO_SELF_BUFFS, mainId);
+        const comboGearBuffs = mainSlotEchoBuffs(gear, c.name, WW_ECHO_SELF_BUFFS, mainId, config.echoSkillDeployed);
         const allBuffs = [...config.buffs, ...comboSetBuffs, ...comboGearBuffs];
         const stats = computeBuildStats(c, gear, allBuffs, config.weapon, config.catalog);
         const comboScopedBuffs = [...kitScopedBuffs, ...comboSetBuffs.filter(isScopedBuff), ...comboGearBuffs.filter(isScopedBuff), ...gearScopedBuffs(gear)];

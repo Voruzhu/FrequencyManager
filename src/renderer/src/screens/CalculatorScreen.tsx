@@ -203,7 +203,7 @@ export function CalculatorScreen() {
         // threshold on its own. `requiredSets` still restricts the search
         // POOL below (only search gear from these sets) — it just no longer
         // fakes the resulting bonus.
-        const config = { targets: calc.targets, buffs: [...stripAutoSkillTreeBuffs(calc.buffs, character, calc.skillTreeInvested), ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog, {}, calc.skillTreeInvested)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses };
+        const config = { targets: calc.targets, buffs: [...stripAutoSkillTreeBuffs(calc.buffs, character, calc.skillTreeInvested), ...partyBuffs, ...weaponAutoBuffs(weapon, character, equippedGear, data.statCatalog, {}, refineMultiplier), ...constellationAutoBuffs(character, calc.sequence, equippedGear, weapon, data.statCatalog), ...characterAutoBuffs(character, equippedGear, weapon, data.statCatalog, {}, calc.skillTreeInvested)], critMode: calc.critMode, enemy: calc.enemy, weapon, catalog: data.statCatalog, topN: loadoutCount, talentLevels, stacks: calc.skillStacks, reaction, charLevel: 90, maxTotalCost: data.gearCatalog.maxTotalCost, setBonuses: data.setBonuses, echoSkillDeployed: calc.echoSkillDeployed };
         return { config, equippedGear };
     };
 
