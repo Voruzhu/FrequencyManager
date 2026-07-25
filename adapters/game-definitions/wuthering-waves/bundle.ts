@@ -20,7 +20,7 @@ import { CHARACTER_SKILLS } from './skills';
 import { CHARACTER_STAT_OVERRIDES } from './character-stats.generated';
 import { SKILL_MULTIPLIER_OVERRIDES } from './skill-multipliers.generated';
 import { SEQUENCE_OVERRIDES } from './sequences.generated';
-import { CHARACTER_SELF_BUFFS } from './character-passives.generated';
+import { CHARACTER_SELF_BUFFS, CHARACTER_TEAM_BUFFS } from './character-passives.generated';
 import { CHARACTER_SKILL_TREE_BUFFS } from './character-skilltree.generated';
 
 /**
@@ -46,7 +46,9 @@ function accurateChar(c: typeof CHARACTERS[number]) {
     const constellations = SEQUENCE_OVERRIDES[c.id];
     const withConst = constellations ? { ...withSkills, constellations } : withSkills;
     const selfBuffs = [...(CHARACTER_SELF_BUFFS[c.id] ?? []), ...(CHARACTER_SKILL_TREE_BUFFS[c.id] ?? [])];
-    return selfBuffs.length ? { ...withConst, selfBuffs } : withConst;
+    const withSelfBuffs = selfBuffs.length ? { ...withConst, selfBuffs } : withConst;
+    const teamBuffs = CHARACTER_TEAM_BUFFS[c.id];
+    return teamBuffs ? { ...withSelfBuffs, teamBuffs } : withSelfBuffs;
 }
 
 const supplements: GameCatalogSupplements = {

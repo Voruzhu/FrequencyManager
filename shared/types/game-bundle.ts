@@ -200,6 +200,18 @@ export interface CharacterEntry {
      * real game, which this calc doesn't track separately).
      */
     selfBuffs?: ConditionalSelfBuff[];
+    /**
+     * TEAM-WIDE stat buffs from the character's own Inherent Skill / passive
+     * talent — distinct from `selfBuffs` above, which only benefits this
+     * character. e.g. Verina's Inherent Skill grants ALL team members +20%
+     * ATK, not just Verina. Same shape as `ConstellationNode.buffs` (deployed
+     * unconditionally, no unlock-level gate — an Inherent Skill/passive talent
+     * is always available, unlike a constellation/sequence node that requires
+     * a level). Absent when the character has no such kit mechanic (the
+     * common case — most kit team support comes from weapons/sets/
+     * constellations instead).
+     */
+    teamBuffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
 }
 
 export interface WeaponEntry {

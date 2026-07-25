@@ -22,7 +22,7 @@ import { SKILL_MULTIPLIER_OVERRIDES } from './skill-multipliers.generated';
 import { SCALED_SKILL_MULTIPLIER_OVERRIDES } from './skill-multipliers-scaled.generated';
 import { CHARACTER_STAT_OVERRIDES } from './character-stats.generated';
 import { CONSTELLATION_OVERRIDES } from './constellations.generated';
-import { CHARACTER_SELF_BUFFS } from './character-passives.generated';
+import { CHARACTER_SELF_BUFFS, CHARACTER_TEAM_BUFFS } from './character-passives.generated';
 
 /**
  * Apply imported accurate multipliers (Project Amber) over the authored skill
@@ -50,7 +50,9 @@ function accurateChar(c: typeof CHARACTERS[number]) {
     const constellations = CONSTELLATION_OVERRIDES[c.id];
     const withConst = constellations ? { ...withSkills, constellations } : withSkills;
     const selfBuffs = CHARACTER_SELF_BUFFS[c.id];
-    return selfBuffs ? { ...withConst, selfBuffs } : withConst;
+    const withSelfBuffs = selfBuffs ? { ...withConst, selfBuffs } : withConst;
+    const teamBuffs = CHARACTER_TEAM_BUFFS[c.id];
+    return teamBuffs ? { ...withSelfBuffs, teamBuffs } : withSelfBuffs;
 }
 
 

@@ -47,7 +47,12 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "kinich": [{"stat":"flatDmgAdd","label":"Skill DMG · flat add, up to 640% of own ATK, 2 stacks, Scalespiker Cannon (P2)","value":6400,"conditional":true,"appliesTo":["skill"],"scaleOff":{"sourceStat":"atk","basis":"total","ratio":6.4}}],
     "mualani": [{"stat":"flatDmgAdd","label":"Burst DMG · flat add, 45% of own Max HP, 3 stacks (P2)","value":5500,"conditional":true,"appliesTo":["ult"],"scaleOff":{"sourceStat":"hp","basis":"total","ratio":0.45}}],
     "citlali": [{"stat":"flatDmgAdd","label":"Skill DMG · flat add, 90% of own EM (P2)","value":900,"conditional":false,"appliesTo":["skill"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":0.9}},{"stat":"flatDmgAdd","label":"Burst DMG · flat add, 1200% of own EM (P2)","value":12000,"conditional":false,"appliesTo":["ult"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":12}}],
-    "mavuika": [{"stat":"atkPct","label":"ATK% · post-ally-Nightsoul-Burst (P1)","value":30,"conditional":true},{"stat":"elemDmg","label":"DMG · max Fighting Spirit, post-Burst (P2)","value":40,"conditional":true}],
+    // FIXED 2026-07-25 — P2 "Kiongozi" ("...DMG that the CURRENT ACTIVE
+    // PARTY MEMBER deals...") isn't self-only — it buffs whichever character
+    // is active when it procs, including a teammate Mavuika swapped off for.
+    // Moved to CHARACTER_TEAM_BUFFS below (value unchanged, 40% cap —
+    // icy-veins/KQM, verified 2026-07-25).
+    "mavuika": [{"stat":"atkPct","label":"ATK% · post-ally-Nightsoul-Burst (P1)","value":30,"conditional":true}],
     "yelan": [{"stat":"hpPct","label":"HP% · 4 elemental types (P1)","value":30,"conditional":true}],
     "aloy": [{"stat":"atkPct","label":"ATK% · post-Coil-effect (P1)","value":16,"conditional":true},{"stat":"elemDmg","label":"Cryo DMG · max ramp, Rushing Ice (P2)","value":35,"conditional":true}],
     "columbina": [{"stat":"critRate","label":"Crit Rate · 3 stacks (P1)","value":15,"conditional":true}],
@@ -59,6 +64,30 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     "zibai": [{"stat":"defPct","label":"DEF% · 3 other Geo teammates (P2)","value":45,"conditional":true},{"stat":"elementalMastery","label":"EM · 3 other Hydro teammates (P2)","value":180,"conditional":true}],
     "raiden": [{"stat":"elemDmg","label":"Electro DMG · 0.4% per 1% ER above 100% (P2)","value":0,"conditional":false,"scaleOff":{"sourceStat":"energyRegen","basis":"total","ratio":0.4,"offset":100}}],
     "nahida": [{"stat":"elemDmg","label":"Skill DMG · 0.1% per own EM point above 200, capped (P2)","value":0,"conditional":false,"appliesTo":["skill"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":0.1,"offset":200,"cap":80}}],
+};
+
+/**
+ * TEAM-WIDE buffs from a character's own (non-weapon, non-constellation)
+ * passive talent — see `CharacterEntry.teamBuffs` in shared/types/game-bundle.ts.
+ * Populated ONLY for characters whose real passive talent grants a buff to
+ * a party member OTHER than themselves AND has no existing implementation
+ * elsewhere. Aloy's own team-side passive (Prophecies of Dawn, ATK+8% to
+ * nearby party members) is NOT here — it's already a real, working entry in
+ * bundle.ts's `character` buff array (cb-gi-aloy-team); deliberately not
+ * duplicated here.
+ */
+export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>> = {
+    // P2 "Kiongozi" (verified 2026-07-25, icy-veins/KQM): "...every point of
+    // Fighting Spirit present when it is used increases the DMG that the
+    // CURRENT ACTIVE PARTY MEMBER deals by 0.2%. The maximum increase
+    // obtainable this way is 40%..." — genuinely missing anywhere else.
+    "mavuika": [{"stat":"elemDmg","label":"DMG bonus to current active party member · 0.2%/Fighting Spirit point, capped 40%, decaying over 20s post-Burst (P2)","value":40}],
+    // P2 "Flippant Masterpiece" (verified 2026-07-25, u7buy/icy-veins):
+    // "While in Masterstroke mode, for 8s after another nearby party member
+    // triggers a Cryo Reaction, that character's ATK is increased by 15%,
+    // while Lohen's ATK is increased by 15%." — the ally-side half of the
+    // same effect Lohen's own selfBuffs entry above already covers.
+    "lohen": [{"stat":"atkPct","label":"ATK% · to the ally whose Cryo Reaction triggered it, Masterstroke mode (P2)","value":15}],
 };
 
 export default CHARACTER_SELF_BUFFS;

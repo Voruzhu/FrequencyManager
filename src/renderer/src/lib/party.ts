@@ -177,6 +177,20 @@ export function partyEffects(data: Pick<GameBundle, 'id' | 'buffs' | 'setBonuses
                 });
             }
         }
+        // Team buff(s) from the member's own Inherent Skill / passive talent
+        // (character-level, unlike the Constellation/Sequence loop right
+        // above — no unlock-level gate, since an Inherent Skill/passive
+        // talent is always available, same "always applies" treatment as
+        // this character's own CHARACTER_SELF_BUFFS-sourced selfBuffs).
+        if (m.character.teamBuffs && m.character.teamBuffs.length > 0) {
+            effects.push({
+                id: `passive-${m.id}-team`,
+                name: m.character.name,
+                source: m.character.name,
+                category: 'kit',
+                buffs: m.character.teamBuffs.map((b) => ({ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) })),
+            });
+        }
     }
     return effects;
 }

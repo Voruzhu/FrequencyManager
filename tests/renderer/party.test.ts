@@ -183,3 +183,31 @@ describe('partyEffects — active character\'s own set bonus is not double-count
         expect(effects.filter((e) => e.category === 'set')).toHaveLength(1);
     });
 });
+
+describe('partyEffects — character.teamBuffs (Inherent Skill/passive talent team-wide buffs)', () => {
+    const partyData = { id: 'wuthering-waves', buffs: { basic: [], character: [] }, setBonuses, statCatalog: [] };
+
+    it('a teammate\'s teamBuffs entry contributes to the resolved party effects, with no unlock-level gate required', () => {
+        const withTeamBuffs: CharacterEntry = { ...makeChar('verina'), teamBuffs: [{ stat: 'atkPct', label: 'ATK +20%, 20s (Inherent II)', value: 20 }] };
+        const teammate: PartyMemberResolved = { id: 't1', character: withTeamBuffs, gear: [] };
+        const effects = partyEffects(partyData, [teammate]);
+        const teamEffect = effects.find((e) => e.id === 'passive-t1-team');
+        expect(teamEffect).toBeDefined();
+        expect(teamEffect?.buffs).toHaveLength(1);
+        expect(teamEffect?.buffs[0]).toMatchObject({ stat: 'atkPct', value: 20 });
+    });
+
+    it('flattens into enabledPartyBuffs same as any other kit effect, attributed to its source character', () => {
+        const withTeamBuffs: CharacterEntry = { ...makeChar('rebecca'), teamBuffs: [{ stat: 'atkPct', label: 'ATK +20%', value: 20 }] };
+        const teammate: PartyMemberResolved = { id: 't1', character: withTeamBuffs, gear: [] };
+        const effects = partyEffects(partyData, [teammate]);
+        const buffs = enabledPartyBuffs(effects, []);
+        expect(buffs.some((b) => b.stat === 'atkPct' && b.value === 20 && b.source === 'rebecca')).toBe(true);
+    });
+
+    it('a character with no teamBuffs contributes no passive-team effect', () => {
+        const teammate: PartyMemberResolved = { id: 't1', character: makeChar('a'), gear: [] };
+        const effects = partyEffects(partyData, [teammate]);
+        expect(effects.some((e) => e.id === 'passive-t1-team')).toBe(false);
+    });
+});
