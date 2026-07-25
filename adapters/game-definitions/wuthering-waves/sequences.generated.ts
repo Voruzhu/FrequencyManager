@@ -323,7 +323,25 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
         // covers the target-state half, live-gated against the Calculator's
         // "Target has: Frazzle" toggle instead of left as an unstated
         // assumption.
-        { level: 2, name: "A Boat Adrift in Tears", description: "When in Absolution, DMG dealt by Outro Skills to targets with Spectro Frazzle is Amplified by 120%.\nWhen in Confession, Silent Prayer grants 120% more DMG Amplification for Spectro Frazzle.", buffs: [{"stat":"dmgBonus","label":"Outro DMG (vs Spectro Frazzle target only)","value":120,"appliesTo":["outro"],"requiresTargetStatus":["frazzle"]}] },
+        // CORRECTED 2026-07-25 — this was a `buffs` (party-wide) entry, which
+        // fed into EVERY teammate's damage via party.ts's generic
+        // constellation-buffs pipeline (appliesTo:['outro'] has no notion of
+        // "only when the SOURCE character is the one attacking" — see
+        // shared/calc/optimizer.ts's skillMatchesScope). The real kit text
+        // is "DMG dealt by Outro Skills" with no "active resonator"/"other
+        // team members" language (contrast cb-ww-cartethyia/cb-ww-hiyuki-outro
+        // in bundle.ts, which DO use that language for genuinely team-wide
+        // outro buffs) — this only ever amplifies Phoebe's OWN Outro Skill
+        // damage. Moved to selfBuffs so it can never bleed onto a teammate.
+        // `requiresTargetStatus` isn't a ConditionalSelfBuff field (that
+        // gate only exists on the party-buff pipeline, which auto-applies
+        // team buffs and so needs an automatic target-status check) —
+        // dropped here since this is already a manual opt-in toggle
+        // (conditional, unset -> not `false`), same "user confirms the
+        // real condition before enabling" convention every other stance-
+        // gated self-buff in this file already relies on; the label still
+        // spells out "vs Spectro Frazzle target only" for that judgment call.
+        { level: 2, name: "A Boat Adrift in Tears", description: "When in Absolution, DMG dealt by Outro Skills to targets with Spectro Frazzle is Amplified by 120%.\nWhen in Confession, Silent Prayer grants 120% more DMG Amplification for Spectro Frazzle.", selfBuffs: [{"stat":"dmgBonus","label":"Outro DMG (vs Spectro Frazzle target only)","value":120,"appliesTo":["outro"]}] },
         { level: 3, name: "Daisy Wreaths and Dreams", description: "When in Absolution, the DMG Multiplier of Heavy Attack Starflash is increased by 91%.\nWhen in Confession, the DMG Multiplier of Heavy Attack Starflash is increased by 249%." },
         { level: 4, name: "Ringing Bells on Wings Aloft", description: "When Basic Attack, Basic Attack Chamuel's Star, Dodge Counter, or Chamuel's Star: Dodge Counter hits, the target's Spectro RES is reduced by 10% for 30s." },
         { level: 5, name: "Prayer to the Distant Light", description: "Casting Intro Skill Golden Grace increases Phoebe's Spectro DMG Bonus by 12% for 15s.", selfBuffs: [{"stat":"elemDmg","label":"Elem DMG","value":12,"conditional":true,"autoTrigger":{"skillIds":["intro-golden-grace"],"durationSeconds":15}}] },
@@ -358,7 +376,11 @@ export const SEQUENCE_OVERRIDES: Record<string, Array<{ level: number; name: str
     "lupa": [
         { level: 1, name: "Behold the Nameless One", description: "Performing Resonance Liberation Fire-Kissed Glory recovers 10 Concerto Energy for Lupa and increases Lupa's Crit. Rate by 20% for 10s.\nGain immunity to interruption when casting Dance With the Wolf: Climax.", selfBuffs: [{"stat":"critRate","label":"Crit Rate","value":20,"conditional":true,"autoTrigger":{"skillIds":["ult"],"durationSeconds":10}}] },
         { level: 2, name: "Every Ground, Her Hunting Field", description: "Performing Fire-Kissed Glory, Heavy Attack - Wolf's Gnawing,  Heavy Attack - Wolf's Claw, or Mid-air Attack - Firestrike gives 20% Fusion DMG Bonus to all Resonators in the team for 30s, stacking up to 2 times.", buffs: [{"stat":"elemDmg","label":"Fusion DMG Bonus","value":40}] },
-        { level: 3, name: "Wolflame Howls in Her Wake", description: "The DMG Multiplier of Intro Skill Nowhere to Run! increases by 100%.\n- The Pack Hunt effect of Resonance Liberation now no longer requires 3 Fusion Resonators.\n- The Glory effect of Resonance Liberation is now modified as:\nCasting Resonance Liberation Fire-Kissed Glory additionally grants Glory: Resonators in the team ignore 15% Fusion RES of targets for 35s." },
+        // ADDED 2026-07-25 — "Resonators in the team ignore 15% Fusion RES of
+        // targets for 35s" is unambiguous team-wide resShred with no move-type
+        // restriction (unlike DEF ignore, `resShred` can be unscoped — see
+        // optimizer.ts's scopedResShredFor) and had no buffs entry at all.
+        { level: 3, name: "Wolflame Howls in Her Wake", description: "The DMG Multiplier of Intro Skill Nowhere to Run! increases by 100%.\n- The Pack Hunt effect of Resonance Liberation now no longer requires 3 Fusion Resonators.\n- The Glory effect of Resonance Liberation is now modified as:\nCasting Resonance Liberation Fire-Kissed Glory additionally grants Glory: Resonators in the team ignore 15% Fusion RES of targets for 35s.", buffs: [{"stat":"resShred","label":"Fusion RES Ignore","value":15}] },
         { level: 4, name: "High and Aflame Is Her Banner", description: "The DMG Multiplier of Dance With the Wolf: Climax increases by 125%." },
         { level: 5, name: "Embrace the Thunderous Triumph", description: "Performing Intro Skill Try Focusing, Eh? or Nowhere to Run! gives 15% Resonance Liberation DMG Bonus for 10s.", selfBuffs: [{"stat":"elemDmg","label":"Liberation DMG","value":15,"conditional":true,"appliesTo":["ult"],"autoTrigger":{"skillIds":["intro-try-focusing","intro-nowhere-to-run"],"durationSeconds":10}}] },
         { level: 6, name: "To the Brightest Flaming Star", description: "- The damage dealt by Forte Circuit Dance With the Wolf: Climax, Resonance Liberation Fire-Kissed Glory, and Intro Skill Nowhere to Run! ignores 30% of the target's DEF.\n- Resonance Skill Feral Fang restores 100 points of Wolflame on hit, triggered once per 20s.\n- Forte Circuit Dance With the Wolf is replaced with Dance With the Wolf: Climax. Dance With the Wolf: Climax can be performed when Lupa is not in Burning Matchpoint state.\n- Casting Intro Skill Nowhere to Run! no longer ends Pack Hunt and Glory." },
