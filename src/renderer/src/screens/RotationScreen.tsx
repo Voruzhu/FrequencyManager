@@ -18,6 +18,7 @@ import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBu
 import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, type WaveConfig } from '@/lib/rotationEngine';
 import { EnemyPicker, EnemyConfig } from '../components/EnemyPicker';
 import type { Enemy } from '../data/enemies';
+import { RotationDpsChart } from '../components/RotationDpsChart';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import { getEnemies } from '../data/enemies';
@@ -437,6 +438,8 @@ export function RotationScreen() {
                                         <div className="text-lg font-semibold tabular-nums text-foreground">{totalDuration.toFixed(1)}s</div>
                                     </div>
                                 </div>
+
+                                <RotationDpsChart elapsed={elapsed} results={results} />
 
                                 {mode === 'waves' && waveSim.damageByWave.length > 1 && (
                                     <div className="space-y-1.5">
