@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste } from 'lucide-react';
+import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste, Bookmark } from 'lucide-react';
 import {
     PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Badge,
     ItemIcon, EmptyState, Progress, Switch,
@@ -22,6 +22,8 @@ import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBu
 import { CharacterPickerWindow, TalentsWindow } from '../components/CharacterWindows';
 import { ShareBuildWindow, ImportBuildWindow } from '../components/BuildShareWindows';
 import { buildSharePayload, encodeBuildShareCode } from '@/lib/buildShare';
+import { LoadoutLibraryWindow } from '../components/LoadoutLibraryWindow';
+import { applyLucillaMode } from '@/lib/lucillaMode';
 import { ShareCodeWindow } from '../components/ShareCodeWindow';
 import { ImportTargetsWindow } from '../components/TargetShareWindows';
 import { encodeTargetsShareCode } from '@/lib/targetShare';
@@ -290,7 +292,11 @@ export function CalculatorScreen() {
                 return;
             }
 
-            const { config } = buildConfig(character);
+            // Lucilla only — see lib/lucillaMode.ts. A no-op clone for every
+            // other character, so this is safe to pass everywhere `character`
+            // would normally go for damage-calc purposes.
+            const dmgCharacter = applyLucillaMode(character, calc.lucillaMode);
+            const { config } = buildConfig(dmgCharacter);
 
             // Optimize over the player's OWNED gear (or the set-narrowed
             // slice above). Prefer the backend engine (source of truth, but
@@ -301,13 +307,13 @@ export function CalculatorScreen() {
             let source: 'backend' | 'local' = 'local';
             try {
                 const bridge = (window as unknown as { frequencyManager?: { optimizeBuild?: (p: unknown) => Promise<{ ok: boolean; loadouts: Loadout[] } | null> } }).frequencyManager;
-                const out = await bridge?.optimizeBuild?.({ character, pool: optimizePool, config });
+                const out = await bridge?.optimizeBuild?.({ character: dmgCharacter, pool: optimizePool, config });
                 if (out?.ok && Array.isArray(out.loadouts)) { res = out.loadouts; source = 'backend'; }
             } catch {
                 /* fall through to local */
             }
             if (!res) {
-                res = await runOptimizerPool(character, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p));
+                res = await runOptimizerPool(dmgCharacter, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p));
             }
 
             calc.setResults(res);
@@ -333,8 +339,9 @@ export function CalculatorScreen() {
     const calculateCurrent = () => {
         if (!character) return;
         try {
-            const { config, equippedGear } = buildConfig(character);
-            const base = computeBaseLoadouts(character, [equippedGear], config);
+            const dmgCharacter = applyLucillaMode(character, calc.lucillaMode);
+            const { config, equippedGear } = buildConfig(dmgCharacter);
+            const base = computeBaseLoadouts(dmgCharacter, [equippedGear], config);
             const ranges = targetRanges(base, config.targets.filter((t) => t.mode === 'max'));
             const res = scoreAndRank(base, ranges, 1);
             calc.setResults(res);
@@ -481,6 +488,18 @@ export function CalculatorScreen() {
                                     <Switch id="echo-skill-deployed" checked={calc.echoSkillDeployed} onCheckedChange={calc.setEchoSkillDeployed} />
                                 </div>
                             )}
+                            {character.id === 'lucilla' && (
+                                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2">
+                                    <div>
+                                        <Label htmlFor="lucilla-mode">Resonance Mode</Label>
+                                        <p className="text-xs text-muted-foreground">Which mode Liberation/Letting It Go/Forte Circuit count as for DMG-bonus matching — Chafe = Basic Attack DMG, Echo = Echo Skill DMG.</p>
+                                    </div>
+                                    <Select value={calc.lucillaMode} onValueChange={(v) => calc.setLucillaMode(v as 'chafe' | 'echo')}>
+                                        <SelectTrigger id="lucilla-mode" className="w-28"><SelectValue /></SelectTrigger>
+                                        <SelectContent><SelectItem value="chafe">Chafe</SelectItem><SelectItem value="echo">Echo</SelectItem></SelectContent>
+                                    </Select>
+                                </div>
+                            )}
 
                             <div className="flex flex-wrap gap-2">
                                 <Button className="flex-1" onClick={() => { void run(); }} disabled={calc.optimizeProgress !== null}>
@@ -550,7 +569,10 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                             <div className="mt-1 flex gap-1"><Badge variant="secondary">{c.element}</Badge><Badge variant="outline">{c.weaponType}</Badge><Badge variant="outline">{c.rarity}★</Badge></div>
                         </div>
                     </button>
-                    <Button variant="secondary" size="sm" className="ml-auto" onClick={() => openWindow('Talents', <TalentsWindow />)}>
+                    <Button variant="secondary" size="sm" className="ml-auto" onClick={() => openWindow('Loadouts', <LoadoutLibraryWindow gameId={activeGameId} characterId={c.id} current={equipped} />)}>
+                        <Bookmark /> Loadouts
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => openWindow('Talents', <TalentsWindow />)}>
                         <Star /> Talents
                     </Button>
                 </div>
