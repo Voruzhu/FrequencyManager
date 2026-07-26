@@ -14,6 +14,24 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.7.0',
+        date: '2026-07-27',
+        highlights: [
+            'New Roster Overview screen — sortable solo stats for every owned character at a glance.',
+            'Share a saved Rotation as a code, same as builds and target presets.',
+            'Save multiple named loadouts per character, not just one.',
+            'Importing a build now compares it against your own current gear.',
+            "Fixed Lucilla's ult/Letting It Go/Forte Circuit DMG-type classification.",
+        ],
+    },
+    {
+        version: '1.6.1',
+        date: '2026-07-26',
+        highlights: [
+            'Fixed the build-code preview being an unscannable wall of stats — gear now collapses to a summary line by default.',
+        ],
+    },
+    {
         version: '1.6.0',
         date: '2026-07-25',
         highlights: [
@@ -37,15 +55,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         highlights: [
             '"Echo Skill deployed" toggle now applies to all Wuthering Waves characters, not just Lucy/Rebecca.',
             'Fixed that toggle not reaching real Optimizer results, only the live preview.',
-        ],
-    },
-    {
-        version: '1.5.0',
-        date: '2026-07-25',
-        highlights: [
-            'Fixed laggy scrolling in the Add Character / Add Weapon pickers.',
-            'Full Wuthering Waves + Genshin buff/debuff audit — 58 real fixes across all 176 characters.',
-            'Fixed the web OCR scanner producing garbage results on gear scans.',
         ],
     },
 ];
