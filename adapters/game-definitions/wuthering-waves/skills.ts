@@ -2148,17 +2148,18 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.2982, 0.3227, 0.3472, 0.3814, 0.4058, 0.434, 0.4731, 0.5122, 0.5513, 0.5929] },
         { id: 'skill', name: 'Resonance Skill', type: 'Skill', scaling: 'atk', element: 'Glacio', cooldown: 16,
             multipliers: [0.2001, 0.2166, 0.2328, 0.2559, 0.2724, 0.2913, 0.3174, 0.3435, 0.3699, 0.3978] },
-        // NOT-YET-RESOLVED (2026-07-16): 'ult'/'ultLettingItGo' (and a Forte-
-        // tier "Oblivion" hit, currently missing from this file entirely) are
-        // genuinely MODE-CONDITIONAL for buff-scope purposes — encore.moe
-        // says in Resonance Mode - Glacio Chafe this damage counts as Basic
-        // Attack DMG, but in Resonance Mode - Echo it counts as Echo Skill
-        // DMG. Neither mode is "Ultimate" DMG-bonus-wise, so the current
-        // static `type: 'Ultimate'` (with no `scope`) is wrong in BOTH modes
-        // — not a simple one-line `scope` fix like Phrolova/Qiuyuan/Galbrena/
-        // Sigrika above, since `scope` is a single static value and this
-        // needs to flip with a stance/mode toggle the engine doesn't have.
-        // Left unchanged pending a design decision on a mode-switch primitive.
+        // RESOLVED 2026-07-26: 'ult'/'ultLettingItGo' (and 'forte' below,
+        // which IS the "Oblivion" hit under this file's existing generic
+        // naming — no separately-sourced multiplier table exists for a
+        // distinct entry) are genuinely MODE-CONDITIONAL for buff-scope
+        // purposes — encore.moe says in Resonance Mode - Glacio Chafe this
+        // damage counts as Basic Attack DMG, in Resonance Mode - Echo it
+        // counts as Echo Skill DMG. Neither mode is "Ultimate"/"Forte"
+        // DMG-bonus-wise. The static `type`/`scope` here is left as-is
+        // (Talents/skill-list display uses it); the mode-conditional
+        // override is applied ONLY to the damage-calc-facing character copy,
+        // see `src/renderer/src/lib/lucillaMode.ts` + the Calculator's
+        // "Resonance Mode" toggle (WW, Lucilla only).
         { id: 'ult', name: 'Resonance Liberation', type: 'Ultimate', scaling: 'atk', element: 'Glacio', cooldown: 25,
             multipliers: [0.718, 0.7769, 0.8357, 0.9182, 0.977, 1.0447, 1.1389, 1.2331, 1.3273, 1.4274] },
         { id: 'forte', name: 'Forte Circuit', type: 'Forte', scaling: 'atk', element: 'Glacio',
