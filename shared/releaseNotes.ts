@@ -14,6 +14,13 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.7.1',
+        date: '2026-07-27',
+        highlights: [
+            'The named loadout library is now also available from the character Inspector, not just the Calculator.',
+        ],
+    },
+    {
         version: '1.7.0',
         date: '2026-07-27',
         highlights: [
@@ -47,14 +54,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         date: '2026-07-25',
         highlights: [
             'Fixed the Talents window losing real kit text for Rebecca, Sigrika, Verina, Baizhi and Mavuika.',
-        ],
-    },
-    {
-        version: '1.5.1',
-        date: '2026-07-25',
-        highlights: [
-            '"Echo Skill deployed" toggle now applies to all Wuthering Waves characters, not just Lucy/Rebecca.',
-            'Fixed that toggle not reaching real Optimizer results, only the live preview.',
         ],
     },
 ];
