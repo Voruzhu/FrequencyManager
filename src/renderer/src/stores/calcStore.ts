@@ -132,6 +132,11 @@ interface CalcState {
      * deployed in practice, mirroring `skillTreeInvested`'s "assume
      * invested" convention rather than requiring an opt-in per buff. */
     echoSkillDeployed: boolean;
+    /** Lucilla only (WW) — which Resonance Mode her ult/ultLettingItGo/forte
+     * skills count as for buff-scope matching (Chafe = Basic Attack DMG,
+     * Echo = Echo Skill DMG). Inert for every other character. See
+     * `lib/lucillaMode.ts`. */
+    lucillaMode: 'chafe' | 'echo';
     sequence: number;                     // 0..6 constellation / sequence level
     reaction: ReactionType;               // elemental reaction applied to skill damage
     /** Which WW reaction/Negative-Status debuffs the user has marked as active on the current enemy — a reference toggle, not auto-wired to any buff yet. Defaults to all on (matches this project's existing "assume active" convention for target-conditional buffs). */
@@ -146,9 +151,12 @@ interface CalcState {
     toggleTargetStatus: (id: string) => void;
     setSkillTreeInvested: (v: boolean) => void;
     setEchoSkillDeployed: (v: boolean) => void;
+    setLucillaMode: (m: 'chafe' | 'echo') => void;
     setSequence: (n: number) => void;
     equipGear: (id: string) => void;
     unequipGear: (id: string) => void;
+    /** Replace the whole equipped loadout wholesale — used to apply a named saved loadout. */
+    setEquipped: (loadout: CharacterLoadout) => void;
     equipWeapon: (id: string) => void;
     setWeaponRefine: (refine: number) => void;
     equipLoadout: (gearIds: string[], mainSlotGearId?: string) => void;
@@ -192,6 +200,7 @@ export const useCalcStore = create<CalcState>()(
     buffStacks: {},
     skillTreeInvested: true,
     echoSkillDeployed: true,
+    lucillaMode: 'chafe',
     sequence: 0,
     reaction: 'none',
     targetStatuses: { frazzle: true, erosion: true, chafe: true, flare: true, bane: true, fusionburst: true },
@@ -204,6 +213,7 @@ export const useCalcStore = create<CalcState>()(
     toggleTargetStatus: (id) => set((s) => ({ targetStatuses: { ...s.targetStatuses, [id]: !s.targetStatuses[id] } })),
     setSkillTreeInvested: (v) => set({ skillTreeInvested: v }),
     setEchoSkillDeployed: (v) => set({ echoSkillDeployed: v }),
+    setLucillaMode: (m) => set({ lucillaMode: m }),
     setSequence: (n) => set((s) => {
         const level = Math.max(0, Math.min(6, n));
         useSequenceStore.getState().setSequence(useGameStore.getState().activeGameId, s.characterId, level);
@@ -254,6 +264,11 @@ export const useCalcStore = create<CalcState>()(
             };
             useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
             return { equipped };
+        }),
+    setEquipped: (loadout) =>
+        set((s) => {
+            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, loadout);
+            return { equipped: loadout };
         }),
     equipWeapon: (id) =>
         set((s) => {
@@ -330,6 +345,7 @@ export const useCalcStore = create<CalcState>()(
                 buffStacks: s.buffStacks,
                 skillTreeInvested: s.skillTreeInvested,
                 echoSkillDeployed: s.echoSkillDeployed,
+                lucillaMode: s.lucillaMode,
                 sequence: s.sequence,
                 reaction: s.reaction,
                 requiredSets: s.requiredSets,
