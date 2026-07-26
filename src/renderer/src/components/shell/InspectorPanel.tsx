@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Star, Users } from 'lucide-react';
+import { PanelRight, MousePointerSquareDashed, ArrowLeft, AlertTriangle, Plus, X, Search, Star, Users, Bookmark } from 'lucide-react';
 import {
     Badge, Button, Input, ItemIcon, EmptyState, Separator, ScrollArea, DialogFooter, DialogClose, Switch,
     Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -22,6 +22,7 @@ import { getBuffs } from '../../data/buffs';
 import { computeBuildStats, elemKey, activeSetBonuses } from '../../data/optimizer';
 import { getWeaponScaling, atkAtLevel, secAtLevel, refineMul, hasRefinement } from '../../data/weaponScaling';
 import { TalentsWindow } from '../CharacterWindows';
+import { LoadoutLibraryWindow } from '../LoadoutLibraryWindow';
 import { EnemyPicker } from '../EnemyPicker';
 import { GearCard, GearStatsList } from '../GearCard';
 import { GearFilterBar } from '../GearFilterBar';
@@ -123,6 +124,7 @@ function CharacterView({ c }: { c: CharacterData }) {
     const openGearPicker = () => { if (!isCalcChar) pickCharacter(c); showGearPicker(); };
     const openParty = () => { if (!isCalcChar) pickCharacter(c); showParty(); };
     const openTalents = () => { if (!isCalcChar) pickCharacter(c); openWindow('Talents', <TalentsWindow />); };
+    const openLoadouts = () => { if (!isCalcChar) pickCharacter(c); openWindow('Loadouts', <LoadoutLibraryWindow gameId={activeGameId} characterId={c.id} current={eq} />); };
     const weapon = data.weapons.find((w) => w.id === eq.weaponId);
     // Calc-character gear are OWNED instances; a non-calc sheet may reference
     // catalog sample gear — resolve against both.
@@ -166,6 +168,9 @@ function CharacterView({ c }: { c: CharacterData }) {
                         {gear.map((g) => <ItemIcon key={g.id} kind={g.kind} size="sm" rarity={g.rarity} src={iconSrc(activeGameId, gearIcon(data, g))} badgeSrc={echoItemIconFor(g) ? iconSrc(activeGameId, setIconFor(data, g)) : undefined} />)}
                         {gear.length === 0 && <span className="text-xs text-muted-foreground">Click to equip gear</span>}
                     </button>
+                    <Button variant="secondary" className="w-full" onClick={openLoadouts}>
+                        <Bookmark /> Loadouts
+                    </Button>
                 </div>
             </section>
             <section>
