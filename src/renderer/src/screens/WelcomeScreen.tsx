@@ -123,7 +123,7 @@ export function WelcomeScreen() {
                 <Button
                     variant="outline"
                     size="sm"
-                    className="border-success/40 text-muted-foreground hover:bg-success/10 hover:text-success"
+                    className="border-transparent bg-success text-success-foreground hover:bg-success/90"
                     onClick={() => openExternalLink(COFFEE_URL)}
                 >
                     <Coffee className="h-4 w-4" /> Buy me a coffee
