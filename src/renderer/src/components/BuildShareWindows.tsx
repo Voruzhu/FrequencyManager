@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button, Badge } from './ui';
-import { decodeBuildShareCode, type BuildSharePayload } from '@/lib/buildShare';
-import { formatGearStat } from '../data/gameData';
+import { decodeBuildShareCode, payloadGearToEntries, type BuildSharePayload } from '@/lib/buildShare';
+import { characterAutoBuffs } from '@/lib/selfBuffs';
+import { formatGearStat, useGameData, formatCatalogValue, catalogStatLabel, type GearData } from '../data/gameData';
+import { computeBuildStats } from '../data/optimizer';
+import { useGameStore } from '../stores/gameStore';
+import { useCalcStore } from '../stores/calcStore';
+import { useOwnedInventory } from '../stores/inventoryStore';
 import { ShareCodeWindow } from './ShareCodeWindow';
 
 /** Shown after generating a code — copy it, paste it anywhere. */
@@ -36,6 +41,53 @@ function PreviewGearCard({ g }: { g: BuildSharePayload['gear'][number] }) {
     );
 }
 
+/**
+ * Only shown when the viewer currently has the SAME character selected, in the
+ * same game — comparing across different characters is meaningless. Both sides
+ * use the same minimal baseline (gear + weapon + character's own unconditional
+ * self-buffs only, no skill tree / constellation / party / custom buffs) so the
+ * comparison is symmetric and honest about what it excludes -- it's a gear/weapon
+ * comparison, not a claim about either side's real live damage numbers.
+ */
+function BuildComparison({ payload }: { payload: BuildSharePayload }) {
+    const activeGameId = useGameStore((s) => s.activeGameId);
+    const data = useGameData(activeGameId);
+    const calc = useCalcStore();
+    const owned = useOwnedInventory(activeGameId);
+
+    if (payload.gameId !== activeGameId || calc.characterId !== payload.characterId) return null;
+    const character = data.characters.find((c) => c.id === calc.characterId);
+    if (!character) return null;
+
+    const myWeapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
+    const myGear = calc.equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
+    const myStats = computeBuildStats(character, myGear, characterAutoBuffs(character, myGear, myWeapon, data.statCatalog, {}, false), myWeapon, data.statCatalog);
+
+    const theirWeapon = data.weapons.find((w) => w.id === payload.weaponId);
+    const theirGear = payloadGearToEntries(payload, activeGameId === 'wuthering-waves' ? 'echo' : 'artifact');
+    const theirStats = computeBuildStats(character, theirGear, characterAutoBuffs(character, theirGear, theirWeapon, data.statCatalog, {}, false), theirWeapon, data.statCatalog);
+
+    return (
+        <div className="space-y-1.5">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Vs. your current build (gear + weapon only, no skill tree/party/custom buffs)</div>
+            <div className="space-y-1">
+                {data.statCatalog.map((def) => {
+                    const mine = myStats[def.key] ?? 0;
+                    const theirs = theirStats[def.key] ?? 0;
+                    const better = theirs > mine ? 'text-success' : theirs < mine ? 'text-destructive' : 'text-muted-foreground';
+                    return (
+                        <div key={def.key} className="flex items-center justify-between rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs">
+                            <span className="text-foreground">{catalogStatLabel(def, character.element)}</span>
+                            <span className="tabular-nums text-muted-foreground">{formatCatalogValue(def, mine)}</span>
+                            <span className={`tabular-nums font-medium ${better}`}>{formatCatalogValue(def, theirs)}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 function BuildPreview({ payload }: { payload: BuildSharePayload }) {
     return (
         <div className="max-h-[70vh] space-y-3 overflow-y-auto scrollbar-thin pr-1">
@@ -45,6 +97,8 @@ function BuildPreview({ payload }: { payload: BuildSharePayload }) {
                     <div className="text-xs text-muted-foreground">{payload.weaponName}{payload.weaponRefine ? ` · R${payload.weaponRefine}` : ''}</div>
                 )}
             </div>
+
+            <BuildComparison payload={payload} />
 
             {payload.gear.length > 0 && (
                 <div className="space-y-1.5">

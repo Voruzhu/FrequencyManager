@@ -1,4 +1,4 @@
-import { buildSharePayload, encodeBuildShareCode, decodeBuildShareCode } from '../../src/renderer/src/lib/buildShare';
+import { buildSharePayload, encodeBuildShareCode, decodeBuildShareCode, payloadGearToEntries } from '../../src/renderer/src/lib/buildShare';
 import type { CharacterEntry } from '../../shared/types/game-bundle';
 
 function char(): CharacterEntry {
@@ -47,5 +47,21 @@ describe('buildSharePayload / encodeBuildShareCode / decodeBuildShareCode', () =
         const targetsCode = 'FMT1-' + Buffer.from(JSON.stringify({ kind: 'targets', v: 1, payload: [] })).toString('base64');
         const result = decodeBuildShareCode(targetsCode);
         expect(result).toEqual({ ok: false, error: 'This is a targets code, not a build code.' });
+    });
+});
+
+describe('payloadGearToEntries', () => {
+    it('reconstructs comparable GearEntry objects with synthesized (non-colliding) ids', () => {
+        const payload = buildSharePayload(
+            'wuthering-waves',
+            { kind: 'character', id: 'lucy', name: 'Lucy', element: 'Spectro', weaponType: 'Pistols', rarity: 5, stats: { atk: 1000, hp: 10000, def: 500 }, skills: [], equipped: { gearIds: [] } },
+            undefined, undefined,
+            [{ kind: 'echo', id: 'own-1', name: 'Hecate', setName: 'Shadow', rarity: 5, cost: 4, mainStat: { key: 'critRate', label: 'Crit Rate', value: 22 }, subStats: [] }],
+            [],
+        );
+        const entries = payloadGearToEntries(payload, 'echo');
+        expect(entries).toHaveLength(1);
+        expect(entries[0]).toMatchObject({ kind: 'echo', name: 'Hecate', setName: 'Shadow', cost: 4 });
+        expect(entries[0].id).not.toBe('own-1'); // never reuses the sharer's real inventory id
     });
 });

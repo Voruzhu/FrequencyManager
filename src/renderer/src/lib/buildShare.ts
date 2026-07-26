@@ -52,3 +52,13 @@ export function encodeBuildShareCode(payload: BuildSharePayload): string {
 export function decodeBuildShareCode(code: string): DecodeResult<BuildSharePayload> {
     return decodeShareCode<BuildSharePayload>(code, 'build');
 }
+
+/** Reconstructs comparable `GearEntry` objects from a share payload's reduced gear
+ * shape — synthesized ids/kind are structural only (uniqueness for set-bonus
+ * counting), never real inventory items. */
+export function payloadGearToEntries(payload: BuildSharePayload, kind: 'echo' | 'artifact'): GearData[] {
+    return payload.gear.map((g, i) => ({
+        kind, id: `shared-${i}`, name: g.name, setName: g.setName, rarity: g.rarity, cost: g.cost, slot: g.slot,
+        mainStat: g.mainStat, subStats: g.subStats,
+    }));
+}
