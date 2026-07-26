@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Badge, EmptyState, Button, Input, toast } from '../components/ui';
 import { cn } from '@/lib/utils';
-import { Target as TargetIcon, Save, FolderOpen, Trash2 } from 'lucide-react';
+import { Target as TargetIcon, Save, FolderOpen, Trash2, Share2, ClipboardPaste } from 'lucide-react';
 import { RotationBuilder } from '../components/modules/RotationBuilder';
 import { useGameStore } from '../stores/gameStore';
 import { useCalcStore } from '../stores/calcStore';
@@ -19,6 +19,9 @@ import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, typ
 import { EnemyPicker, EnemyConfig } from '../components/EnemyPicker';
 import type { Enemy } from '../data/enemies';
 import { RotationDpsChart } from '../components/RotationDpsChart';
+import { ShareCodeWindow } from '../components/ShareCodeWindow';
+import { ImportRotationWindow } from '../components/RotationShareWindows';
+import { encodeRotationShareCode } from '@/lib/rotationShare';
 import { computeBuildStats, skillDamage, applyConstellationLevelBoosts, isScopedBuff, gearScopedBuffs, activeSetBonuses, type SkillContext } from '../data/optimizer';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
 import { getEnemies } from '../data/enemies';
@@ -404,6 +407,9 @@ export function RotationScreen() {
                                 {loadedRotationId && (
                                     <Button size="sm" variant="secondary" onClick={handleNewRotation}>New rotation</Button>
                                 )}
+                                <Button size="sm" variant="ghost" onClick={() => useWindowStore.getState().openWindow('Import rotation', <ImportRotationWindow gameId={activeGameId} />)}>
+                                    <ClipboardPaste /> Import
+                                </Button>
                             </div>
                             {savedList.length > 0 && (
                                 <div className="space-y-1.5">
@@ -411,6 +417,7 @@ export function RotationScreen() {
                                         <div key={r.id} className={cn('flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-sm', r.id === loadedRotationId ? 'border-primary/50 bg-primary/10' : 'border-border bg-surface')}>
                                             <span className="min-w-0 flex-1 truncate text-foreground">{r.name}</span>
                                             <span className="text-xs text-muted-foreground">{r.steps.length} step{r.steps.length === 1 ? '' : 's'}</span>
+                                            <Button size="sm" variant="ghost" onClick={() => useWindowStore.getState().openWindow('Share rotation', <ShareCodeWindow code={encodeRotationShareCode(r)} description="Anyone can paste this into Rotation Builder's Import button to add this rotation to their own saved list." />)} title="Share"><Share2 /></Button>
                                             <Button size="sm" variant="ghost" onClick={() => handleLoad(r)} title="Load"><FolderOpen /></Button>
                                             <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(r)} title="Delete"><Trash2 /></Button>
                                         </div>

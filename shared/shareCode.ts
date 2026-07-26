@@ -10,6 +10,7 @@
 const KIND_PREFIXES = {
     build: 'FMB',
     targets: 'FMT',
+    rotation: 'FMR',
 } as const;
 
 export type ShareCodeKind = keyof typeof KIND_PREFIXES;
