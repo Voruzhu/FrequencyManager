@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import {
-    LayoutDashboard, Calculator, ScanLine, Boxes, Repeat, Settings, type LucideIcon,
+    LayoutDashboard, Calculator, ScanLine, Boxes, Repeat, Settings, Users, type LucideIcon,
 } from 'lucide-react';
 import { DashboardScreen } from './DashboardScreen';
 import { WelcomeScreen } from './WelcomeScreen';
@@ -8,6 +8,7 @@ import { CalculatorScreen } from './CalculatorScreen';
 import { ScannerScreen } from './ScannerScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { RotationScreen } from './RotationScreen';
+import { RosterScreen } from './RosterScreen';
 import { SettingsScreen } from './SettingsScreen';
 import { hasElectronBridge } from '@/lib/platform';
 
@@ -43,6 +44,10 @@ export const SCREENS: ScreenDef[] = [
     { id: 'scanner', label: 'Scanner', icon: ScanLine, section: 'primary', category: 'scanner', component: ScannerScreen },
     { id: 'inventory', label: 'Inventory', icon: Boxes, section: 'primary', category: 'inventory', component: InventoryScreen },
     { id: 'rotation', label: 'Rotation', icon: Repeat, section: 'primary', category: 'rotation', component: RotationScreen },
+    // No `category` — always shown regardless of the active game's category
+    // list, same convention Settings uses (it's cross-game data, not tied to
+    // a game-specific feature category).
+    { id: 'roster', label: 'Roster', icon: Users, section: 'primary', component: RosterScreen },
     { id: 'settings', label: 'Settings', icon: Settings, section: 'system', component: SettingsScreen },
 ];
 
