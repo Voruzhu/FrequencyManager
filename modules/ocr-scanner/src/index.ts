@@ -121,6 +121,12 @@ class OcrScannerModule implements ModuleAPI {
 
         // Subscribe to scan requests
         kernel.eventBus.subscribe('ocr:scan-request', this.handleScanRequest.bind(this));
+        // Raw-text-only OCR (no echo parsing) — used by the auto-scan feature
+        // to check "is this UI screen the one we expect" (e.g. does a cropped
+        // region say "Terminal") before firing simulated input at it.
+        kernel.eventBus.onRequest<{ imagePath: string }, { text: string }>('ocr:raw-text', async (payload) => ({
+            text: await this.readRawText(payload.imagePath),
+        }));
 
         // Initialize Tesseract worker
         await this.initializeWorker();
@@ -291,6 +297,18 @@ class OcrScannerModule implements ModuleAPI {
                 processingTimeMs: Date.now() - startTime,
             };
         }
+    }
+
+    /**
+     * OCR a cropped screenshot region and return the raw text, no echo parsing,
+     * no confidence gate — for "does this region say X" checks (auto-scan's
+     * screen-state detection), not for reading gear stats.
+     */
+    async readRawText(imagePath: string): Promise<string> {
+        if (!this.state.worker || !this.state.isInitialized) return '';
+        if (!fs.existsSync(imagePath)) return '';
+        const { data } = await this.state.worker.recognize(imagePath);
+        return data.text;
     }
 
     /**

@@ -8,6 +8,12 @@ describe('SCAN_CROP_REGIONS — exact numbers moved from electron-main.ts', () =
             { x: 0.77, y: 0.85, width: 0.23, height: 0.055 },
         ]);
     });
+
+    it('terminal-check has one region targeting the top-left "Terminal" title text', () => {
+        expect(SCAN_CROP_REGIONS['terminal-check']).toEqual([
+            { x: 0.04, y: 0.02, width: 0.18, height: 0.08 },
+        ]);
+    });
 });
 
 describe('resolveCropRect', () => {

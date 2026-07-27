@@ -23,6 +23,7 @@ import { autoUpdater } from 'electron-updater';
 import { initExternalGameModules, getExternalIconsDir, hasGameDefinition } from '@adapters/game-definitions';
 import AdmZip from 'adm-zip';
 import { SCAN_CROP_REGIONS, resolveCropRect, stackLayout, lumaInvert } from '@shared/ocr/imagePreprocess';
+import { runAutoScanSample, type AutoScanStep, type AutoScanStatus } from './autoScan';
 
 // `StructuredLogger` (used everywhere, including deep in core/modules) only
 // ever calls `console.*` — which for a packaged app launched normally (not
@@ -1214,6 +1215,32 @@ function setupFileIpc(): void {
     // pipeline a live capture gets, so OCR accuracy doesn't depend on which
     // path the image came from. Returns a new processed temp file's path.
     ipcMain.handle('ocr:process-file', (_event, filePath: string, scanType?: string) => processImageFile(filePath, scanType));
+
+    // Auto-scan "first sample": focus the game window, confirm the Terminal
+    // menu is open, then ESC -> wait 2s -> C -> click the character-sidebar
+    // icon. Progress is pushed to the renderer as it happens (same
+    // `webContents.send` + generic `on()` bridge pattern the hotkey-scan
+    // result already uses) rather than returned in one lump at the end, so
+    // the UI can show live status for a sequence with multi-second waits.
+    ipcMain.handle('autoscan:start-sample', async () => {
+        await runAutoScanSample({
+            captureScreen: (scanType) => captureScreen(scanType),
+            readRawText: async (imagePath) => {
+                if (!kernel) return '';
+                try {
+                    const res = await kernel.eventBus.request<{ imagePath: string }, { text: string }>('ocr-scanner', 'ocr:raw-text', { imagePath });
+                    return res.text;
+                } catch (err) {
+                    logger.warn('[autoscan] raw-text request failed', { error: (err as Error).message });
+                    return '';
+                }
+            },
+            onProgress: (step: AutoScanStep, status: AutoScanStatus, message?: string) => {
+                mainWindow?.webContents.send('autoscan:progress', { step, status, message });
+            },
+        });
+        return true;
+    });
 
     // Arms/disarms the global hotkey for live scanning — see `armedScanType`.
     // `scanType` is ignored (and disarms) when `active` is false.

@@ -155,6 +155,14 @@ const frequencyManagerApi = {
         ipcRenderer.invoke('ocr:process-file', filePath, scanType),
 
     /**
+     * Runs the auto-scan "first sample" sequence: focuses the Wuthering Waves
+     * window, confirms the Terminal menu is open, then simulates
+     * ESC -> wait 2s -> C -> click. Windows-only. Progress arrives via
+     * `on('autoscan:progress', ...)`, not this promise's return value.
+     */
+    startAutoScanSample: (): Promise<boolean> => ipcRenderer.invoke('autoscan:start-sample'),
+
+    /**
      * Register (or re-register) the global hotkey that triggers a screen
      * capture + OCR scan, even while another app (e.g. the game) has focus.
      * @param accelerator Electron accelerator string, e.g. "Alt+Shift+S".

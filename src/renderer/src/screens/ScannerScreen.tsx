@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScanLine, Square, FolderOpen, Image as ImageIcon, FileSearch, AlertTriangle, Download, Trash2 } from 'lucide-react';
+import { ScanLine, Square, FolderOpen, Image as ImageIcon, FileSearch, AlertTriangle, Download, Trash2, Wand2 } from 'lucide-react';
 import {
     PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Badge, EmptyState, ScrollArea,
     toast,
@@ -13,6 +13,7 @@ import { useGameData } from '../data/gameData';
 import { useInventoryStore, useOwnedInventory } from '../stores/inventoryStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { ScanTypeWindow, ConfirmScannedGearWindow } from '../components/ScanWindows';
+import { AutoScanEchoesWindow } from '../components/AutoScanWindows';
 import { newGearId } from '../components/InventoryWindows';
 import { mapScannedEchoToGearDraft, buildGearEntryFromDraft, hasBlockingIssues, findDuplicateSource, gearIdentityKey, type DuplicateSource } from '@/lib/ocrMapping';
 import type { ScannedEcho } from '@shared/types/ocr';
@@ -403,6 +404,12 @@ export function ScannerScreen() {
                                 </Button>
                                 <Button variant="secondary" onClick={deactivateScanner} disabled={!scannerActive}>
                                     <Square /> Stop
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => useWindowStore.getState().openWindow('Auto Scan', <ScanTypeWindow onPickEchoes={() => useWindowStore.getState().openWindow('Auto Scan — Echoes', <AutoScanEchoesWindow />)} />)}
+                                >
+                                    <Wand2 /> Auto Scan
                                 </Button>
                             </>
                         ) : (

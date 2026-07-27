@@ -80,6 +80,15 @@ export const SCAN_CROP_REGIONS: Record<string, CropRect[]> = {
         { x: 0.77, y: 0.08, width: 0.23, height: 0.38 },
         { x: 0.77, y: 0.85, width: 0.23, height: 0.055 },
     ],
+    // Single-region check for the auto-scan feature: does the captured
+    // window currently show WW's Terminal (profile/menu) screen? Targets the
+    // "Terminal" title text, top-left — estimated from a single reference
+    // screenshot (2026-07-27), NOT yet confirmed against multiple real
+    // captures. Expect to need retuning after live testing, same as the
+    // `echoes` regions above did early on.
+    'terminal-check': [
+        { x: 0.04, y: 0.02, width: 0.18, height: 0.08 },
+    ],
 };
 
 /**
