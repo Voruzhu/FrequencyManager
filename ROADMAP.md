@@ -128,6 +128,23 @@ and what's off — that's exactly what this section is tracking against.
   calculation (this app only computes damage *output* — no "damage taken"/
   effective-HP concept exists anywhere, and building one is a different tool,
   not a gap in this one).
+- **Automatic multi-echo scanner — investigated 2026-07-27, shelved for now,
+  not permanently declined.** The idea: automate navigating the in-game Echo
+  inventory (simulated key/click input) so a full scan doesn't need pressing
+  the hotkey once per echo. Two real blockers, tested live: simulated
+  keyboard/mouse input (`keybd_event`/`mouse_event`, tried with a real scan
+  code too) had **zero effect in-game** across two attempts — strong evidence
+  Wuthering Waves filters injected input at some level, which only a virtual
+  HID driver (software that presents to Windows as real hardware, bypassing
+  the "is this synthetic" check) could plausibly get around. That's a real
+  risk, not just a bigger technical lift: Kuro's own Fair Gaming Policy
+  explicitly bans "macro commands," with no carve-out for read-only/harmless
+  use, and a virtual driver means actively sending automated input into a
+  live game session — genuine ToS exposure, not hypothetical. **Not being
+  pursued further right now.** Manual OCR (hotkey, one echo at a time)
+  already works and stays the supported path. If enough people specifically
+  ask for this, it's worth revisiting — with that risk on the table for
+  users to weigh, not added quietly.
 
 ---
 

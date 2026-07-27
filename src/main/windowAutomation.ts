@@ -33,6 +33,7 @@ public class FMWin32 {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
     [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint uCode, uint uMapType);
     [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, int dwExtraInfo);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -115,13 +116,36 @@ if ($found) {
     return { x, y, width, height };
 }
 
-const VK: Record<string, string> = { ESC: '{ESC}', C: 'c' };
+// Virtual-key codes (not `SendKeys` sequences) — see below for why.
+const VK: Record<string, number> = { ESC: 0x1b, C: 0x43 };
 
-/** Sends a key to whichever window currently has OS focus — call `focusWindow` first. */
+/**
+ * Sends a key to whichever window currently has OS focus — call `focusWindow`
+ * first. Uses `keybd_event` (the same low-level injection API the mouse click
+ * uses), NOT `System.Windows.Forms.SendKeys` — `SendKeys` only generates
+ * legacy WM_KEYDOWN-style window messages, which many games (particularly
+ * Unreal Engine titles reading Raw Input for lower latency, and/or explicit
+ * anti-macro filtering) never see at all.
+ *
+ * `bScan` is populated via `MapVirtualKey` rather than left at 0 — a real
+ * hardware key event always carries a valid scan code, and some input
+ * filtering treats a virtual-key-only event (scan code 0) as a giveaway that
+ * it's synthetic. Second attempt after the first live test (2026-07-27)
+ * found NEITHER the plain `keybd_event` calls NOR the `mouse_event` click had
+ * any visible in-game effect at all (only the OS-level window-focus switch
+ * worked) — if this doesn't change that, the next real hypothesis is
+ * intentional anti-injection filtering (Kuro's Fair Gaming Policy explicitly
+ * bans "macro commands"), which `keybd_event`/`mouse_event`/`SendInput` can't
+ * get around no matter how they're tuned — only a virtual HID driver
+ * (presents as real hardware, a much bigger addition) might.
+ */
 export async function sendKey(key: keyof typeof VK): Promise<void> {
-    const keys = VK[key];
-    const script = `Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.SendKeys]::SendWait('${psQuote(keys)}')`;
+    const vk = VK[key];
+    const script = `${WIN32_TYPE}
+$scan = [FMWin32]::MapVirtualKey(${vk}, 0)
+[FMWin32]::keybd_event(${vk}, $scan, 0, [UIntPtr]::Zero)
+Start-Sleep -Milliseconds 50
+[FMWin32]::keybd_event(${vk}, $scan, 2, [UIntPtr]::Zero)`;
     await runPs(script);
 }
 
