@@ -120,6 +120,16 @@ function computeStepDamage(
 let rotSeq = 0;
 const nextRotationId = () => `rot-${Date.now()}-${++rotSeq}`;
 
+/** A snapshot of one rotation's already-computed results, captured at the moment
+ * "Pin as A/B" is clicked — comparing two rotations means loading one, pinning it,
+ * loading the other, pinning it, no separate compute path needed. */
+interface PinnedRotationSummary {
+    name: string;
+    totalDamage: number;
+    dps: number;
+    byCharacter: Array<{ name: string; damage: number }>;
+}
+
 export function RotationScreen() {
     const activeGameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(activeGameId);
@@ -180,6 +190,8 @@ export function RotationScreen() {
     const savedList = useMemo(() => Object.values(savedRotations ?? {}), [savedRotations]);
     const [rotationName, setRotationName] = useState('');
     const [loadedRotationId, setLoadedRotationId] = useState<string | null>(null);
+    const [pinnedA, setPinnedA] = useState<PinnedRotationSummary | null>(null);
+    const [pinnedB, setPinnedB] = useState<PinnedRotationSummary | null>(null);
 
     const handleSave = () => {
         if (steps.length === 0) return;
@@ -327,6 +339,10 @@ export function RotationScreen() {
         return [...map.values()].sort((a, b) => b.damage - a.damage);
     }, [results]);
 
+    const currentSummary = (): PinnedRotationSummary => ({ name: rotationName.trim() || 'Unsaved rotation', totalDamage, dps, byCharacter });
+    const pinAs = (slot: 'A' | 'B') => (slot === 'A' ? setPinnedA(currentSummary()) : setPinnedB(currentSummary()));
+    const clearComparison = () => { setPinnedA(null); setPinnedB(null); };
+
     return (
         <div className="mx-auto max-w-5xl space-y-6 p-6">
             <PageHeader
@@ -429,7 +445,13 @@ export function RotationScreen() {
 
                     {steps.length > 0 && (
                         <Card>
-                            <CardHeader><CardTitle>Results</CardTitle></CardHeader>
+                            <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+                                <CardTitle>Results</CardTitle>
+                                <div className="flex items-center gap-1.5">
+                                    <Button size="sm" variant="ghost" onClick={() => pinAs('A')}>Pin as A</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => pinAs('B')}>Pin as B</Button>
+                                </div>
+                            </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                     <div className="rounded-md border border-border bg-surface px-3 py-2">
@@ -490,6 +512,51 @@ export function RotationScreen() {
                                         </div>
                                     ))}
                                 </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {(pinnedA || pinnedB) && (
+                        <Card>
+                            <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+                                <CardTitle>Comparison</CardTitle>
+                                <Button size="sm" variant="ghost" onClick={clearComparison}>Clear</Button>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[pinnedA, pinnedB].map((p, i) => (
+                                        <div key={i} className="rounded-md border border-border bg-surface p-2.5">
+                                            <div className="truncate text-sm font-medium text-foreground">{p ? p.name : `Not pinned — click "Pin as ${i === 0 ? 'A' : 'B'}" above`}</div>
+                                            {p && (
+                                                <>
+                                                    <div className="mt-1 text-xs text-muted-foreground">Total DMG</div>
+                                                    <div className="tabular-nums text-foreground">{Math.round(p.totalDamage).toLocaleString()}</div>
+                                                    <div className="mt-1 text-xs text-muted-foreground">DPS</div>
+                                                    <div className="tabular-nums text-foreground">{Math.round(p.dps).toLocaleString()}</div>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {pinnedA && pinnedB && (
+                                    <div className="space-y-1.5">
+                                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                            Total DMG: {pinnedB.totalDamage >= pinnedA.totalDamage ? 'B' : 'A'} ahead by {Math.round(Math.abs(pinnedB.totalDamage - pinnedA.totalDamage)).toLocaleString()} ({pinnedA.totalDamage > 0 ? Math.round((Math.abs(pinnedB.totalDamage - pinnedA.totalDamage) / pinnedA.totalDamage) * 100) : 0}%)
+                                        </div>
+                                        {[...new Set([...pinnedA.byCharacter, ...pinnedB.byCharacter].map((c) => c.name))].map((name) => {
+                                            const a = pinnedA.byCharacter.find((c) => c.name === name)?.damage ?? 0;
+                                            const b = pinnedB.byCharacter.find((c) => c.name === name)?.damage ?? 0;
+                                            const better = b > a ? 'text-success' : b < a ? 'text-destructive' : 'text-muted-foreground';
+                                            return (
+                                                <div key={name} className="flex items-center justify-between rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs">
+                                                    <span className="text-foreground">{name}</span>
+                                                    <span className="tabular-nums text-muted-foreground">{Math.round(a).toLocaleString()}</span>
+                                                    <span className={`tabular-nums font-medium ${better}`}>{Math.round(b).toLocaleString()}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
