@@ -57,6 +57,19 @@ export function RosterScreen() {
         else { setSortKey(key); setSortDir('desc'); }
     };
 
+    // `openWindow` stores a static content snapshot — the mounted <EnemyPicker>'s
+    // `value` prop would otherwise stay frozen at whichever enemy was selected
+    // when the window opened, so clicking a different one updates the real
+    // `enemy` state (used everywhere else on this screen) but the picker's own
+    // "Selected" highlight never visibly moves. Re-opening with a fresh element
+    // on every change keeps the window's own snapshot in sync too.
+    const openEnemyPicker = (current: Enemy) => {
+        useWindowStore.getState().openWindow(
+            'Reference enemy',
+            <EnemyPicker gameId={activeGameId} value={current} onChange={(e) => { setEnemy(e); openEnemyPicker(e); }} />,
+        );
+    };
+
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
             <PageHeader
@@ -66,7 +79,7 @@ export function RosterScreen() {
                     <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => useWindowStore.getState().openWindow('Reference enemy', <EnemyPicker gameId={activeGameId} value={enemy} onChange={setEnemy} />)}
+                        onClick={() => openEnemyPicker(enemy)}
                     >
                         <Skull /> vs {enemy.name}
                     </Button>
