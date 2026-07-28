@@ -4,6 +4,7 @@ import { Button, Input, Badge, EmptyState } from './ui';
 import { useWindowStore } from '../stores/windowStore';
 import { useGameStore } from '../stores/gameStore';
 import { useGameData } from '../data/gameData';
+import { useOwnedInventory } from '../stores/inventoryStore';
 import { useNamedPartyStore } from '../stores/namedPartyStore';
 
 let partySeq = 0;
@@ -58,6 +59,7 @@ export function PartyPickerWindow({ onSelect }: { onSelect: (partyId: string) =>
 export function CreatePartyWindow({ onCreated }: { onCreated?: (partyId: string) => void }) {
     const gameId = useGameStore((s) => s.activeGameId);
     const data = useGameData(gameId);
+    const owned = useOwnedInventory(gameId);
     const closeWindow = useWindowStore((s) => s.closeWindow);
     const [name, setName] = useState('');
     const [memberIds, setMemberIds] = useState<string[]>([]);
@@ -68,8 +70,12 @@ export function CreatePartyWindow({ onCreated }: { onCreated?: (partyId: string)
     // 3 everywhere in this window, silently capping Genshin a member short.
     const maxMembers = data.partyTeammates + 1;
     const q = query.trim().toLowerCase();
+    // Owned roster only — a party member's damage comes from their REAL
+    // equipped loadout, which only exists for characters actually in
+    // Inventory. Unlike `RotationCharacterPickerWindow` (full-roster by
+    // design, for hypothetical step-adding), a party is a real, usable team.
     const results = q
-        ? data.characters.filter((c) => c.name.toLowerCase().includes(q) && !memberIds.includes(c.id)).slice(0, 8)
+        ? owned.characters.filter((c) => c.name.toLowerCase().includes(q) && !memberIds.includes(c.id)).slice(0, 8)
         : [];
 
     const addMember = (id: string) => { if (memberIds.length < maxMembers) { setMemberIds((ids) => [...ids, id]); setQuery(''); } };
