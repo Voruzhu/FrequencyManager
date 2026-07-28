@@ -14,6 +14,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.8.1',
+        date: '2026-07-28',
+        highlights: [
+            'Fixed party creation searching the whole game roster instead of just your owned characters.',
+            "Fixed the reference-enemy picker's selection highlight not following your clicks.",
+        ],
+    },
+    {
         version: '1.8.0',
         date: '2026-07-27',
         highlights: [
@@ -45,17 +53,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         date: '2026-07-26',
         highlights: [
             'Fixed the build-code preview being an unscannable wall of stats — gear now collapses to a summary line by default.',
-        ],
-    },
-    {
-        version: '1.6.0',
-        date: '2026-07-25',
-        highlights: [
-            'Gear roll-quality score — see how well a piece rolled at a glance, right on its card.',
-            'Share a build as a short code — paste it anywhere, no account needed.',
-            'Share optimization target presets the same way, reusable on any character.',
-            'Rotation Builder now shows a damage-over-time chart for your rotation.',
-            'A couple of new boss presets added to the Enemy picker.',
         ],
     },
 ];
