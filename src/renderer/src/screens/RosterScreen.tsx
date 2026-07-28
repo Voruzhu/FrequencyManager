@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
-import { ArrowUpDown, Users as UsersIcon } from 'lucide-react';
-import { PageHeader, Card, CardContent, EmptyState, Table, TableHeader, TableBody, TableHead, TableRow, TableCell, ItemIcon } from '../components/ui';
+import { ArrowUpDown, Users as UsersIcon, Skull } from 'lucide-react';
+import { PageHeader, Card, CardContent, EmptyState, Table, TableHeader, TableBody, TableHead, TableRow, TableCell, ItemIcon, Button } from '../components/ui';
 import { useGameStore } from '../stores/gameStore';
 import { useOwnedInventory } from '../stores/inventoryStore';
 import { useLoadoutStore } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { useCalcStore } from '../stores/calcStore';
+import { useWindowStore } from '../stores/windowStore';
 import { useGameData, formatCatalogValue, catalogStatLabel } from '../data/gameData';
 import { iconSrc } from '@/lib/icons';
 import { computeBuildStats, setBonusBuffEntries } from '../data/optimizer';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs } from '@/lib/selfBuffs';
 import { getWeaponScaling, refineMul } from '../data/weaponScaling';
-import { averageRollPct, sortRows, type RosterRow, type SortDir } from '@/lib/rosterOverview';
+import { averageRollPct, averageSkillDamage, sortRows, type RosterRow, type SortDir } from '@/lib/rosterOverview';
+import { DUMMY, type Enemy } from '../data/enemies';
+import { EnemyPicker } from '../components/EnemyPicker';
 
 /**
  * Each owned character's SOLO stats — their own saved loadout + sequence, no
@@ -27,6 +30,7 @@ export function RosterScreen() {
     const echoSkillDeployed = useCalcStore((s) => s.echoSkillDeployed);
     const [sortKey, setSortKey] = useState<string | null>(null);
     const [sortDir, setSortDir] = useState<SortDir>('desc');
+    const [enemy, setEnemy] = useState<Enemy>(DUMMY);
 
     const rows: RosterRow[] = useMemo(() => owned.characters.map((character) => {
         const loadout = useLoadoutStore.getState().getLoadout(activeGameId, character.id);
@@ -43,8 +47,8 @@ export function RosterScreen() {
             ...gearAutoBuffs(gear, {}, character.name, loadout.mainSlotGearId, echoSkillDeployed),
         ];
         const stats = computeBuildStats(character, gear, buffs, weapon, data.statCatalog);
-        return { character, stats, avgRollPct: averageRollPct(gear, data), gearCount: gear.length };
-    }), [owned.characters, owned.gear, activeGameId, data, skillTreeInvested, echoSkillDeployed]);
+        return { character, stats, avgRollPct: averageRollPct(gear, data), avgSkillDmg: averageSkillDamage(character, stats, buffs, gear, enemy), gearCount: gear.length };
+    }), [owned.characters, owned.gear, activeGameId, data, skillTreeInvested, echoSkillDeployed, enemy]);
 
     const sorted = useMemo(() => sortRows(rows, sortKey, sortDir), [rows, sortKey, sortDir]);
 
@@ -55,7 +59,19 @@ export function RosterScreen() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
-            <PageHeader title="Roster Overview" description="Every owned character's solo stats from their own saved loadout — click a column to sort. No target/rotation assumed, so this isn't a damage ranking." />
+            <PageHeader
+                title="Roster Overview"
+                description="Every owned character's solo stats from their own saved loadout — click a column to sort. No party/rotation assumed, so Avg skill DMG is a rough per-hit rating against the reference enemy below, not a real rotation DPS number."
+                actions={
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => useWindowStore.getState().openWindow('Reference enemy', <EnemyPicker gameId={activeGameId} value={enemy} onChange={setEnemy} />)}
+                    >
+                        <Skull /> vs {enemy.name}
+                    </Button>
+                }
+            />
             {owned.characters.length === 0 ? (
                 <EmptyState icon={UsersIcon} title="No characters owned yet" description="Add characters in the Inventory screen first." />
             ) : (
@@ -66,6 +82,7 @@ export function RosterScreen() {
                                 <TableRow>
                                     <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('name')}>Character <ArrowUpDown className="inline h-3 w-3" /></TableHead>
                                     <TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort('avgRollPct')}>Avg roll% <ArrowUpDown className="inline h-3 w-3" /></TableHead>
+                                    <TableHead className="cursor-pointer select-none text-right" onClick={() => toggleSort('avgSkillDmg')}>Avg skill DMG <ArrowUpDown className="inline h-3 w-3" /></TableHead>
                                     {data.statCatalog.map((def) => (
                                         <TableHead key={def.key} className="cursor-pointer select-none text-right" onClick={() => toggleSort(def.key)}>
                                             {catalogStatLabel(def)} <ArrowUpDown className="inline h-3 w-3" />
@@ -82,6 +99,7 @@ export function RosterScreen() {
                                             {r.gearCount === 0 && <span className="text-xs text-muted-foreground">(no gear)</span>}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums text-muted-foreground">{r.gearCount > 0 ? `${Math.round(r.avgRollPct)}%` : '—'}</TableCell>
+                                        <TableCell className="text-right tabular-nums text-muted-foreground">{Math.round(r.avgSkillDmg).toLocaleString()}</TableCell>
                                         {data.statCatalog.map((def) => (
                                             <TableCell key={def.key} className="text-right tabular-nums text-muted-foreground">{formatCatalogValue(def, r.stats[def.key] ?? 0)}</TableCell>
                                         ))}
