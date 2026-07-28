@@ -14,6 +14,15 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.8.0',
+        date: '2026-07-27',
+        highlights: [
+            'Duplicate and rename saved loadouts, not just save/apply/delete.',
+            'Compare two rotations side-by-side — pin one as A, another as B, see the damage diff.',
+            'Roster Overview gets a new "Avg skill DMG" column vs. a reference enemy of your choice.',
+        ],
+    },
+    {
         version: '1.7.1',
         date: '2026-07-27',
         highlights: [
@@ -47,13 +56,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             'Share optimization target presets the same way, reusable on any character.',
             'Rotation Builder now shows a damage-over-time chart for your rotation.',
             'A couple of new boss presets added to the Enemy picker.',
-        ],
-    },
-    {
-        version: '1.5.2',
-        date: '2026-07-25',
-        highlights: [
-            'Fixed the Talents window losing real kit text for Rebecca, Sigrika, Verina, Baizhi and Mavuika.',
         ],
     },
 ];
