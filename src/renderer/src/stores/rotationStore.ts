@@ -25,6 +25,13 @@ export interface SavedRotation {
      * behavior every rotation had before this feature). */
     mode?: 'boss' | 'waves';
     waves?: WaveConfig[];
+    /** Real time budget to compare this rotation's actual duration against
+     * (e.g. a floor's clear-time limit, manually typed or filled in by an
+     * end-game-mode preset — see `lib/endgamePresets.ts`). Undefined = no
+     * comparison shown; every rotation saved before this field existed keeps
+     * working exactly as before. Independent of `mode`/`waves` — settable on
+     * a plain Boss-mode rotation too. */
+    timeLimitSeconds?: number;
 }
 
 /** Saved rotations, keyed by game then rotation id — same shape convention as `loadoutStore`. */

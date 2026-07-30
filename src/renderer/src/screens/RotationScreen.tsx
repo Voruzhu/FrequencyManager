@@ -15,7 +15,7 @@ import { resolveNamedParty, partyEffects, enabledPartyBuffs, type PartyMemberRes
 import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
-import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, type WaveConfig } from '@/lib/rotationEngine';
+import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, compareToTimeBudget, type WaveConfig } from '@/lib/rotationEngine';
 import { EnemyPicker, EnemyConfig } from '../components/EnemyPicker';
 import type { Enemy } from '../data/enemies';
 import { RotationDpsChart } from '../components/RotationDpsChart';
@@ -155,6 +155,7 @@ export function RotationScreen() {
     const [steps, setSteps] = useState<RotationStepSpec[]>([]);
     const [mode, setMode] = useState<'boss' | 'waves'>('boss');
     const [waves, setWaves] = useState<WaveConfig[]>([{ enemyId: 'dummy' }]);
+    const [timeLimitSeconds, setTimeLimitSeconds] = useState<number | undefined>(undefined);
 
     // A step can reference a character outside the currently-selected party —
     // either no party is selected yet (full-roster picker still active) or a
@@ -198,7 +199,7 @@ export function RotationScreen() {
         const name = rotationName.trim();
         if (!name) return;
         const id = loadedRotationId ?? nextRotationId();
-        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, mode, waves };
+        const rotation: SavedRotation = { id, name, partyId: activePartyId, steps, mode, waves, timeLimitSeconds };
         useRotationStore.getState().save(activeGameId, rotation);
         setLoadedRotationId(id);
         toast.success(`Saved "${name}"`);
@@ -210,6 +211,7 @@ export function RotationScreen() {
         setActivePartyId(r.partyId);
         setMode(r.mode ?? 'boss');
         setWaves(r.waves ?? [{ enemyId: 'dummy' }]);
+        setTimeLimitSeconds(r.timeLimitSeconds);
     };
     const handleDelete = (r: SavedRotation) => {
         useRotationStore.getState().remove(activeGameId, r.id);
@@ -224,6 +226,7 @@ export function RotationScreen() {
         setLoadedRotationId(null);
         setMode('boss');
         setWaves([{ enemyId: 'dummy' }]);
+        setTimeLimitSeconds(undefined);
     };
 
     // Every conditional buff available to place as a 'buff' step — team-wide
@@ -369,6 +372,16 @@ export function RotationScreen() {
                                 <Button size="sm" variant={mode === 'boss' ? 'default' : 'secondary'} onClick={() => { setMode('boss'); setWaves((w) => (w.slice(0, 1).length ? w.slice(0, 1) : [{ enemyId: 'dummy' }])); }}>Boss</Button>
                                 <Button size="sm" variant={mode === 'waves' ? 'default' : 'secondary'} onClick={() => setMode('waves')}>Waves</Button>
                             </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Time limit (s):</span>
+                                <Input
+                                    type="number"
+                                    placeholder="optional"
+                                    className="w-28"
+                                    value={timeLimitSeconds ?? ''}
+                                    onChange={(e) => setTimeLimitSeconds(e.target.value === '' ? undefined : Number(e.target.value))}
+                                />
+                            </div>
                             {waves.map((w, i) => {
                                 const waveEnemy = resolveWaveEnemy(w, activeGameId);
                                 const updateWaveEnemy = (e: Enemy) => setWaves((ws) => ws.map((x, xi) => (xi === i ? { ...x, enemyId: e.id, level: e.level, def: e.def, res: e.res } : x)));
@@ -467,6 +480,20 @@ export function RotationScreen() {
                                         <div className="text-lg font-semibold tabular-nums text-foreground">{totalDuration.toFixed(1)}s</div>
                                     </div>
                                 </div>
+
+                                {timeLimitSeconds != null && timeLimitSeconds > 0 && (() => {
+                                    const budget = compareToTimeBudget(totalDuration, timeLimitSeconds);
+                                    return (
+                                        <div className={cn(
+                                            'rounded-md border px-2.5 py-1.5 text-xs',
+                                            budget.withinBudget ? 'border-border bg-surface text-muted-foreground' : 'border-warning/40 bg-warning/10 text-warning',
+                                        )}>
+                                            {totalDuration.toFixed(1)}s / {timeLimitSeconds}s — {budget.withinBudget
+                                                ? `${budget.secondsRemaining.toFixed(1)}s to spare`
+                                                : `${Math.abs(budget.secondsRemaining).toFixed(1)}s over, would not clear in time`}
+                                        </div>
+                                    );
+                                })()}
 
                                 <RotationDpsChart elapsed={elapsed} results={results} />
 

@@ -1,4 +1,4 @@
-import { elapsedTimes, cooldownWarningFor, simulateWaves, applyWaveTransition, resolveWaveEnemy, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
+import { elapsedTimes, cooldownWarningFor, simulateWaves, applyWaveTransition, resolveWaveEnemy, compareToTimeBudget, type WaveConfig } from '../../src/renderer/src/lib/rotationEngine';
 import type { RotationStepSpec } from '../../src/renderer/src/types';
 
 const step = (characterId: string, skillId: string, duration: number): RotationStepSpec =>
@@ -154,5 +154,25 @@ describe('resolveWaveEnemy', () => {
     it('falls back to the Training Dummy for an unknown enemyId', () => {
         const enemy = resolveWaveEnemy({ enemyId: 'not-a-real-enemy' }, 'wuthering-waves');
         expect(enemy.id).toBe('dummy');
+    });
+});
+
+describe('compareToTimeBudget', () => {
+    it('reports withinBudget=true and positive secondsRemaining when under the limit', () => {
+        const result = compareToTimeBudget(42.3, 90);
+        expect(result.withinBudget).toBe(true);
+        expect(result.secondsRemaining).toBeCloseTo(47.7, 5);
+    });
+
+    it('reports withinBudget=false and negative secondsRemaining when over the limit', () => {
+        const result = compareToTimeBudget(96.1, 90);
+        expect(result.withinBudget).toBe(false);
+        expect(result.secondsRemaining).toBeCloseTo(-6.1, 5);
+    });
+
+    it('exactly at the limit counts as within budget (secondsRemaining === 0)', () => {
+        const result = compareToTimeBudget(90, 90);
+        expect(result.withinBudget).toBe(true);
+        expect(result.secondsRemaining).toBe(0);
     });
 });

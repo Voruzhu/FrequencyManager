@@ -149,3 +149,17 @@ export function simulateWaves(stepDamages: number[], waves: WaveConfig[]): { wav
     }
     return { waveIndexForStep, damageByWave, overflowDiscarded };
 }
+
+/** Compares a rotation's actual total duration against a real time budget
+ * (e.g. a floor's clear-time limit) — pure display math; `totalDuration` is
+ * already computed by the caller (`RotationScreen.tsx`), so no engine
+ * change is needed beyond this comparison itself. `secondsRemaining` is
+ * negative when over budget. */
+export interface TimeBudgetComparison {
+    withinBudget: boolean;
+    secondsRemaining: number;
+}
+export function compareToTimeBudget(totalDuration: number, timeLimitSeconds: number): TimeBudgetComparison {
+    const secondsRemaining = timeLimitSeconds - totalDuration;
+    return { withinBudget: secondsRemaining >= 0, secondsRemaining };
+}
