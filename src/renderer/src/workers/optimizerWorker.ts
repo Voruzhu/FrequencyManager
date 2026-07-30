@@ -21,18 +21,33 @@
  */
 import type { CharacterEntry, GearEntry } from '@shared/types/game-bundle';
 import {
-    combinations, computeBaseLoadouts, targetRanges, scoreAndRank, withinCostBudget,
+    combinations, cartesianCombos, computeBaseLoadouts, targetRanges, scoreAndRank, withinCostBudget,
     type OptimizeConfig, type BaseLoadout, type TargetRange, type Loadout,
 } from '@shared/calc/optimizer';
 
 export interface WorkerInitMessage {
     type: 'init';
     character: CharacterEntry;
+    /** Ignored when `slotGroups` is set (see below) — the flat search path
+     * uses this instead. */
     pool: GearEntry[];
+    /** Ignored when `slotGroups` is set. */
     k: number;
     firstIndices: number[];
     idOffset: number;
     config: OptimizeConfig;
+    /** Pieces held fixed in every combo this worker generates (see
+     * `optimize`'s `lockedGear` param) — `pool`/`slotGroups` here already
+     * describe only the SEARCHABLE remainder, so each generated combo just
+     * needs this prefix restored before scoring. Omitted/empty for a normal
+     * (nothing locked) search. */
+    lockedGear?: GearEntry[];
+    /** Set for slot-typed gear (GI artifacts) — combos come from
+     * `cartesianCombos(slotGroups, firstIndices)` instead of
+     * `combinations(pool, k, firstIndices)`. See `slotGroupsFor`'s doc
+     * comment in shared/calc/optimizer.ts for why slotted gear needs a
+     * fundamentally different search than flat (WuWa) gear. */
+    slotGroups?: GearEntry[][];
 }
 export interface WorkerScoreMessage {
     type: 'score';
@@ -65,7 +80,12 @@ function computeInChunks(character: CharacterEntry, combos: GearEntry[][], confi
 self.onmessage = (ev: MessageEvent<WorkerInboundMessage>) => {
     const msg = ev.data;
     if (msg.type === 'init') {
-        const combos = combinations(msg.pool, msg.k, new Set(msg.firstIndices))
+        const lockedGear = msg.lockedGear ?? [];
+        const generated = msg.slotGroups
+            ? cartesianCombos(msg.slotGroups, new Set(msg.firstIndices))
+            : combinations(msg.pool, msg.k, new Set(msg.firstIndices));
+        const combos = generated
+            .map((fill) => (lockedGear.length ? [...lockedGear, ...fill] : fill))
             .filter((combo) => withinCostBudget(combo, msg.config.maxTotalCost));
         heldConfig = msg.config;
         heldBase = computeInChunks(msg.character, combos, msg.config, msg.idOffset);

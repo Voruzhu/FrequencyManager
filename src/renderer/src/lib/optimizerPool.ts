@@ -20,7 +20,7 @@
  */
 import type { CharacterEntry, GearEntry } from '@shared/types/game-bundle';
 import {
-    subtreeSize, gearSlotsFor, mergeRanges,
+    subtreeSize, fillSlotsFor, slotGroupsFor, mergeRanges,
     type OptimizeConfig, type Loadout, type TargetRange,
 } from '@shared/calc/optimizer';
 import type { WorkerInboundMessage, WorkerOutboundMessage } from '../workers/optimizerWorker';
@@ -41,6 +41,18 @@ function assignFirstIndices(poolSize: number, k: number, threadCount: number): n
     return buckets;
 }
 
+/** Same idea as `assignFirstIndices` but for a Cartesian (slot-typed) search
+ * — every "first group" index represents the SAME amount of work
+ * (`cartesianSubtreeSize` is constant, unlike `subtreeSize`'s per-index
+ * binomial), so balanced load is just an even round-robin, no LPT sort
+ * needed. */
+function assignCartesianFirstIndices(groups: GearEntry[][], threadCount: number): number[][] {
+    const n = groups[0]?.length ?? 0;
+    const buckets: number[][] = Array.from({ length: threadCount }, () => []);
+    for (let i = 0; i < n; i++) buckets[i % threadCount].push(i);
+    return buckets;
+}
+
 // Spaced far enough apart that no two workers' internal combo indices could
 // ever collide, without needing to precompute each worker's exact combo
 // count up front — ids only need to be unique for React keys, not ordered.
@@ -55,6 +67,16 @@ export interface OptimizePoolProgress { done: number; total: number }
  * `onProgress` fires as workers report chunks processed (summed across all
  * threads); `signal` (optional) lets a caller abort — workers are
  * terminated immediately and the returned promise rejects.
+ *
+ * `lockedGear` (default none) — pieces held fixed in every candidate combo
+ * (see `optimize`'s identical param); `pool` should still be the FULL
+ * available pool including these pieces (matching `gearSlotsFor`'s
+ * convention) — this splits it into the locked prefix and the actually-
+ * searched remainder itself.
+ *
+ * For slot-typed gear (GI artifacts), the search is a Cartesian product over
+ * each slot's own candidates rather than a flat combination — see
+ * `slotGroupsFor`'s doc comment in shared/calc/optimizer.ts.
  */
 export function runOptimizerPool(
     character: CharacterEntry,
@@ -63,11 +85,25 @@ export function runOptimizerPool(
     threadCount: number,
     onProgress?: (p: OptimizePoolProgress) => void,
     signal?: AbortSignal,
+    lockedGear: GearEntry[] = [],
 ): Promise<Loadout[]> {
     return new Promise((resolve, reject) => {
-        const k = gearSlotsFor(pool.length);
-        const effectiveThreads = Math.max(1, Math.min(threadCount, pool.length - k + 1));
-        const buckets = assignFirstIndices(pool.length, k, effectiveThreads);
+        const groups = slotGroupsFor(pool, lockedGear);
+        let search: GearEntry[] = [];
+        let k = 0;
+        let effectiveThreads: number;
+        let buckets: number[][];
+        if (groups) {
+            const firstGroupSize = groups[0]?.length ?? 0;
+            effectiveThreads = Math.max(1, Math.min(threadCount, firstGroupSize || 1));
+            buckets = assignCartesianFirstIndices(groups, effectiveThreads);
+        } else {
+            const lockedIds = new Set(lockedGear.map((g) => g.id));
+            search = lockedIds.size > 0 ? pool.filter((g) => !lockedIds.has(g.id)) : pool;
+            k = fillSlotsFor(pool.length, lockedGear.length);
+            effectiveThreads = Math.max(1, Math.min(threadCount, search.length - k + 1));
+            buckets = assignFirstIndices(search.length, k, effectiveThreads);
+        }
 
         const workers: Worker[] = [];
         const perWorkerDone: number[] = Array.from({ length: effectiveThreads }, () => 0);
@@ -145,10 +181,12 @@ export function runOptimizerPool(
             const idOffset = i * ID_OFFSET_STRIDE;
             worker.postMessage({
                 type: 'init',
-                character, pool, k,
+                character, pool: search, k,
                 firstIndices: buckets[i],
                 idOffset,
                 config,
+                lockedGear,
+                slotGroups: groups ?? undefined,
             } satisfies WorkerInboundMessage);
         }
     });

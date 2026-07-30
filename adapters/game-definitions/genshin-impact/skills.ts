@@ -15,6 +15,12 @@ import type { CharacterSkill } from '@shared/types/game-definition';
 export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
     // ── Ganyu — ATK / Cryo (Vaporize/Melt on the Charged Shot) ──
     ganyu: [
+        // Previously missing entirely — every other bow character has a
+        // Normal Attack entry. Full 10-level table sourced from KQM library.
+        { id: 'na', name: 'Liutian Archery', type: 'Normal', scaling: 'atk', element: 'Physical',
+            multipliers: [0.317, 0.343, 0.369, 0.406, 0.432, 0.461, 0.502, 0.542, 0.583, 0.627] },
+        { id: 'na_final', name: 'Liutian Archery (6-Hit)', type: 'Normal', scaling: 'atk', element: 'Physical',
+            multipliers: [0.576, 0.623, 0.670, 0.737, 0.784, 0.838, 0.911, 0.985, 1.059, 1.139] },
         { id: 'charged', name: 'Frostflake Arrow', type: 'Charged', scaling: 'atk', element: 'Cryo',
             multipliers: [1.28, 1.376, 1.472, 1.6, 1.696, 1.792, 1.92, 2.048, 2.176, 2.304] },
         { id: 'skill', name: 'Trail of the Qilin', type: 'Skill', scaling: 'atk', element: 'Cryo',
@@ -61,7 +67,16 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
 ],
     // ── Noelle — DEF / Geo ──
     noelle: [
-        { id: 'na', name: 'Normal Attack (Sweeping Time)', type: 'Normal', scaling: 'def', element: 'Geo',
+        // Real kit: Normal/Charged/Plunging Attack DMG is ATK-scaling Physical
+        // by DEFAULT — it only converts to DEF-scaling Geo while Sweeping Time
+        // (Burst) is active. Previously this file had ONLY the Sweeping-Time
+        // version, unconditionally, meaning every non-burst portion of a
+        // rotation was silently computed as if Sweeping Time were always up.
+        // Same real motion values apply in both states (confirmed via KQM
+        // library) — only scaling stat + element change.
+        { id: 'na', name: 'Favonius Bladework - Maid', type: 'Normal', scaling: 'atk', element: 'Physical',
+            multipliers: [0.7912, 0.8556, 0.92, 1.012, 1.0764, 1.15, 1.2512, 1.3524, 1.4536, 1.564] },
+        { id: 'na_sweepingtime', name: 'Normal Attack (Sweeping Time)', type: 'Normal', scaling: 'def', element: 'Geo',
             multipliers: [0.7912, 0.8556, 0.92, 1.012, 1.0764, 1.15, 1.2512, 1.3524, 1.4536, 1.564] },
         { id: 'skill', name: 'Breastplate', type: 'Skill', scaling: 'def', element: 'Geo',
             multipliers: [0.72, 0.78, 0.84, 0.90, 0.96, 1.04, 1.11, 1.20, 1.27, 1.34] },
@@ -106,6 +121,18 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [2.328, 2.5026, 2.6772, 2.91, 3.0846, 3.2592, 3.492, 3.7248, 3.9576, 4.1904, 4.4232, 4.656, 4.947, 5.238, 5.529] },
             { id: 'skill_explosion', name: 'Passion Overload (Full Charge Explosion)', type: 'Skill', scaling: 'atk', element: 'Pyro',
             multipliers: [1.32, 1.419, 1.518, 1.65, 1.749, 1.848, 1.98, 2.112, 2.244, 2.376] },
+        // Previously missing entirely: Full-Charge Passion Overload is
+        // actually a 3-hit sequence — 2 preliminary sword swings THEN the
+        // explosion above (only the explosion was modeled). L1/L10 anchors
+        // confirmed via KQM library; intermediate levels derived from the
+        // exact same growth-curve family this character's own skill_explosion
+        // and skill entries already use (ratios 1, 1.075, 1.15, 1.25, 1.325,
+        // 1.4, 1.5, 1.6, 1.7, 1.8) — both derived L10 values land within
+        // rounding of the independently-sourced L10 anchors (158%/173%).
+        { id: 'skill_swing1', name: 'Passion Overload (Swing 1)', type: 'Skill', scaling: 'atk', element: 'Pyro',
+            multipliers: [0.88, 0.946, 1.012, 1.1, 1.166, 1.232, 1.32, 1.408, 1.496, 1.584] },
+        { id: 'skill_swing2', name: 'Passion Overload (Swing 2)', type: 'Skill', scaling: 'atk', element: 'Pyro',
+            multipliers: [0.96, 1.032, 1.104, 1.2, 1.272, 1.344, 1.44, 1.536, 1.632, 1.728] },
 ],
     // ── Kaedehara Kazuha — ATK / Anemo. Off-field support/EM carry. ──
     kazuha: [
@@ -283,6 +310,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.0105, 1.09275, 1.175, 1.2925, 1.37475, 1.46875, 1.598, 1.72725, 1.8565, 1.9975] },
         { id: 'skill_mortuaryrite', name: 'Mortuary Rite (Pathclearer)', type: 'Skill', scaling: 'atk', element: 'Electro',
             multipliers: [1.568, 1.6856, 1.8032, 1.96, 2.0776, 2.1952, 2.352, 2.5088, 2.6656, 2.8224] },
+        // Previously missing entirely — Passive 1's "Duststalker Bolt" proc
+        // (fires 3 per Judication trigger, one instance modeled per this
+        // app's per-hit convention). Fixed 100% ATK, not talent-level scaled
+        // (confirmed via KQM library); its +250% EM component is a separate
+        // self-buff (see character-passives.generated.ts).
+        { id: 'skill_duststalker', name: 'Duststalker Bolt (per bolt, x3)', type: 'Skill', scaling: 'atk', element: 'Electro',
+            multiplier: 1.0 },
 ],
     // ── Xiao — ATK / Anemo. Plunge-attack Anemo DPS (Burst is a self-buff, not direct damage). ──
     xiao: [
@@ -586,6 +620,23 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.18432, 0.198144, 0.211968, 0.2304, 0.244224, 0.258048, 0.27648, 0.294912, 0.313344, 0.331776, 0.350208, 0.36864, 0.39168, 0.41472, 0.43776] },
             { id: 'burst_lingering_aeon', name: 'Dance of Abzendegi (Lingering Aeon)', type: 'Burst', scaling: 'hp', element: 'Hydro',
             multipliers: [0.22528, 0.242176, 0.259072, 0.2816, 0.298496, 0.315392, 0.33792, 0.360448, 0.382976, 0.405504] },
+        // Previously missing entirely — this was arguably her primary real
+        // damage output (Pirouette state, active after a Bountiful Core
+        // pops): 6 more HP-scaling hits, full 10-level tables sourced from
+        // KQM library. Levels 11-15 not confirmed to a real table (known
+        // gap, not fabricated — same convention as Chiori's DEF term above).
+        { id: 'skill_sworddance1', name: 'Sword Dance (Pirouette, 1-Hit)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0455, 0.0489, 0.0524, 0.0569, 0.0603, 0.0637, 0.0683, 0.0728, 0.0774, 0.0819] },
+        { id: 'skill_sworddance2', name: 'Sword Dance (Pirouette, 2-Hit)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0514, 0.0553, 0.0592, 0.0643, 0.0682, 0.0720, 0.0772, 0.0823, 0.0875, 0.0926] },
+        { id: 'skill_whirlingsteps1', name: 'Whirling Steps (Pirouette, 1-Hit)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0326, 0.0351, 0.0375, 0.0408, 0.0432, 0.0457, 0.0489, 0.0522, 0.0555, 0.0587] },
+        { id: 'skill_whirlingsteps2', name: 'Whirling Steps (Pirouette, 2-Hit)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0396, 0.0426, 0.0455, 0.0495, 0.0525, 0.0554, 0.0594, 0.0634, 0.0673, 0.0713] },
+        { id: 'skill_luminousillusion', name: 'Luminous Illusion (Pirouette, Sword Dance finisher)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0717, 0.0771, 0.0824, 0.0896, 0.0950, 0.1004, 0.1075, 0.1147, 0.1219, 0.1290] },
+        { id: 'skill_waterwheel', name: 'Water Wheel (Pirouette, Whirling Steps finisher)', type: 'Skill', scaling: 'hp', element: 'Hydro',
+            multipliers: [0.0506, 0.0544, 0.0582, 0.0633, 0.0671, 0.0709, 0.0759, 0.0810, 0.0860, 0.0911] },
 ],
     // ── Kinich — ATK / Dendro. Nightsoul grapple Dendro DPS. ──
     kinich: [
@@ -725,8 +776,15 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         // Left as 10 entries rather than guessing.
         { id: 'skill', name: 'Fluttering Hasode', type: 'Skill', scaling: 'atk', element: 'Geo',
             multipliers: [1.4928, 1.60476, 1.71672, 1.866, 1.97796, 2.08992, 2.2392, 2.38848, 2.53776, 2.68704, 2.83632, 2.9856, 3.1722, 3.3588, 3.5454], scaling2: 'def', multipliers2: [0.54309, 0.587295, 0.6315, 0.69465, 0.738855, 0.789375, 0.85884, 0.928305, 0.99777, 1.07355] },
+        // Real burst is dual ATK+DEF scaling (confirmed via KQM library: "AoE
+        // Geo DMG based on her ATK and DEF") — the DEF term was previously
+        // entirely absent, a structural under-count, not just a wrong value.
+        // DEF term sourced for L1-10 only (320%->577%); L11-15 not confirmed
+        // to a real table, same "known gap" class as skill/skill_tamoto above
+        // — left at 10 entries rather than guessing.
         { id: 'burst', name: 'Hiyoku: Twin Blades', type: 'Burst', scaling: 'atk', element: 'Geo',
-            multipliers: [2.5632, 2.75544, 2.94768, 3.204, 3.39624, 3.58848, 3.8448, 4.10112, 4.35744, 4.61376, 4.87008, 5.1264, 5.4468, 5.7672, 6.0876] },
+            multipliers: [2.5632, 2.75544, 2.94768, 3.204, 3.39624, 3.58848, 3.8448, 4.10112, 4.35744, 4.61376, 4.87008, 5.1264, 5.4468, 5.7672, 6.0876],
+            scaling2: 'def', multipliers2: [3.20, 3.44, 3.68, 4.01, 4.25, 4.49, 4.81, 5.13, 5.45, 5.77] },
             // Same known gap as 'skill' above (multipliers2 only 10 entries,
         // ATK term correctly 15) — same reason, not fabricated.
         { id: 'skill_tamoto', name: 'Tamoto (Periodic Doll Attack)', type: 'Skill', scaling: 'atk', element: 'Geo',
@@ -926,7 +984,13 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.76, 0.82, 0.88, 0.97, 1.03, 1.11, 1.20, 1.30, 1.40, 1.51] },
         { id: 'plunge', name: 'Suanni\'s Gilded Dance (Plunge)', type: 'Plunge', scaling: 'atk', element: 'Pyro',
             multipliers: [1.44, 1.55, 1.66, 1.81, 1.92, 2.03, 2.17, 2.32, 2.46, 2.61] },
-        { id: 'skill', name: 'Bestial Ascent', type: 'Skill', scaling: 'atk', element: 'Pyro',
+        // Real kit: Bestial Ascent itself converts Gaming's Plunging Attack into
+        // this named, empowered hit ("Charmed Cloudstrider") — it IS his plunge
+        // damage, not a separate generic skill-cast hit (confirmed via KQM
+        // library: L1 230.4% -> L10 414.7%, matching the multipliers below
+        // exactly). Was previously typed 'Skill', which meant Plunge-scoped
+        // buffs (e.g. his own C6, or Xianyun's team buff) never applied to it.
+        { id: 'skill', name: 'Bestial Ascent (Charmed Cloudstrider)', type: 'Plunge', scaling: 'atk', element: 'Pyro',
             multipliers: [2.304, 2.4768, 2.6496, 2.88, 3.0528, 3.2256, 3.456, 3.6864, 3.9168, 4.1472, 4.3776, 4.608, 4.896, 5.184, 5.472] },
         { id: 'burst', name: 'Suanni\'s Gilded Dance', type: 'Burst', scaling: 'atk', element: 'Pyro',
             multipliers: [3.704, 3.9818, 4.2596, 4.63, 4.9078, 5.1856, 5.556, 5.9264, 6.2968, 6.6672, 7.0376, 7.408, 7.871, 8.334, 8.797] },
@@ -1045,9 +1109,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'na', name: 'Foreign Ironwind', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.45, 0.48, 0.52, 0.58, 0.62, 0.66, 0.72, 0.79, 0.85, 0.92] },
         { id: 'skill', name: 'Palm Vortex', type: 'Skill', scaling: 'atk', element: 'Anemo',
-            multipliers: [1.61, 1.73, 1.85, 2.01, 2.13, 2.25, 2.42, 2.58, 2.74, 2.90] },
+            multipliers: [1.76, 1.89, 2.02, 2.20, 2.33, 2.46, 2.64, 2.82, 2.99, 3.17] },
         { id: 'burst', name: 'Gust Surge', type: 'Burst', scaling: 'atk', element: 'Anemo',
-            multipliers: [0.67, 0.72, 0.77, 0.84, 0.89, 0.94, 1.01, 1.07, 1.14, 1.21] },
+            multipliers: [0.808, 0.869, 0.929, 1.01, 1.07, 1.13, 1.21, 1.29, 1.37, 1.45] },
         { id: "skill_cutting", name: "Palm Vortex (Cutting)", type: "Skill", scaling: "atk", element: "Anemo",
             multipliers: [0.168, 0.1806, 0.1932, 0.21, 0.2226, 0.2352, 0.252, 0.2688, 0.2856, 0.3024] },
     ],
@@ -1056,18 +1120,18 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'na', name: 'Foreign Rockblade', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.45, 0.48, 0.52, 0.58, 0.62, 0.66, 0.72, 0.79, 0.85, 0.92] },
         { id: 'skill', name: 'Starfell Sword', type: 'Skill', scaling: 'atk', element: 'Geo',
-            multipliers: [1.44, 1.55, 1.66, 1.80, 1.91, 2.02, 2.16, 2.30, 2.45, 2.59] },
+            multipliers: [2.48, 2.67, 2.85, 3.10, 3.29, 3.47, 3.72, 3.97, 4.22, 4.46] },
         { id: 'burst', name: 'Wake of Earth', type: 'Burst', scaling: 'atk', element: 'Geo',
-            multipliers: [1.44, 1.55, 1.66, 1.80, 1.91, 2.02, 2.16, 2.30, 2.45, 2.59] },
+            multipliers: [1.48, 1.59, 1.70, 1.85, 1.96, 2.07, 2.22, 2.37, 2.52, 2.66] },
     ],
     // ── Traveler (Electro) — ATK / Electro. Sword; Physical NA, Electro skill/burst. ──
     'traveler-electro': [
         { id: 'na', name: 'Foreign Thundershock', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.45, 0.48, 0.52, 0.58, 0.62, 0.66, 0.72, 0.79, 0.85, 0.92] },
         { id: 'skill', name: 'Lightning Blade', type: 'Skill', scaling: 'atk', element: 'Electro',
-            multipliers: [1.61, 1.73, 1.85, 2.01, 2.13, 2.25, 2.42, 2.58, 2.74, 2.90] },
+            multipliers: [0.79, 0.85, 0.90, 0.98, 1.04, 1.10, 1.18, 1.26, 1.34, 1.42] },
         { id: 'burst', name: 'Bellowing Thunder', type: 'Burst', scaling: 'atk', element: 'Electro',
-            multipliers: [1.34, 1.44, 1.54, 1.68, 1.78, 1.88, 2.01, 2.15, 2.28, 2.42] },
+            multipliers: [1.144, 1.230, 1.316, 1.430, 1.516, 1.602, 1.716, 1.830, 1.945, 2.059] },
         { id: "burst_fallingthunder", name: "Falling Thunder", type: "Burst", scaling: "atk", element: "Electro",
             multipliers: [0.328, 0.3526, 0.3772, 0.41, 0.4346, 0.4592, 0.492, 0.5248, 0.5576, 0.5904] },
     ],
@@ -1076,9 +1140,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'na', name: 'Foreign Fieldcleaver', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.45, 0.48, 0.52, 0.58, 0.62, 0.66, 0.72, 0.79, 0.85, 0.92] },
         { id: 'skill', name: 'Razorgrass Blade', type: 'Skill', scaling: 'atk', element: 'Dendro',
-            multipliers: [1.88, 2.02, 2.16, 2.35, 2.49, 2.63, 2.82, 3.01, 3.20, 3.39] },
+            multipliers: [2.30, 2.48, 2.65, 2.88, 3.05, 3.23, 3.46, 3.69, 3.92, 4.15] },
         { id: 'burst', name: 'Surgent Manifestation', type: 'Burst', scaling: 'atk', element: 'Dendro',
-            multipliers: [0.88, 0.95, 1.02, 1.10, 1.17, 1.23, 1.32, 1.41, 1.50, 1.58] },
+            multipliers: [0.802, 0.862, 0.922, 1.002, 1.062, 1.122, 1.202, 1.283, 1.363, 1.443] },
         { id: "burst_explosion", name: "Surgent Manifestation (Explosion)", type: "Burst", scaling: "atk", element: "Dendro",
             multipliers: [4.008, 4.3086, 4.6092, 5.01, 5.3106, 5.6112, 6.012, 6.4128, 6.8136, 7.2144] },
     ],
@@ -1087,9 +1151,9 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'na', name: 'Foreign Streamslash', type: 'Normal', scaling: 'atk', element: 'Physical',
             multipliers: [0.45, 0.48, 0.52, 0.58, 0.62, 0.66, 0.72, 0.79, 0.85, 0.92] },
         { id: 'skill', name: 'Aquacrest Saber', type: 'Skill', scaling: 'atk', element: 'Hydro',
-            multipliers: [1.61, 1.73, 1.85, 2.01, 2.13, 2.25, 2.42, 2.58, 2.74, 2.90] },
+            multipliers: [1.893, 2.035, 2.177, 2.366, 2.508, 2.650, 2.839, 3.028, 3.218, 3.407] },
         { id: 'burst', name: 'Rising Waters', type: 'Burst', scaling: 'atk', element: 'Hydro',
-            multipliers: [1.34, 1.44, 1.54, 1.68, 1.78, 1.88, 2.01, 2.15, 2.28, 2.42] },
+            multipliers: [1.019, 1.095, 1.171, 1.273, 1.350, 1.426, 1.528, 1.630, 1.732, 1.834] },
             { id: 'skill_dewdrop', name: 'Aquacrest Saber (Dewdrop, Hold)', type: 'Skill', scaling: 'atk', element: 'Hydro',
             multipliers: [0.328, 0.3526, 0.3772, 0.41, 0.4346, 0.4592, 0.492, 0.5248, 0.5576, 0.5904],
             scaling2: 'hp', multipliers2: [0.0064, 0.00688, 0.00736, 0.008, 0.00848, 0.00896, 0.0096, 0.01024, 0.01088, 0.01152] },
@@ -1108,6 +1172,12 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [0.332, 0.3569, 0.3818, 0.415, 0.4399, 0.4648, 0.498, 0.5312, 0.5644, 0.5976] },
         { id: 'aimed', name: 'Fully-Charged Aimed Shot', type: 'Charged', scaling: 'atk', element: 'Electro',
             multipliers: [1.24, 1.333, 1.426, 1.55, 1.643, 1.736, 1.86, 1.984, 2.108, 2.232] },
+        // Previously missing entirely — referenced by his own C1/C6
+        // constellation text (already in constellations.generated.ts) but
+        // had no base damage instance anywhere. Fixed 160% ATK, not
+        // talent-level scaled (confirmed via KQM library).
+        { id: 'skill_hypersense', name: 'Hypersense (Nightshade Synesthesia)', type: 'Skill', scaling: 'atk', element: 'Electro',
+            multiplier: 1.6 },
 ],
     // ── Chasca — ATK / Anemo. Charged-shot Nightsoul Anemo DPS (Bow). ──
     chaska: [
@@ -1117,11 +1187,15 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.24, 1.33, 1.43, 1.55, 1.64, 1.74, 1.86, 1.99, 2.11, 2.23] },
         { id: 'skill', name: 'Surging Blade', type: 'Skill', scaling: 'atk', element: 'Anemo',
             multipliers: [1.66572, 1.790649, 1.915578, 2.08215, 2.207079, 2.332008, 2.49858, 2.665152, 2.831724, 2.998296, 3.164868, 3.33144, 3.539655, 3.74787, 3.956085] },
-        { id: 'burst_cast', name: "Soul Reaper's Fatal Round (Cast)", type: 'Burst', scaling: 'atk', element: 'Physical',
+        // Nightsoul-aligned — base/default element is Anemo (only converts to a
+        // Pyro/Hydro/Cryo/Electro teammate's element when present in party;
+        // this app models the base-element case, matching convention for
+        // other conversion-kit characters). Was wrongly tagged Physical.
+        { id: 'burst_cast', name: "Soul Reaper's Fatal Round (Cast)", type: 'Burst', scaling: 'atk', element: 'Anemo',
             multipliers: [0.88, 0.946, 1.012, 1.1, 1.166, 1.232, 1.32, 1.408, 1.496, 1.584, 1.672, 1.76, 1.87, 1.98, 2.09] },
-            { id: 'burst_soulseeker', name: "Soul Reaper's Fatal Round (Soulseeker Shell, per shell x6)", type: 'Burst', scaling: 'atk', element: 'Physical',
+            { id: 'burst_soulseeker', name: "Soul Reaper's Fatal Round (Soulseeker Shell, per shell x6)", type: 'Burst', scaling: 'atk', element: 'Anemo',
             multipliers: [1.034, 1.11155, 1.1891, 1.2925, 1.37005, 1.4476, 1.551, 1.6544, 1.7578, 1.8612] },
-        { id: 'na_tap', name: 'Multitarget Fire Tap', type: 'Normal', scaling: 'atk', element: 'Physical',
+        { id: 'na_tap', name: 'Multitarget Fire Tap', type: 'Normal', scaling: 'atk', element: 'Anemo',
             multipliers: [0.36, 0.387, 0.414, 0.45, 0.477, 0.504, 0.54, 0.576, 0.612, 0.648, 0.684, 0.72, 0.765, 0.81, 0.855] },
 ],
     // ── Lan Yan — ATK / Anemo. Shield support (Catalyst). ──
@@ -1488,6 +1562,14 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.696, 1.8232, 1.9504, 2.12, 2.2472, 2.3744, 2.544, 2.7136, 2.8832, 3.0528] },
         { id: 'burst', name: "Done Deal", type: 'Burst', scaling: 'atk', element: 'Pyro',
             multipliers: [1.824, 1.9608, 2.0976, 2.28, 2.4168, 2.5536, 2.736, 2.9184, 3.1008, 3.2832] },
+        // Previously missing entirely — her signature damage button
+        // (consumes 0-3 stacked Scarlet Seals for bonus DMG). Base (0-seal)
+        // + per-seal-consumed stacking table, both full 10-level, sourced
+        // from KQM library. `stackMax:3` — this app's convention assumes max
+        // stacks by default when the user hasn't set a specific count.
+        { id: 'charged', name: 'Seal of Approval', type: 'Charged', scaling: 'atk', element: 'Pyro',
+            multipliers: [0.98, 1.04, 1.10, 1.18, 1.24, 1.29, 1.37, 1.45, 1.52, 1.60],
+            stackMax: 3, stackMultipliers: [0.16, 0.18, 0.19, 0.20, 0.21, 0.23, 0.24, 0.25, 0.27, 0.28] },
     ],
     yumemizuki_mizuki: [
         { id: 'na', name: "Pure Heart, Pure Dreams", type: 'Normal', scaling: 'atk', element: 'Anemo',

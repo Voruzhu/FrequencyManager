@@ -30,7 +30,7 @@ import { encodeTargetsShareCode } from '@/lib/targetShare';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
 import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
-import { gearSlotsFor, totalCombinations } from '@shared/calc/optimizer';
+import { fillSlotsFor, totalCombinations, slotGroupsFor, totalSlotCombinations } from '@shared/calc/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
 
 // Soft warning vs. hard block for the optimizer's combinatorial search size
@@ -40,7 +40,7 @@ const OPTIMIZER_BLOCK_COMBOS = 300_000_000;
 import { getWeaponScaling, refineMul, hasRefinement } from '../data/weaponScaling';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
-const REACTIONS: ReactionType[] = ['none', 'vape-1.5', 'vape-2', 'melt-1.5', 'melt-2', 'aggravate', 'spread'];
+const REACTIONS: ReactionType[] = ['none', 'vape-1.5', 'vape-2', 'melt-1.5', 'melt-2', 'aggravate', 'spread', 'bloom', 'hyperbloom', 'burgeon', 'swirl', 'burning'];
 
 let tseq = 0;
 const nextId = () => `t${++tseq}`;
@@ -214,10 +214,22 @@ export function CalculatorScreen() {
         return { config, equippedGear };
     };
 
-    const run = async () => {
+    // `keepEquipped`: lock whatever's currently equipped on this character
+    // in place and only search the REMAINING slots — e.g. you already like 2
+    // of your 5 echoes and just want the optimizer to fill the rest, instead
+    // of possibly replacing everything. Also a real search-space reduction
+    // (see `optimize`'s `lockedGear` doc comment in shared/calc/optimizer.ts).
+    const run = async (keepEquipped = false) => {
         if (!character) return;
         if (owned.gear.length === 0) {
             toast.error('No gear to optimize', { description: `Add ${data.gearLabelPlural.toLowerCase()} in the Inventory screen first.` });
+            return;
+        }
+        const lockedGear = keepEquipped
+            ? calc.equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[]
+            : [];
+        if (keepEquipped && lockedGear.length === 0) {
+            toast.error('Nothing equipped to keep', { description: `Equip some ${data.gearLabelPlural.toLowerCase()} on ${character.name} first, or use "Optimize loadouts" for a full search.` });
             return;
         }
         // The ENTIRE rest of this function is wrapped in try/catch/finally —
@@ -271,6 +283,13 @@ export function CalculatorScreen() {
                     return;
                 }
             }
+            // Locked (kept-equipped) pieces must always be searchable no
+            // matter what the filters above did — they're this character's
+            // own already-equipped gear, the whole point of this mode.
+            if (lockedGear.length > 0) {
+                const have = new Set(optimizePool.map((g) => g.id));
+                optimizePool = [...optimizePool, ...lockedGear.filter((g) => !have.has(g.id))];
+            }
             // Pre-flight size check — each combination requires a full stat/
             // damage computation, so tens of millions of them is already a
             // real multi-second-to-minute search, and hundreds of millions to
@@ -279,9 +298,15 @@ export function CalculatorScreen() {
             // exact class of bug, an unbounded combinatorial search, already
             // crashed the optimizer once via a different symptom) risks
             // hanging or exhausting memory with no progress shown until it's
-            // too late to back out.
-            const comboK = gearSlotsFor(optimizePool.length);
-            const totalCombos = totalCombinations(optimizePool.length, comboK);
+            // too late to back out. Locking pieces shrinks the REAL search
+            // (fillSlotsFor), so that — not the full gearSlotsFor — is what
+            // this check must estimate against. Slot-typed gear (GI
+            // artifacts) searches a Cartesian product across slots instead
+            // of a flat combination — see `slotGroupsFor`'s doc comment.
+            const slotGroups = slotGroupsFor(optimizePool, lockedGear);
+            const totalCombos = slotGroups
+                ? totalSlotCombinations(slotGroups)
+                : totalCombinations(optimizePool.length - lockedGear.length, fillSlotsFor(optimizePool.length, lockedGear.length));
             if (totalCombos > OPTIMIZER_BLOCK_COMBOS) {
                 toast.error('Too many combinations to search', {
                     description: `${optimizePool.length} ${data.gearLabelPlural.toLowerCase()} would require checking ${totalCombos.toLocaleString()} combinations — reduce how many you're optimizing over (equip some elsewhere, narrow with a Set Bonus, or turn on "Only unequipped") and try again.`,
@@ -302,18 +327,23 @@ export function CalculatorScreen() {
             // slice above). Prefer the backend engine (source of truth, but
             // no progress feedback — a single request/response IPC call);
             // fall back to the identical client-side optimizer, parallelized
-            // across the configured thread count with live progress.
+            // across the configured thread count with live progress. The
+            // backend RPC has no notion of locked gear — skip straight to
+            // the local engine (which does) whenever any is set, rather than
+            // silently getting back a full, unlocked search.
             let res: Loadout[] | null = null;
             let source: 'backend' | 'local' = 'local';
-            try {
-                const bridge = (window as unknown as { frequencyManager?: { optimizeBuild?: (p: unknown) => Promise<{ ok: boolean; loadouts: Loadout[] } | null> } }).frequencyManager;
-                const out = await bridge?.optimizeBuild?.({ character: dmgCharacter, pool: optimizePool, config });
-                if (out?.ok && Array.isArray(out.loadouts)) { res = out.loadouts; source = 'backend'; }
-            } catch {
-                /* fall through to local */
+            if (lockedGear.length === 0) {
+                try {
+                    const bridge = (window as unknown as { frequencyManager?: { optimizeBuild?: (p: unknown) => Promise<{ ok: boolean; loadouts: Loadout[] } | null> } }).frequencyManager;
+                    const out = await bridge?.optimizeBuild?.({ character: dmgCharacter, pool: optimizePool, config });
+                    if (out?.ok && Array.isArray(out.loadouts)) { res = out.loadouts; source = 'backend'; }
+                } catch {
+                    /* fall through to local */
+                }
             }
             if (!res) {
-                res = await runOptimizerPool(dmgCharacter, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p));
+                res = await runOptimizerPool(dmgCharacter, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p), undefined, lockedGear);
             }
 
             calc.setResults(res);
@@ -321,7 +351,7 @@ export function CalculatorScreen() {
                 toast.error('No loadout stays within the cost budget', { description: `None of your ${data.gearLabelPlural.toLowerCase()} combinations total ${config.maxTotalCost} cost or less — add lower-cost pieces, or clear the Set bonus selection if one is active.` });
             } else {
                 toast.success(`Computed ${res.length} loadout${res.length === 1 ? '' : 's'}`, {
-                    description: `${source === 'backend' ? 'Backend engine · ' : ''}${calc.requiredSets.length > 0 ? `Restricted to ${calc.requiredSets.join(' + ')} · ` : ''}${res[0]?.meets ? 'Top build meets all minimums' : 'No build meets every minimum — closest shown'}`,
+                    description: `${lockedGear.length > 0 ? `Kept ${lockedGear.length} equipped · ` : ''}${source === 'backend' ? 'Backend engine · ' : ''}${calc.requiredSets.length > 0 ? `Restricted to ${calc.requiredSets.join(' + ')} · ` : ''}${res[0]?.meets ? 'Top build meets all minimums' : 'No build meets every minimum — closest shown'}`,
                 });
             }
         } catch (err) {
@@ -419,7 +449,7 @@ export function CalculatorScreen() {
                                             <SelectTrigger><SelectValue /></SelectTrigger>
                                             <SelectContent>{REACTIONS.map((r) => <SelectItem key={r} value={r}>{REACTION_LABEL[r]}</SelectItem>)}</SelectContent>
                                         </Select>
-                                        <p className="text-[11px] text-muted-foreground">Amplifying (vape/melt) scales with EM; aggravate/spread add EM-based flat damage.</p>
+                                        <p className="text-[11px] text-muted-foreground">Amplifying (vape/melt) scales with EM; aggravate/spread/bloom/hyperbloom/burgeon/swirl/burning add EM-based flat damage. Burning models only its first tick, not the full DoT duration.</p>
                                     </div>
                                 )}
                             </div>
@@ -504,6 +534,9 @@ export function CalculatorScreen() {
                             <div className="flex flex-wrap gap-2">
                                 <Button className="flex-1" onClick={() => { void run(); }} disabled={calc.optimizeProgress !== null}>
                                     <Wand2 /> {calc.optimizeProgress !== null ? 'Optimizing…' : 'Optimize loadouts'}
+                                </Button>
+                                <Button className="flex-1" variant="secondary" onClick={() => { void run(true); }} disabled={calc.optimizeProgress !== null} title="Keep whatever's currently equipped locked in place, and only search the remaining empty slots.">
+                                    <Wand2 /> Fill remaining slots
                                 </Button>
                                 <Button className="flex-1" variant="secondary" onClick={calculateCurrent} disabled={calc.optimizeProgress !== null} title="Score only the gear currently equipped on this character — no search.">
                                     <CalculatorIcon /> Calculate current loadout

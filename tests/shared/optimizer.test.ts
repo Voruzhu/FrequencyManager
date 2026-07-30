@@ -1,5 +1,6 @@
 import {
-    combinations, subtreeSize, totalCombinations, gearSlotsFor,
+    combinations, subtreeSize, totalCombinations, gearSlotsFor, fillSlotsFor,
+    slotGroupsFor, cartesianCombos, totalSlotCombinations, cartesianSubtreeSize,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
     enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs, activeSetBonuses, setBonusBuffEntries, mainSlotEchoBuffs,
     type Target, type OptimizeConfig,
@@ -55,6 +56,84 @@ describe('gearSlotsFor', () => {
     });
 });
 
+describe('fillSlotsFor', () => {
+    it('subtracts locked count from gearSlotsFor, never negative', () => {
+        expect(fillSlotsFor(100, 2)).toBe(3); // 5 - 2
+        expect(fillSlotsFor(100, 5)).toBe(0);
+        expect(fillSlotsFor(100, 8)).toBe(0); // more locked than real slots — clamped, not negative
+        expect(fillSlotsFor(3, 1)).toBe(2); // small pool: gearSlotsFor(3)=3, minus 1 locked
+    });
+});
+
+describe('slotGroupsFor — GI artifact slot typing', () => {
+    it('returns null for slotless gear (WuWa echoes) — no piece has `.slot` set', () => {
+        const pool = [gear(10), gear(20), gear(30)];
+        expect(slotGroupsFor(pool)).toBeNull();
+    });
+
+    it('groups slotted gear by slot, in canonical order, excluding empty slots', () => {
+        const flowers = [artifact(10, 'flower'), artifact(10, 'flower')];
+        const plumes = [artifact(10, 'plume')];
+        const pool = [...flowers, ...plumes];
+        const groups = slotGroupsFor(pool);
+        expect(groups).not.toBeNull();
+        expect(groups!.map((g) => g.length)).toEqual([2, 1]); // flower(2), plume(1) — canonical order, sands/goblet/circlet omitted (none owned)
+    });
+
+    it('excludes a locked piece\'s own slot entirely — that slot is already spoken for', () => {
+        const lockedFlower = artifact(10, 'flower');
+        const pool = [lockedFlower, artifact(10, 'flower'), artifact(10, 'plume')];
+        const groups = slotGroupsFor(pool, [lockedFlower]);
+        expect(groups).not.toBeNull();
+        expect(groups!.length).toBe(1); // only plume remains searchable — flower is entirely excluded, not just the locked piece
+        expect(groups![0][0].slot).toBe('plume');
+    });
+});
+
+describe('cartesianCombos', () => {
+    it('produces exactly one pick per group, every combination', () => {
+        const groups: string[][] = [['1', '2'], ['a', 'b']];
+        const result = cartesianCombos(groups);
+        expect(result).toEqual([['1', 'a'], ['1', 'b'], ['2', 'a'], ['2', 'b']]);
+    });
+
+    it('firstIndices restricts to combos whose pick from groups[0] matches', () => {
+        const groups: string[][] = [['1', '2', '3'], ['a', 'b']];
+        const result = cartesianCombos(groups, new Set([1]));
+        expect(result).toEqual([['2', 'a'], ['2', 'b']]);
+    });
+
+    it('an empty groups array produces a single empty combo (nothing left to search)', () => {
+        expect(cartesianCombos([])).toEqual([[]]);
+    });
+
+    it('total across every possible firstIndex reconstructs the full set with no overlap/gaps', () => {
+        const groups: string[][] = [['1', '2', '3'], ['a', 'b'], ['x', 'y']];
+        const full = cartesianCombos(groups);
+        const parts = [0, 1, 2].flatMap((i) => cartesianCombos(groups, new Set([i])));
+        expect(parts).toEqual(full);
+    });
+});
+
+describe('totalSlotCombinations / cartesianSubtreeSize', () => {
+    it('is the product of every group\'s size', () => {
+        const groups = [[artifact(1, 'flower'), artifact(2, 'flower')], [artifact(1, 'plume'), artifact(2, 'plume'), artifact(3, 'plume')], [artifact(1, 'sands')]];
+        expect(totalSlotCombinations(groups)).toBe(6);
+        expect(totalSlotCombinations([])).toBe(1); // nothing to search — a single (empty) combo
+    });
+
+    it('cartesianSubtreeSize is constant per first-group pick, and sums to the total', () => {
+        const groups = [
+            [artifact(1, 'flower'), artifact(2, 'flower'), artifact(3, 'flower')],
+            [artifact(1, 'plume'), artifact(2, 'plume')],
+            [artifact(1, 'sands'), artifact(2, 'sands')],
+        ];
+        const perFirstPick = cartesianSubtreeSize(groups); // 2 * 2 = 4, same regardless of WHICH of the 3 first-group items is picked
+        expect(perFirstPick).toBe(4);
+        expect(perFirstPick * groups[0].length).toBe(totalSlotCombinations(groups));
+    });
+});
+
 // --- Fixtures for the scoring/ranking pipeline ---
 
 const CATALOG: StatDef[] = [
@@ -82,6 +161,14 @@ function gear(atk: number, cost?: number): GearEntry {
     };
 }
 
+function artifact(atk: number, slot: string): GearEntry {
+    return {
+        kind: 'artifact', id: `a${++gearSeq}`, name: 'Gladiator', setName: 'Gladiator', rarity: 5, slot,
+        mainStat: { key: 'atk', label: 'ATK', value: atk },
+        subStats: [],
+    };
+}
+
 function baseConfig(overrides: Partial<OptimizeConfig> = {}): OptimizeConfig {
     const targets: Target[] = [{ id: 't1', kind: 'stat', key: 'atk', label: 'ATK', mode: 'max' }];
     return {
@@ -104,6 +191,107 @@ describe('optimize — single-threaded reference path', () => {
         const pool = Array.from({ length: 8 }, (_, i) => gear(i + 1));
         const result = optimize(char(), pool, baseConfig({ topN: 3 }));
         expect(result.length).toBe(3);
+    });
+
+    describe('lockedGear — "fill remaining slots" mode', () => {
+        it('every returned combo contains every locked piece', () => {
+            const locked = [gear(1), gear(2)];
+            const pool = [...locked, gear(200), gear(50), gear(30), gear(20), gear(5), gear(9)];
+            const result = optimize(char(), pool, baseConfig(), locked);
+            expect(result.length).toBeGreaterThan(0);
+            for (const lo of result) {
+                for (const l of locked) expect(lo.gear).toContainEqual(expect.objectContaining({ id: l.id }));
+            }
+        });
+
+        it('only searches the remaining slots — 2 locked out of 5 leaves 3 to fill from the rest of the pool', () => {
+            const locked = [gear(1), gear(2)];
+            const rest = [gear(200), gear(50), gear(30), gear(20), gear(5)];
+            const pool = [...locked, ...rest];
+            const result = optimize(char(), pool, baseConfig({ topN: 100 }), locked);
+            for (const lo of result) {
+                expect(lo.gear.length).toBe(5); // gearSlotsFor(7) = 5 total, 2 locked + 3 filled
+                const nonLocked = lo.gear.filter((g) => !locked.some((l) => l.id === g.id));
+                expect(nonLocked.length).toBe(3);
+            }
+        });
+
+        it('locking every slot collapses to a single combo — just the locked gear, no search', () => {
+            const locked = [gear(1), gear(2), gear(3), gear(4), gear(5)];
+            const pool = [...locked, gear(999)]; // an unlocked piece that would obviously win a real search
+            const result = optimize(char(), pool, baseConfig(), locked);
+            expect(result.length).toBe(1);
+            expect(result[0].gear.length).toBe(5);
+            expect(result[0].gear.map((g) => g.id).sort()).toEqual(locked.map((g) => g.id).sort());
+        });
+
+        it('with no lockedGear argument, behaves identically to a normal unlocked search', () => {
+            const pool = [gear(10), gear(200), gear(50), gear(30), gear(20), gear(5)];
+            const withDefault = optimize(char(), pool, baseConfig());
+            const withEmpty = optimize(char(), pool, baseConfig(), []);
+            expect(withEmpty).toEqual(withDefault);
+        });
+    });
+
+    describe('slot-typed gear (GI artifacts) — Cartesian per-slot search, never a same-slot duplicate', () => {
+        it('every combo has exactly one piece per slot — never two of the same slot', () => {
+            const pool = [
+                artifact(10, 'flower'), artifact(20, 'flower'), artifact(15, 'flower'),
+                artifact(10, 'plume'), artifact(20, 'plume'),
+                artifact(10, 'sands'), artifact(20, 'sands'),
+                artifact(10, 'goblet'),
+                artifact(10, 'circlet'), artifact(20, 'circlet'),
+            ];
+            const result = optimize(char(), pool, baseConfig({ topN: 1000 }));
+            // 3 flower * 2 plume * 2 sands * 1 goblet * 2 circlet = 24 legal combos —
+            // NOT C(10,5) = 252, which would include invalid same-slot duplicates.
+            expect(result.length).toBe(24);
+            for (const lo of result) {
+                const slots = lo.gear.map((g) => g.slot);
+                expect(new Set(slots).size).toBe(slots.length); // no slot repeated
+                expect(lo.gear.length).toBe(5);
+            }
+        });
+
+        it('picks the highest-ATK piece in each slot when maximizing ATK', () => {
+            const pool = [
+                artifact(10, 'flower'), artifact(200, 'flower'),
+                artifact(10, 'plume'), artifact(150, 'plume'),
+                artifact(10, 'sands'), artifact(120, 'sands'),
+                artifact(10, 'goblet'), artifact(130, 'goblet'),
+                artifact(10, 'circlet'), artifact(140, 'circlet'),
+            ];
+            const result = optimize(char(), pool, baseConfig());
+            const winner = result[0].gear;
+            expect(winner.map((g) => g.mainStat.value).sort((a, b) => b - a)).toEqual([200, 150, 140, 130, 120]);
+        });
+
+        it('a slot with zero owned candidates is simply skipped — the combo just has fewer than 5 pieces', () => {
+            const pool = [artifact(10, 'flower'), artifact(10, 'plume')]; // no sands/goblet/circlet owned at all
+            const result = optimize(char(), pool, baseConfig());
+            expect(result.length).toBe(1);
+            expect(result[0].gear.length).toBe(2);
+        });
+
+        it('lockedGear excludes that piece\'s WHOLE slot from the search, not just the piece', () => {
+            const lockedFlower = artifact(50, 'flower'); // deliberately not the best flower
+            const pool = [
+                lockedFlower, artifact(999, 'flower'), // a better flower exists but must be ignored — the slot is locked
+                artifact(10, 'plume'), artifact(20, 'plume'),
+            ];
+            const result = optimize(char(), pool, baseConfig({ topN: 100 }), [lockedFlower]);
+            for (const lo of result) {
+                const flowers = lo.gear.filter((g) => g.slot === 'flower');
+                expect(flowers).toEqual([lockedFlower]); // exactly the locked one, never the higher-ATK alternative
+            }
+        });
+
+        it('WW echoes (no .slot at all) are completely unaffected — still a flat combinations search', () => {
+            const pool = [gear(10), gear(200), gear(50), gear(30), gear(20), gear(5)];
+            const result = optimize(char(), pool, baseConfig());
+            expect(result[0].gear).toContainEqual(expect.objectContaining({ mainStat: expect.objectContaining({ value: 200 }) }));
+            expect(result[0].gear.every((g) => g.slot === undefined)).toBe(true);
+        });
     });
 
     it('does NOT throw for a gear pool large enough that Math.max(...vals) would overflow the engine argument limit', () => {
@@ -489,6 +677,52 @@ describe('skillDamage — defIgnore/resShred end-to-end via scopedBuffs', () => 
         const resShredBuff: BuffEntry = { id: 'b', name: 'B', source: 'S', stat: 'resShred', value: 15 };
         const withShred = skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, scopedBuffs: [resShredBuff] });
         expect(withShred).toBeGreaterThan(withoutShred);
+    });
+});
+
+describe('skillDamage — GI reaction formulas (aggravate/spread + bloom/hyperbloom/burgeon/swirl/burning)', () => {
+    const skill: SkillDef = { id: 's1', name: 'Skill', type: 'Skill', description: '', multiplier: 1, scaling: 'atk' };
+    const stats = { atk: 1000, critRate: 0, critDmg: 0, elementalMastery: 200 };
+    const enemy: EnemyEntry = { id: 'e', name: 'Dummy', level: 90, def: 2000, res: 20 };
+    const dmgWith = (reaction: Parameters<typeof skillDamage>[2]['reaction']) =>
+        skillDamage(stats, skill, { mode: 'none', enemy, defaultTalentLevel: 1, reaction });
+
+    it('spread deals more flat bonus damage than aggravate at equal EM (real coefficients: 1.25x vs 1.15x)', () => {
+        expect(dmgWith('spread')).toBeGreaterThan(dmgWith('aggravate'));
+    });
+
+    it('hyperbloom and burgeon deal identical damage (same real 3.0 coefficient, not a bug)', () => {
+        expect(dmgWith('hyperbloom')).toBeCloseTo(dmgWith('burgeon'), 6);
+    });
+
+    it('hyperbloom/burgeon (3.0 coeff) > bloom (2.0 coeff) > swirl (0.6 coeff) > burning (0.25 coeff)', () => {
+        expect(dmgWith('hyperbloom')).toBeGreaterThan(dmgWith('bloom'));
+        expect(dmgWith('bloom')).toBeGreaterThan(dmgWith('swirl'));
+        expect(dmgWith('swirl')).toBeGreaterThan(dmgWith('burning'));
+    });
+
+    it('every reaction type deals more than no reaction', () => {
+        const none = dmgWith('none');
+        for (const r of ['aggravate', 'spread', 'bloom', 'hyperbloom', 'burgeon', 'swirl', 'burning'] as const) {
+            expect(dmgWith(r)).toBeGreaterThan(none);
+        }
+    });
+
+    it('more EM increases every additive/transformative reaction\'s bonus damage', () => {
+        const low = { ...stats, elementalMastery: 0 };
+        const high = { ...stats, elementalMastery: 1000 };
+        for (const r of ['aggravate', 'spread', 'bloom', 'hyperbloom', 'burgeon', 'swirl', 'burning'] as const) {
+            const lowDmg = skillDamage(low, skill, { mode: 'none', enemy, defaultTalentLevel: 1, reaction: r });
+            const highDmg = skillDamage(high, skill, { mode: 'none', enemy, defaultTalentLevel: 1, reaction: r });
+            expect(highDmg).toBeGreaterThan(lowDmg);
+        }
+    });
+
+    it('a Physical-tagged skill never reacts, even with a reaction selected', () => {
+        const physicalSkill: SkillDef = { ...skill, element: 'Physical' };
+        const withNone = skillDamage(stats, physicalSkill, { mode: 'none', enemy, defaultTalentLevel: 1, reaction: 'none' });
+        const withHyperbloom = skillDamage(stats, physicalSkill, { mode: 'none', enemy, defaultTalentLevel: 1, reaction: 'hyperbloom' });
+        expect(withHyperbloom).toBe(withNone);
     });
 });
 

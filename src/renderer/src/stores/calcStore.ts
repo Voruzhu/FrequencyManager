@@ -227,9 +227,10 @@ export const useCalcStore = create<CalcState>()(
     pickCharacter: (c) => {
         const gameId = useGameStore.getState().activeGameId;
         const loadout = useLoadoutStore.getState().getLoadout(gameId, c.id);
+        const weaponRefine = loadout.weaponId ? useInventoryStore.getState().getWeaponRefine(gameId, loadout.weaponId) : undefined;
         set({
             characterId: c.id,
-            equipped: { weaponId: loadout.weaponId, weaponRefine: loadout.weaponRefine, gearIds: [...loadout.gearIds], mainSlotGearId: loadout.mainSlotGearId },
+            equipped: { weaponId: loadout.weaponId, weaponRefine, gearIds: [...loadout.gearIds], mainSlotGearId: loadout.mainSlotGearId },
             buffs: [],
             targets: [],
             critMode: 'average',
@@ -267,21 +268,36 @@ export const useCalcStore = create<CalcState>()(
         }),
     setEquipped: (loadout) =>
         set((s) => {
-            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, loadout);
+            const gameId = useGameStore.getState().activeGameId;
+            // Keep the per-weapon refine record (see `equipWeapon`) in sync
+            // too, so a loadout applied wholesale (saved-loadout library,
+            // build import) isn't forgotten the next time this weapon is
+            // re-equipped via the picker.
+            if (loadout.weaponId && loadout.weaponRefine != null) {
+                useInventoryStore.getState().setWeaponRefine(gameId, loadout.weaponId, loadout.weaponRefine);
+            }
+            useLoadoutStore.getState().setLoadout(gameId, s.characterId, loadout);
             return { equipped: loadout };
         }),
     equipWeapon: (id) =>
         set((s) => {
-            // A newly-equipped weapon starts at R1 — it must not inherit
-            // whatever refine the PREVIOUSLY equipped weapon was set to.
-            const equipped = { ...s.equipped, weaponId: id, weaponRefine: 1 };
-            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
+            const gameId = useGameStore.getState().activeGameId;
+            // Refine belongs to the WEAPON (how many copies you own), not to
+            // whichever character last had it equipped — look up its real
+            // refine instead of always resetting to R1, so switching away
+            // from a weapon and back (or another character picking the same
+            // weapon) doesn't lose the rank you already set.
+            const equipped = { ...s.equipped, weaponId: id, weaponRefine: useInventoryStore.getState().getWeaponRefine(gameId, id) };
+            useLoadoutStore.getState().setLoadout(gameId, s.characterId, equipped);
             return { equipped };
         }),
     setWeaponRefine: (refine) =>
         set((s) => {
-            const equipped = { ...s.equipped, weaponRefine: Math.min(Math.max(Math.round(refine), 1), 5) };
-            useLoadoutStore.getState().setLoadout(useGameStore.getState().activeGameId, s.characterId, equipped);
+            const gameId = useGameStore.getState().activeGameId;
+            const weaponRefine = Math.min(Math.max(Math.round(refine), 1), 5);
+            if (s.equipped.weaponId) useInventoryStore.getState().setWeaponRefine(gameId, s.equipped.weaponId, weaponRefine);
+            const equipped = { ...s.equipped, weaponRefine };
+            useLoadoutStore.getState().setLoadout(gameId, s.characterId, equipped);
             return { equipped };
         }),
     equipLoadout: (gearIds, mainSlotGearId) =>

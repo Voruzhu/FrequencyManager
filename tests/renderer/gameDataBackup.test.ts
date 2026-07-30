@@ -21,8 +21,8 @@ const OTHER_GAME = 'genshin-impact';
 function seed() {
     useInventoryStore.setState({
         byGame: {
-            [GAME]: { characterIds: ['jinhsi'], weaponIds: ['w1'], gear: [{ kind: 'echo', id: 'g1', name: 'Thundering Mephis', setName: 'Void Thunder', rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 1 }, subStats: [] }] },
-            [OTHER_GAME]: { characterIds: ['other-char'], weaponIds: [], gear: [] },
+            [GAME]: { characterIds: ['jinhsi'], weaponIds: ['w1'], gear: [{ kind: 'echo', id: 'g1', name: 'Thundering Mephis', setName: 'Void Thunder', rarity: 5, mainStat: { key: 'atk', label: 'ATK', value: 1 }, subStats: [] }], weaponRefines: {} },
+            [OTHER_GAME]: { characterIds: ['other-char'], weaponIds: [], gear: [], weaponRefines: {} },
         },
     });
     useLoadoutStore.setState({ byGame: { [GAME]: { jinhsi: { weaponId: 'w1', gearIds: ['g1'] } }, [OTHER_GAME]: { x: { gearIds: [] } } } });
@@ -57,7 +57,7 @@ describe('gameDataBackup — export/import/clear scoped to ONE game', () => {
 
     it('importGameData overwrites only the target game\'s slice, leaving other games untouched', () => {
         const incoming = {
-            inventory: { characterIds: ['calcharo'], weaponIds: [], gear: [] },
+            inventory: { characterIds: ['calcharo'], weaponIds: [], gear: [], weaponRefines: {} },
             loadouts: {},
             sequences: {},
             party: {},
@@ -70,7 +70,7 @@ describe('gameDataBackup — export/import/clear scoped to ONE game', () => {
     });
 
     it('importGameData leaves a field untouched when the payload omits it', () => {
-        importGameData(GAME, { inventory: { characterIds: ['calcharo'], weaponIds: [], gear: [] } });
+        importGameData(GAME, { inventory: { characterIds: ['calcharo'], weaponIds: [], gear: [], weaponRefines: {} } });
         expect(useInventoryStore.getState().byGame[GAME].characterIds).toEqual(['calcharo']);
         // loadouts wasn't in the payload — untouched.
         expect(useLoadoutStore.getState().byGame[GAME].jinhsi).toEqual({ weaponId: 'w1', gearIds: ['g1'] });

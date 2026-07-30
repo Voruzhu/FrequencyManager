@@ -66,7 +66,10 @@ export type ReactionType =
     | 'none'
     | 'vape-1.5' | 'vape-2'      // Vaporize (Pyro↔Hydro)
     | 'melt-1.5' | 'melt-2'      // Melt (Pyro↔Cryo)
-    | 'aggravate' | 'spread';    // Quicken (Electro/Dendro)
+    | 'aggravate' | 'spread'     // Quicken (Electro/Dendro)
+    | 'bloom' | 'hyperbloom' | 'burgeon' // Dendro Core detonations (Hydro+Dendro, then Electro/Pyro)
+    | 'swirl'                    // Anemo spreading another element's aura
+    | 'burning';                 // Pyro+Dendro DoT — modeled as its first tick only (this engine computes per-hit, not time-simulated ticks)
 
 export const REACTION_LABEL: Record<ReactionType, string> = {
     'none': 'No reaction',
@@ -76,6 +79,11 @@ export const REACTION_LABEL: Record<ReactionType, string> = {
     'melt-2': 'Melt (2×)',
     'aggravate': 'Aggravate',
     'spread': 'Spread',
+    'bloom': 'Bloom',
+    'hyperbloom': 'Hyperbloom',
+    'burgeon': 'Burgeon',
+    'swirl': 'Swirl',
+    'burning': 'Burning (first tick)',
 };
 
 export interface OptimizeConfig {
@@ -122,13 +130,25 @@ function ampEmBonus(em: number): number {
 function addEmBonus(em: number): number {
     return (5 * em) / (em + 1200);
 }
-/** Base additive-reaction damage at level 90 (approx). */
-const AGGRAVATE_BASE_L90 = 1446;
-const SPREAD_BASE_L90 = 1206;
+/** Transformative-reaction EM bonus (bloom/hyperbloom/burgeon/swirl/burning): 16·EM/(EM+2000). */
+function transformativeEmBonus(em: number): number {
+    return (16 * em) / (em + 2000);
+}
+/** Base additive-reaction damage at level 90 (base level multiplier × the reaction's own coefficient, 1.15 for aggravate / 1.25 for spread). */
+const AGGRAVATE_BASE_L90 = 1663.88;
+const SPREAD_BASE_L90 = 1808.57;
+/** Shared level-90 multiplier for transformative reactions (bloom/hyperbloom/burgeon/swirl/burning) — each just applies its own coefficient on top. */
+const TRANSFORMATIVE_LEVEL_MULT_L90 = 1446.85;
+const BLOOM_COEFF = 2.0;
+const HYPERBLOOM_COEFF = 3.0;
+const BURGEON_COEFF = 3.0; // same coefficient as hyperbloom — real, not a bug
+const SWIRL_COEFF = 0.6;
+const BURNING_COEFF = 0.25;
 
 /** Reaction effect: an amplifying multiplier and/or an additive flat bonus. */
 function reactionEffect(r: ReactionType, em: number): { mult: number; addFlat: number } {
     const amp = (base: number) => base * (1 + ampEmBonus(em));
+    const transformative = (coeff: number) => coeff * TRANSFORMATIVE_LEVEL_MULT_L90 * (1 + transformativeEmBonus(em));
     switch (r) {
         case 'vape-1.5': return { mult: amp(1.5), addFlat: 0 };
         case 'vape-2': return { mult: amp(2.0), addFlat: 0 };
@@ -136,6 +156,11 @@ function reactionEffect(r: ReactionType, em: number): { mult: number; addFlat: n
         case 'melt-2': return { mult: amp(2.0), addFlat: 0 };
         case 'aggravate': return { mult: 1, addFlat: AGGRAVATE_BASE_L90 * (1 + addEmBonus(em)) };
         case 'spread': return { mult: 1, addFlat: SPREAD_BASE_L90 * (1 + addEmBonus(em)) };
+        case 'bloom': return { mult: 1, addFlat: transformative(BLOOM_COEFF) };
+        case 'hyperbloom': return { mult: 1, addFlat: transformative(HYPERBLOOM_COEFF) };
+        case 'burgeon': return { mult: 1, addFlat: transformative(BURGEON_COEFF) };
+        case 'swirl': return { mult: 1, addFlat: transformative(SWIRL_COEFF) };
+        case 'burning': return { mult: 1, addFlat: transformative(BURNING_COEFF) };
         default: return { mult: 1, addFlat: 0 };
     }
 }
@@ -654,6 +679,95 @@ export function totalCombinations(poolSize: number, k: number): number {
     return binomial(poolSize, k);
 }
 
+// ── Slot-typed gear search (GI artifacts) ───────────────────────────────────
+//
+// GI artifacts are restricted to exactly one of 5 FIXED slots (Flower/Plume/
+// Sands/Goblet/Circlet) — a real build is one piece per slot, never two of
+// the same slot. WuWa echoes have no such restriction (any of the 5 build
+// slots takes any echo — see `withinCostBudget`'s doc comment), so a flat
+// `combinations(pool, k)` is already exactly correct there. For GI, that same
+// flat search has no notion of slots at all, so it could generate — and
+// potentially recommend — an impossible same-slot-duplicate "loadout" (e.g.
+// 2 Flowers, 0 Plumes), silently double-counting that slot's stats. The
+// functions below give slot-typed gear its own correct search: a Cartesian
+// product of one pick per (non-empty, non-locked) slot, which is both the
+// only-ever-valid shape AND — since it never wastes time scoring an invalid
+// same-slot combo — usually a dramatically smaller search than the flat one
+// (e.g. 6 owned pieces per slot: `6^5 = 7,776` legal combos vs
+// `C(30, 5) = 142,506` mostly-invalid ones for the flat search over the same
+// 30 total pieces).
+
+/** GI's 5 fixed artifact slots, in a stable canonical order — only used to
+ * make the split-for-parallelism "first group" consistent between the main
+ * thread and worker threads; the actual damage math never depends on slot
+ * ORDER, only on having exactly one piece per (available) slot. */
+const ARTIFACT_SLOT_ORDER = ['flower', 'plume', 'sands', 'goblet', 'circlet'];
+
+/**
+ * Groups `pool` by `GearEntry.slot` for a Cartesian-product search — see the
+ * file section comment above. Returns `null` for slotless gear (no piece has
+ * `.slot` set — WuWa echoes), the signal for callers to fall back to the
+ * original flat `combinations()` search unchanged.
+ *
+ * `lockedGear`'s own slots are excluded from the result entirely — held
+ * fixed, not a free choice (mirrors `optimize`'s `lockedGear` semantics for
+ * the flat/WuWa case). A slot with zero available candidates (owned nothing
+ * of that type, after excluding locked slots) is simply absent from the
+ * result — the search then just fills fewer than 5 slots, the same
+ * "search only what's actually ownable" behavior the flat case already has
+ * when the whole pool is smaller than 5.
+ */
+export function slotGroupsFor(pool: GearEntry[], lockedGear: GearEntry[] = []): GearEntry[][] | null {
+    if (!pool.some((g) => g.slot)) return null;
+    const lockedSlots = new Set(lockedGear.map((g) => g.slot).filter((s): s is string => !!s));
+    const bySlot = new Map<string, GearEntry[]>();
+    for (const g of pool) {
+        if (!g.slot || lockedSlots.has(g.slot)) continue;
+        const arr = bySlot.get(g.slot);
+        if (arr) arr.push(g); else bySlot.set(g.slot, [g]);
+    }
+    const known = ARTIFACT_SLOT_ORDER.filter((s) => bySlot.has(s));
+    const unknown = [...bySlot.keys()].filter((s) => !ARTIFACT_SLOT_ORDER.includes(s)); // forward-compat: an unrecognized slot id still searches correctly, just not in the canonical order
+    return [...known, ...unknown].map((s) => bySlot.get(s)!);
+}
+
+/**
+ * Cartesian product across `groups` — exactly one pick per group, in group
+ * order. When `firstIndices` is given, only combos whose pick from
+ * `groups[0]` has an index in that set are generated — lets a worker pool
+ * split load the same way `combinations`'s own `firstIndices` param does
+ * (every combo starting with `groups[0][i]` is disjoint from every combo
+ * starting with `groups[0][j]`, `i !== j`). `undefined` (the default)
+ * generates the complete set.
+ */
+export function cartesianCombos<T>(groups: T[][], firstIndices?: Set<number>): T[][] {
+    if (groups.length === 0) return [[]];
+    const [first, ...rest] = groups;
+    const restCombos = cartesianCombos(rest);
+    const out: T[][] = [];
+    for (let i = 0; i < first.length; i++) {
+        if (firstIndices && !firstIndices.has(i)) continue;
+        for (const r of restCombos) out.push([first[i], ...r]);
+    }
+    return out;
+}
+
+/** Total combos a `slotGroupsFor` result represents — the product of each
+ * group's size (1 for an empty `groups` array — nothing left to search,
+ * matching `cartesianCombos([])`'s single empty combo). */
+export function totalSlotCombinations(groups: GearEntry[][]): number {
+    return groups.reduce((acc, g) => acc * g.length, 1);
+}
+
+/** How many combos start with `groups[0]`'s item at a given index — constant
+ * across every index for a Cartesian product (unlike `subtreeSize`'s
+ * per-index binomial): picking a DIFFERENT first-slot item never changes how
+ * many ways the REMAINING slots can be filled. Exported so the worker pool
+ * can balance load without generating the actual combinations. */
+export function cartesianSubtreeSize(groups: GearEntry[][]): number {
+    return totalSlotCombinations(groups.slice(1));
+}
+
 export const elemKey = (element: string) => element.toLowerCase() + 'Dmg';
 
 /** Baseline values for stats a character sheet may omit. */
@@ -835,6 +949,16 @@ export function gearSlotsFor(poolSize: number): number {
     return Math.max(1, Math.min(GEAR_SLOTS, poolSize));
 }
 
+/** How many slots the search still needs to FILL when `lockedCount` pieces
+ * (already equipped, kept as-is) are held fixed — `gearSlotsFor(poolSize)`
+ * minus however many of those slots are already spoken for, never negative.
+ * `poolSize` here is every available piece (locked + searchable), matching
+ * `gearSlotsFor`'s own existing convention — see `optimize`'s "keep locked
+ * gear, only search the rest" mode. */
+export function fillSlotsFor(poolSize: number, lockedCount: number): number {
+    return Math.max(0, gearSlotsFor(poolSize) - lockedCount);
+}
+
 /** Whether a gear combo stays within the real in-game total-cost budget (WuWa's
  * 12, across up to 5 echoes costing 1/3/4 each — see `OptimizeConfig.maxTotalCost`).
  *
@@ -1010,10 +1134,23 @@ export function scoreAndRank(base: BaseLoadout[], ranges: TargetRange[], topN: n
 
 /** Single-threaded reference path — same composable pieces the worker pool
  * uses, just run in one pass. Still used for small gear pools and as the
- * fallback when Web Workers aren't available. */
-export function optimize(c: CharacterEntry, pool: GearEntry[], config: OptimizeConfig): Loadout[] {
-    const k = gearSlotsFor(pool.length);
-    const combos = combinations(pool, k).filter((combo) => withinCostBudget(combo, config.maxTotalCost));
+ * fallback when Web Workers aren't available.
+ *
+ * `lockedGear` (default none) — pieces held FIXED in every candidate
+ * combo (e.g. "keep what's already equipped, fill only the empty slots") —
+ * only the remaining slots are actually searched, so this is both a UX
+ * feature and a real search-space reduction: locking 2 of 5 slots shrinks
+ * the combinatorial search from `C(pool, 5)` to `C(pool - 2, 3)`.
+ *
+ * For slot-typed gear (GI artifacts), the actual search is a Cartesian
+ * product over each slot's own candidates, not a flat `combinations()` —
+ * see `slotGroupsFor`'s doc comment for why a flat search is wrong there. */
+export function optimize(c: CharacterEntry, pool: GearEntry[], config: OptimizeConfig, lockedGear: GearEntry[] = []): Loadout[] {
+    const groups = slotGroupsFor(pool, lockedGear);
+    const combos = (groups
+        ? cartesianCombos(groups).map((fill) => [...lockedGear, ...fill])
+        : combinations(pool.filter((g) => !lockedGear.some((l) => l.id === g.id)), fillSlotsFor(pool.length, lockedGear.length)).map((fill) => [...lockedGear, ...fill])
+    ).filter((combo) => withinCostBudget(combo, config.maxTotalCost));
     const maxTargets = config.targets.filter((t) => t.mode === 'max');
     const base = computeBaseLoadouts(c, combos, config);
     const ranges = targetRanges(base, maxTargets);

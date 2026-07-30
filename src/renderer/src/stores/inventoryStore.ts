@@ -15,9 +15,17 @@ export interface Inventory {
     characterIds: string[];
     weaponIds: string[];
     gear: GearEntry[];
+    /** Refinement rank (R1-R5) per owned weapon id — a fact about the WEAPON
+     * (how many copies you own), not about whichever character currently has
+     * it equipped. Absent means R1. Keyed here (not on the per-character
+     * loadout) so switching a weapon off a character and back — or two
+     * characters referencing the same weapon id — never loses/desyncs the
+     * refine, unlike the old design where `equipWeapon` always reset a
+     * per-character scalar to 1 on every re-equip. */
+    weaponRefines: Record<string, number>;
 }
 
-const EMPTY: Inventory = { characterIds: [], weaponIds: [], gear: [] };
+const EMPTY: Inventory = { characterIds: [], weaponIds: [], gear: [], weaponRefines: {} };
 
 // Gear instances must have a unique `id` — the UI keys expand/highlight/remove off
 // it, so a duplicate or missing id makes those operations hit every matching card at
@@ -40,6 +48,9 @@ interface InventoryState {
     removeCharacter: (gameId: string, id: string) => void;
     addWeapon: (gameId: string, id: string) => void;
     removeWeapon: (gameId: string, id: string) => void;
+    /** This weapon's owned refinement rank (R1-R5), or 1 if never set. */
+    getWeaponRefine: (gameId: string, weaponId: string) => number;
+    setWeaponRefine: (gameId: string, weaponId: string, refine: number) => void;
     addGear: (gameId: string, gear: GearEntry) => void;
     /** Same as calling `addGear` once per item, but in a SINGLE store update
      * — a bulk import (OCR "Auto import from latest", the GOOD-format
@@ -72,7 +83,7 @@ export const useInventoryStore = create<InventoryState>()(
                 if (get().byGame[gameId]) return;
                 const starter = getGameData(gameId).starterCharacterId;
                 set((s) => ({
-                    byGame: { ...s.byGame, [gameId]: { characterIds: starter ? [starter] : [], weaponIds: [], gear: [] } },
+                    byGame: { ...s.byGame, [gameId]: { characterIds: starter ? [starter] : [], weaponIds: [], gear: [], weaponRefines: {} } },
                 }));
             },
 
@@ -90,7 +101,17 @@ export const useInventoryStore = create<InventoryState>()(
                     inv.weaponIds.includes(id) ? inv : { ...inv, weaponIds: [...inv.weaponIds, id] }),
             })),
             removeWeapon: (gameId, id) => set((s) => ({
-                byGame: update(s.byGame, gameId, (inv) => ({ ...inv, weaponIds: inv.weaponIds.filter((w) => w !== id) })),
+                byGame: update(s.byGame, gameId, (inv) => {
+                    const { [id]: _removed, ...weaponRefines } = inv.weaponRefines;
+                    return { ...inv, weaponIds: inv.weaponIds.filter((w) => w !== id), weaponRefines };
+                }),
+            })),
+            getWeaponRefine: (gameId, weaponId) => get().byGame[gameId]?.weaponRefines?.[weaponId] ?? 1,
+            setWeaponRefine: (gameId, weaponId, refine) => set((s) => ({
+                byGame: update(s.byGame, gameId, (inv) => ({
+                    ...inv,
+                    weaponRefines: { ...inv.weaponRefines, [weaponId]: Math.min(Math.max(Math.round(refine), 1), 5) },
+                })),
             })),
             addGear: (gameId, gear) => set((s) => ({
                 byGame: update(s.byGame, gameId, (inv) => {
@@ -126,7 +147,7 @@ export const useInventoryStore = create<InventoryState>()(
         {
             name: 'fm-inventory',
             storage: createJSONStorage(() => userStorage),
-            version: 2,
+            version: 3,
             migrate: (persisted, version) => {
                 let s = persisted as InventoryState | undefined;
                 if (!s?.byGame) return s;
@@ -158,6 +179,14 @@ export const useInventoryStore = create<InventoryState>()(
                             ...s.byGame[gid],
                             gear: (s.byGame[gid].gear ?? []).map(({ icon: _icon, ...g }) => g),
                         };
+                    }
+                }
+                // v2→v3: `weaponRefines` is new — guarantee every game's
+                // inventory has the map so unconditional spreads/destructures
+                // elsewhere never hit `undefined` on old persisted state.
+                if (version < 3) {
+                    for (const gid of Object.keys(s.byGame)) {
+                        s.byGame[gid] = { ...s.byGame[gid], weaponRefines: s.byGame[gid].weaponRefines ?? {} };
                     }
                 }
                 return s;

@@ -14,6 +14,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.9.0',
+        date: '2026-07-30',
+        highlights: [
+            'New GI reactions: Bloom, Hyperbloom, Burgeon, Swirl, and Burning (first-tick) join Vaporize/Melt/Aggravate/Spread in the Calculator.',
+            'New "Fill remaining slots" button — lock your currently-equipped gear and let the Optimizer search only the empty slots.',
+            "Fixed a WuWa bug where a weapon's refinement rank reset to R1 every time you switched away and back.",
+            'GI artifact optimization is now slot-aware — faster, and no longer able to suggest an impossible 2-of-the-same-slot build.',
+            'Full GI roster re-audit: dozens of data fixes across Travelers, Noelle, Nilou, Cyno, Yanfei, Ganyu, and more.',
+        ],
+    },
+    {
         version: '1.8.1',
         date: '2026-07-28',
         highlights: [
@@ -46,13 +57,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             'Save multiple named loadouts per character, not just one.',
             'Importing a build now compares it against your own current gear.',
             "Fixed Lucilla's ult/Letting It Go/Forte Circuit DMG-type classification.",
-        ],
-    },
-    {
-        version: '1.6.1',
-        date: '2026-07-26',
-        highlights: [
-            'Fixed the build-code preview being an unscannable wall of stats — gear now collapses to a summary line by default.',
         ],
     },
 ];

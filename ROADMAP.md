@@ -79,13 +79,42 @@ overrides where documented. Also sourced real per-boss icons for 41/42 (the
 one gap, a non-Nightmare "Adam Smasher," turned out to not exist as a real
 fight at all — a fabricated duplicate removed in the same pass).
 
-### Genshin Impact — 121/121 characters, base data complete, full re-audit still ahead
+### Genshin Impact — 121/121 characters, full re-audit complete (2026-07-30)
 
-Full roster has real skill data, base stats, constellations, and kit buffs,
-cross-checked against gi.yatta.moe (2-source verification) earlier in the
-project. It has **not** yet had the same fresh, systematic full-roster
-re-audit Wuthering Waves just went through — that's the next big data-quality
-push (see below).
+Full roster went through the same systematic re-audit Wuthering Waves
+already had — a 10-agent pass covering every character, cross-checked
+against KQM library / genshin-center / Game8 / icy-veins (gi.yatta.moe and
+the Fandom wiki were both blocked all session — 403/402). Every finding was
+re-verified against `character-stats.generated.ts` and the two skill-
+multiplier override files before being treated as a live bug, catching
+several false positives other passes would have "fixed" into stale data.
+
+Confirmed and fixed: all 5 Traveler variants' Skill/Burst tables (several
+were ~2x wrong or copy-pasted from the wrong ability), Noelle's Normal Attack
+(was unconditionally DEF-scaling Geo instead of only during Sweeping Time),
+Gaming's Charmed Cloudstrider (was typed Skill instead of Plunge), Chiori's
+missing Burst DEF-scaling term, Nilou's entire Pirouette-state kit (was
+completely unmodeled), Yanfei's/Ganyu's missing Charged/Normal Attacks,
+Cyno's Duststalker Bolt and Ororon's Hypersense (both entirely missing
+skill instances), plus ~25 missing self/team passive-talent buffs across the
+roster (Durin, Aino, Sethos, Kachina, Layla, Kirara, Kaveh, Varka, Gorou,
+Shenhe, Xilonen, Zibai, Skirk, Lauma, Nicole, and others).
+
+**Known gaps, not fixed this pass** (need a new engine primitive, not just
+data entry — tracked here rather than guessed at):
+- No damage channel exists for the newer "Lunar-Charged"/"Lunar-Crystallize"/
+  "Lunar-Bloom" reaction family (Flins, Columbina, Ineffa, Zibai C2, Baizhu
+  P2, Lauma's burst all have real mechanics riding on this).
+- No self-facing RES% stat primitive (only `resShred`, which debuffs the
+  enemy) — Arlecchino's real P2 is defensive RES%; her previous entry was a
+  fabricated Pyro DMG% buff and has been removed rather than left wrong.
+- No "live party-composition-count" buff scaling (Charlotte P2, Yunjin P2,
+  Xianyun P1, Nahida's Pyro-teammate-count burst buff) — BuffEntry has no
+  way to express "value depends on how many of element X are in the party."
+- Nefer's "Phantasm Performance" multi-hit combo and Nicole's "Arcane
+  Projection" — real mechanics exist but no source gave clean, confident
+  per-level numbers to enter (unlike everything above, which was 2-source
+  verified before being added).
 
 ### OCR scan support
 

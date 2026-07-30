@@ -1,5 +1,7 @@
-import { computeEquippedGearIds, isGearAtCapacity } from '../../src/renderer/src/stores/calcStore';
+import { computeEquippedGearIds, isGearAtCapacity, useCalcStore } from '../../src/renderer/src/stores/calcStore';
+import { useGameStore } from '../../src/renderer/src/stores/gameStore';
 import { useInventoryStore } from '../../src/renderer/src/stores/inventoryStore';
+import { useLoadoutStore } from '../../src/renderer/src/stores/loadoutStore';
 import type { GearEntry } from '../../shared/types/game-bundle';
 
 const WW = 'wuthering-waves';
@@ -59,5 +61,50 @@ describe('computeEquippedGearIds / isGearAtCapacity', () => {
         const result = computeEquippedGearIds(WW, currentIds, 'f');
         expect(result).toEqual(currentIds);
         expect(isGearAtCapacity(WW, currentIds, 'f')).toBe(true);
+    });
+});
+
+describe('weapon refinement — survives switching weapons/characters and back', () => {
+    beforeEach(() => {
+        useGameStore.setState({ activeGameId: WW });
+        useCalcStore.setState({ characterId: 'char-a', equipped: { gearIds: [] } });
+    });
+    afterEach(() => {
+        useInventoryStore.setState({ byGame: {} });
+        useLoadoutStore.setState({ byGame: {} });
+    });
+
+    it('BUG REPRO: equip weapon A at R5, switch to weapon B, switch back to A — A should still be R5, not reset to R1', () => {
+        const { equipWeapon, setWeaponRefine } = useCalcStore.getState();
+        equipWeapon('weapon-a');
+        setWeaponRefine(5);
+        expect(useCalcStore.getState().equipped.weaponRefine).toBe(5);
+
+        equipWeapon('weapon-b');
+        expect(useCalcStore.getState().equipped.weaponRefine).toBe(1); // a genuinely different weapon starts at R1
+
+        equipWeapon('weapon-a');
+        expect(useCalcStore.getState().equipped.weaponRefine).toBe(5); // back to the same weapon — refine remembered
+    });
+
+    it('a weapon\'s refine is remembered across switching characters too', () => {
+        const { equipWeapon, setWeaponRefine, pickCharacter } = useCalcStore.getState();
+        equipWeapon('weapon-a');
+        setWeaponRefine(4);
+
+        pickCharacter({ id: 'char-b', name: 'Char B' } as never);
+        expect(useCalcStore.getState().equipped.weaponId).toBeUndefined();
+
+        pickCharacter({ id: 'char-a', name: 'Char A' } as never);
+        expect(useCalcStore.getState().equipped.weaponId).toBe('weapon-a');
+        expect(useCalcStore.getState().equipped.weaponRefine).toBe(4);
+    });
+
+    it('setEquipped (loadout library / build import) also syncs the weapon\'s remembered refine', () => {
+        const { setEquipped, equipWeapon } = useCalcStore.getState();
+        setEquipped({ weaponId: 'weapon-c', weaponRefine: 3, gearIds: [] });
+        equipWeapon('weapon-b'); // switch away
+        equipWeapon('weapon-c'); // switch back — should recall R3 from the import, not reset to R1
+        expect(useCalcStore.getState().equipped.weaponRefine).toBe(3);
     });
 });
