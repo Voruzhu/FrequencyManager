@@ -41,9 +41,16 @@
             adapters/*/icons/ folders via jsDelivr's GitHub CDN, since there's
             no `fm-icon://` protocol (or any bundled art) to serve them from
             in a browser. See docs/WEB_VERSION.md.
+          - `connect-src` allows raw.githubusercontent.com — Rotation
+            Builder's end-game-mode presets (lib/endgamePresets.ts) fetch a
+            small JSON manifest from this same repo's `main` branch at
+            runtime, deliberately NOT via jsDelivr (its CDN caching can lag
+            a fresh commit by up to a day, defeating the point of an
+            auto-updating feed). Same trust boundary as the icon CDN above —
+            both read from this app's own public repo, no third party.
         -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net data:;" />
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://raw.githubusercontent.com data:;" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FrequencyManager — Damage Calculator &amp; Gear Optimizer</title>
     <meta name="description"

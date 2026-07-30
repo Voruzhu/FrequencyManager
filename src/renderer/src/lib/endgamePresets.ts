@@ -61,7 +61,7 @@ export async function fetchEndgamePresets(gameId: string): Promise<EndgameModePr
     } catch { /* corrupt cache entry — fall through to a fresh fetch */ }
 
     try {
-        const res = await fetch(MANIFEST_URL(gameId));
+        const res = await fetch(MANIFEST_URL(gameId), { signal: AbortSignal.timeout(5000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const manifest = await res.json();
         if (!isValidManifest(manifest)) throw new Error('malformed manifest');
