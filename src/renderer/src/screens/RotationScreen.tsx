@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { PageHeader, Card, CardHeader, CardTitle, CardContent, Badge, EmptyState, Button, Input, toast } from '../components/ui';
 import { cn } from '@/lib/utils';
 import { Target as TargetIcon, Save, FolderOpen, Trash2, Share2, ClipboardPaste } from 'lucide-react';
@@ -16,6 +16,7 @@ import { PartyPickerWindow } from '../components/PartyWindows';
 import { useWindowStore } from '../stores/windowStore';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, conditionalWeaponBuffs, conditionalCharacterBuffs, conditionalConstellationBuffs, conditionalGearBuffs } from '@/lib/selfBuffs';
 import { elapsedTimes, simulateWaves, applyWaveTransition, resolveWaveEnemy, compareToTimeBudget, type WaveConfig } from '@/lib/rotationEngine';
+import { fetchEndgamePresets, type EndgameModePreset } from '@/lib/endgamePresets';
 import { EnemyPicker, EnemyConfig } from '../components/EnemyPicker';
 import type { Enemy } from '../data/enemies';
 import { RotationDpsChart } from '../components/RotationDpsChart';
@@ -156,6 +157,13 @@ export function RotationScreen() {
     const [mode, setMode] = useState<'boss' | 'waves'>('boss');
     const [waves, setWaves] = useState<WaveConfig[]>([{ enemyId: 'dummy' }]);
     const [timeLimitSeconds, setTimeLimitSeconds] = useState<number | undefined>(undefined);
+    const [endgamePresets, setEndgamePresets] = useState<EndgameModePreset[]>([]);
+    const [activePreset, setActivePreset] = useState<EndgameModePreset | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        fetchEndgamePresets(activeGameId).then((presets) => { if (!cancelled) setEndgamePresets(presets); });
+        return () => { cancelled = true; };
+    }, [activeGameId]);
 
     // A step can reference a character outside the currently-selected party —
     // either no party is selected yet (full-roster picker still active) or a
@@ -212,6 +220,7 @@ export function RotationScreen() {
         setMode(r.mode ?? 'boss');
         setWaves(r.waves ?? [{ enemyId: 'dummy' }]);
         setTimeLimitSeconds(r.timeLimitSeconds);
+        setActivePreset(null);
     };
     const handleDelete = (r: SavedRotation) => {
         useRotationStore.getState().remove(activeGameId, r.id);
@@ -227,6 +236,7 @@ export function RotationScreen() {
         setMode('boss');
         setWaves([{ enemyId: 'dummy' }]);
         setTimeLimitSeconds(undefined);
+        setActivePreset(null);
     };
 
     // Every conditional buff available to place as a 'buff' step — team-wide
@@ -424,6 +434,52 @@ export function RotationScreen() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {endgamePresets.length > 0 && (
+                        <Card>
+                            <CardHeader><CardTitle>End-game mode presets</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                                {(['tower-of-adversity', 'spiral-abyss', 'imaginarium-theater', 'trounce-domain'] as const).map((category) => {
+                                    const inCategory = endgamePresets.filter((p) => p.category === category);
+                                    if (inCategory.length === 0) return null;
+                                    return (
+                                        <div key={category} className="space-y-1">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{category.replace(/-/g, ' ')}</div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {inCategory.map((preset) => (
+                                                    <Button
+                                                        key={preset.id}
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        onClick={() => {
+                                                            setMode(preset.waves.length > 1 ? 'waves' : 'boss');
+                                                            setWaves(preset.waves);
+                                                            setTimeLimitSeconds(preset.timeLimitSeconds);
+                                                            setActivePreset(preset);
+                                                        }}
+                                                    >
+                                                        {preset.displayName}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {activePreset && (
+                                    <div className="space-y-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-muted-foreground">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span>Loaded: <span className="text-foreground">{activePreset.displayName}</span>{activePreset.cycleLabel ? ` — ${activePreset.cycleLabel}` : ''}</span>
+                                            <Button size="sm" variant="ghost" onClick={() => setActivePreset(null)}>Dismiss</Button>
+                                        </div>
+                                        {activePreset.specialRuleNote && (
+                                            <div>Special rule: {activePreset.specialRuleNote} — toggle a matching buff manually if relevant.</div>
+                                        )}
+                                        {activePreset.sourceNote && <div>Source: {activePreset.sourceNote}</div>}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card>
                         <CardHeader><CardTitle>Saved rotations</CardTitle></CardHeader>
