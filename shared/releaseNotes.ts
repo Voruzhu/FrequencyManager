@@ -14,6 +14,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.10.0',
+        date: '2026-07-31',
+        highlights: [
+            'Rotation Builder: set a real time limit on any rotation and see if it clears in time, not just an abstract DPS number.',
+            'New "End-game mode presets" picker in Rotation Builder — auto-delivered, updates without needing a new app release (starts empty; real Tower of Adversity/Spiral Abyss/Trounce Domain data is a follow-up content pass).',
+        ],
+    },
+    {
         version: '1.9.0',
         date: '2026-07-30',
         highlights: [
@@ -46,17 +54,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         date: '2026-07-27',
         highlights: [
             'The named loadout library is now also available from the character Inspector, not just the Calculator.',
-        ],
-    },
-    {
-        version: '1.7.0',
-        date: '2026-07-27',
-        highlights: [
-            'New Roster Overview screen — sortable solo stats for every owned character at a glance.',
-            'Share a saved Rotation as a code, same as builds and target presets.',
-            'Save multiple named loadouts per character, not just one.',
-            'Importing a build now compares it against your own current gear.',
-            "Fixed Lucilla's ult/Letting It Go/Forte Circuit DMG-type classification.",
         ],
     },
 ];
