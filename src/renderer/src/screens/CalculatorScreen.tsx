@@ -15,7 +15,8 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useWindowStore } from '../stores/windowStore';
 import { useOwnedInventory } from '../stores/inventoryStore';
 import { usePartyStore } from '../stores/partyStore';
-import { useLoadoutStore } from '../stores/loadoutStore';
+import { useLoadoutStore, type CharacterLoadout } from '../stores/loadoutStore';
+import { CompareBuildsWindow } from '../components/CompareBuildsWindow';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
@@ -29,7 +30,7 @@ import { ImportTargetsWindow } from '../components/TargetShareWindows';
 import { encodeTargetsShareCode } from '@/lib/targetShare';
 import type { getGameData} from '../data/gameData';
 import { useGameData, gearIcon, setIconFor, echoItemIconFor, statLabel, formatCatalogValue, catalogStatLabel, type CharacterData, type GearData, type GameData } from '../data/gameData';
-import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType } from '../data/optimizer';
+import { computeBuildStats, applyConstellationLevelBoosts, effectiveSkillMultiplier, computeBaseLoadouts, targetRanges, scoreAndRank, activeSetBonuses, setBonusBuffEntries, isScopedBuff, gearScopedBuffs, withScopedDmgTotals, CRIT_MODE_LABEL, REACTION_LABEL, type Loadout, type Target, type CritMode, type ReactionType, type BuildStats } from '../data/optimizer';
 import { fillSlotsFor, totalCombinations, slotGroupsFor, totalSlotCombinations } from '@shared/calc/optimizer';
 import { runOptimizerPool } from '@/lib/optimizerPool';
 
@@ -183,18 +184,24 @@ export function CalculatorScreen() {
     // enemy, and every buff source (party, set bonus, weapon/kit/constellation
     // self buffs) — built identically either way, so "calculate current" sees
     // exactly the same assumptions the optimizer would have used.
-    const buildConfig = (character: CharacterData) => {
-        const weapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
-        const refineMultiplier = weapon ? refineMul(getWeaponScaling(activeGameId, weapon.id), calc.equipped.weaponRefine ?? 1) : 1;
+    // `loadoutOverride` lets a caller score a DIFFERENT equipped weapon/gear
+    // for this same character without touching calc.equipped — used by the
+    // build comparison tool (CompareBuildsWindow) to score a hypothetical
+    // "what if" loadout side-by-side with the real one. Every existing call
+    // site omits it and gets the exact previous behavior (calc.equipped).
+    const buildConfig = (character: CharacterData, loadoutOverride?: CharacterLoadout) => {
+        const equipped = loadoutOverride ?? calc.equipped;
+        const weapon = data.weapons.find((w) => w.id === equipped.weaponId);
+        const refineMultiplier = weapon ? refineMul(getWeaponScaling(activeGameId, weapon.id), equipped.weaponRefine ?? 1) : 1;
         // Reactions are a Genshin-only mechanic — never apply one for a game
         // that doesn't support them, even if calc.reaction is stale.
         const reaction = data.supportsReactions ? calc.reaction : 'none';
         // Merge in the enabled buffs deployed from the character's party setup.
-        const equippedGear = calc.equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
+        const equippedGear = equipped.gearIds.map((id) => owned.gear.find((g) => g.id === id)).filter(Boolean) as GearData[];
         const party = usePartyStore.getState().getParty(activeGameId, character.id);
         const getLoadout = (charId: string) => useLoadoutStore.getState().getLoadout(activeGameId, charId);
         const getSequence = (charId: string) => useSequenceStore.getState().getSequence(activeGameId, charId);
-        const partyBuffs = resolveParty(data, party, character, equippedGear, calc.equipped.weaponId, owned.gear, getLoadout, calc.sequence, getSequence, calc.targetStatuses).enabledBuffs;
+        const partyBuffs = resolveParty(data, party, character, equippedGear, equipped.weaponId, owned.gear, getLoadout, calc.sequence, getSequence, calc.targetStatuses).enabledBuffs;
         // GI Constellation 3/5's "+3 to a skill's level, max 15" — a no-op for WW /
         // characters with no identified boost target.
         const talentLevels = applyConstellationLevelBoosts(character, calc.skillLevels, calc.sequence);
@@ -383,6 +390,16 @@ export function CalculatorScreen() {
         }
     };
 
+    // Score a hypothetical weapon/gear loadout for this character without
+    // touching calc.equipped — the engine behind CompareBuildsWindow's
+    // side-by-side "current vs alternate" comparison.
+    const computeForLoadout = (loadout: CharacterLoadout) => {
+        if (!character) return null;
+        const dmgCharacter = applyLucillaMode(character, calc.lucillaMode);
+        const { config, equippedGear } = buildConfig(dmgCharacter, loadout);
+        return computeBaseLoadouts(dmgCharacter, [equippedGear], config)[0] ?? null;
+    };
+
     const shareBuild = () => {
         if (!character) return;
         const weapon = data.weapons.find((w) => w.id === calc.equipped.weaponId);
@@ -417,7 +434,7 @@ export function CalculatorScreen() {
                 <EmptyState icon={TargetIcon} title="Select a character to begin" description="Choose a character above to view its skills and stats and optimize a loadout." />
             ) : (
                 <>
-                    <CharacterSummary c={character} data={data} />
+                    <CharacterSummary c={character} data={data} computeForLoadout={computeForLoadout} />
 
                     {/* Targets */}
                     <Card>
@@ -561,7 +578,9 @@ export function CalculatorScreen() {
     );
 }
 
-function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<typeof getGameData> }) {
+export type LoadoutScore = { stats: BuildStats; skillDamage: Record<string, number> };
+
+function CharacterSummary({ c, data, computeForLoadout }: { c: CharacterData; data: ReturnType<typeof getGameData>; computeForLoadout: (loadout: CharacterLoadout) => LoadoutScore | null }) {
     const activeGameId = useGameStore((s) => s.activeGameId);
     const owned = useOwnedInventory(activeGameId);
     const { equipped, buffs, sequence, skillLevels, skillStacks, setSkillStacks, buffStacks, setBuffStacks, removeBuff, addBuff, updateBuffValue, hasBuff, targetStatuses, skillTreeInvested, echoSkillDeployed } = useCalcStore();
@@ -607,6 +626,9 @@ function CharacterSummary({ c, data }: { c: CharacterData; data: ReturnType<type
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => openWindow('Talents', <TalentsWindow />)}>
                         <Star /> Talents
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => openWindow('Compare builds', <CompareBuildsWindow character={c} data={data} gameId={activeGameId} currentLoadout={equipped} computeFor={computeForLoadout} />)}>
+                        <Layers /> Compare
                     </Button>
                 </div>
 
