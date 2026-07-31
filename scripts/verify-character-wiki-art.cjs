@@ -10,6 +10,16 @@
 // automated signal available for "this might not be the right/official
 // image" — flagged here for manual review, not auto-corrected blindly.
 //
+// EXPECTED, PERMANENT MISMATCHES: all ~116 GI characters report a mismatch
+// here on purpose — the wiki's own canonical pick is "{Name} Card.png" (a
+// poster-style social-share graphic), but this project deliberately uses
+// "Character {Name} Full Wish.png" instead (the actual in-game gacha
+// splash art — visually confirmed via Hu Tao as the more correct choice for
+// a build card, see generate-character-wiki-art.cjs's CANDIDATE_TEMPLATES
+// comment). Only treat a GI mismatch as a real problem if `canonical` is
+// something OTHER than a "{Name} Card.png"-shaped file, or if `mapped`
+// isn't "Character {Name} Full Wish.png"-shaped.
+//
 // Run AFTER `npm run build:main` (reads compiled character lists from dist/).
 const fs = require('fs');
 const path = require('path');
