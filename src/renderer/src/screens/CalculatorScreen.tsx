@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste, Bookmark } from 'lucide-react';
+import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste, Bookmark, Image as ImageIcon } from 'lucide-react';
 import {
     PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Badge,
     ItemIcon, EmptyState, Progress, Switch,
@@ -17,6 +17,7 @@ import { useOwnedInventory } from '../stores/inventoryStore';
 import { usePartyStore } from '../stores/partyStore';
 import { useLoadoutStore, type CharacterLoadout } from '../stores/loadoutStore';
 import { CompareBuildsWindow } from '../components/CompareBuildsWindow';
+import { BuildCardWindow } from '../components/BuildCardWindow';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { resolveParty } from '@/lib/party';
 import { weaponAutoBuffs, characterAutoBuffs, constellationAutoBuffs, gearAutoBuffs, resolveSelfScaleOff, selfBuffId, passiveBuffId, constBuffId, isSkillTreeBuff, stripAutoSkillTreeBuffs, resolveConditionalValue } from '@/lib/selfBuffs';
@@ -629,6 +630,18 @@ function CharacterSummary({ c, data, computeForLoadout }: { c: CharacterData; da
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => openWindow('Compare builds', <CompareBuildsWindow character={c} data={data} gameId={activeGameId} currentLoadout={equipped} computeFor={computeForLoadout} />)}>
                         <Layers /> Compare
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                            const score = computeForLoadout(equipped);
+                            if (!score) { toast.error('Nothing to share yet', { description: 'Equip a weapon and some gear first.' }); return; }
+                            const critValue = stats.critRate != null && stats.critDmg != null ? stats.critRate * 2 + stats.critDmg : undefined;
+                            openWindow('Build card', <BuildCardWindow character={c} data={data} gameId={activeGameId} stats={score.stats} skillDamage={score.skillDamage} weapon={weapon} weaponRefine={weaponRefine} gear={gear} critValue={critValue} />);
+                        }}
+                    >
+                        <ImageIcon /> Build card
                     </Button>
                 </div>
 

@@ -12,7 +12,15 @@
  * "succeeds" from the page's point of view), so callers should treat this
  * as fire-and-forget. */
 export function downloadTextFile(filename: string, content: string, mimeType = 'application/json'): void {
-    const blob = new Blob([content], { type: mimeType });
+    downloadBlob(filename, new Blob([content], { type: mimeType }));
+}
+
+/** Same throwaway <a download> trick as `downloadTextFile`, for binary
+ * content (e.g. a canvas-exported PNG) — works identically in Electron's
+ * renderer (saves to the default Downloads folder) and the web build, so
+ * this is the one path both platforms share rather than adding a native
+ * Save-As dialog just for images. */
+export function downloadBlob(filename: string, blob: Blob): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -190,7 +190,15 @@ and what's off — that's exactly what this section is tracking against.
   tool (real, disclosed uniform-per-grade mechanic — Genshin artifacts are
   deliberately NOT covered by an equivalent substat-upgrade simulator: no
   reliable official per-roll weight table was found despite research, and
-  this project doesn't model mechanics on guessed numbers).
+  this project doesn't model mechanics on guessed numbers). Also shipped: a
+  shareable build-card PNG export (Calculator's new "Build card" button) —
+  drawn directly to a `<canvas>` (no html-to-image dependency), colors read
+  live off the active theme's own CSS tokens so it matches light/dark
+  automatically. 2 mockup directions (WW/Havoc, GI/Pyro) were designed and
+  shown before building; the shipped version uses the app's single existing
+  accent color rather than a per-element palette, since no such system
+  exists anywhere else in the app and inventing one just for this export
+  would be inconsistent with it.
 - **Genshin Impact full-roster re-audit** — give Genshin the same treatment
   Wuthering Waves just got: every character's kit, every weapon, cross-checked
   against 2+ independent sources, fixing wrong values/scopes/missing buffs
