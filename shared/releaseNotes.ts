@@ -14,6 +14,17 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.11.0',
+        date: '2026-07-31',
+        highlights: [
+            'New shareable Build Card — export a character\'s build as a PNG image: real portrait art, Sequence/Constellation level, weapon + every equipped piece with icons and stats, kit-colored stat grading, and a custom accent color or your own uploaded image.',
+            'New "Compare builds" tool in the Calculator — weapon vs. weapon, or your current gear vs. a saved loadout, with a full stat/damage delta table.',
+            'New WuWa "Tuning odds" tool — real disclosed reroll probabilities per echo substat, plus a 20-roll simulator.',
+            'Team-wide passive buffs that only apply in specific party comps (e.g. Lynette\'s 4-element ATK%, Yunjin\'s extra NA DMG, Xianyun\'s stacking Crit Rate) are now individually toggleable, not silently baked in.',
+            'New auto-updating data-correction channel for mid-cycle balance-patch stat fixes, so they can land without waiting on a full app release.',
+        ],
+    },
+    {
         version: '1.10.1',
         date: '2026-07-31',
         highlights: [
@@ -55,13 +66,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             'Duplicate and rename saved loadouts, not just save/apply/delete.',
             'Compare two rotations side-by-side — pin one as A, another as B, see the damage diff.',
             'Roster Overview gets a new "Avg skill DMG" column vs. a reference enemy of your choice.',
-        ],
-    },
-    {
-        version: '1.7.1',
-        date: '2026-07-27',
-        highlights: [
-            'The named loadout library is now also available from the character Inspector, not just the Calculator.',
         ],
     },
 ];
