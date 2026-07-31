@@ -14,6 +14,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.11.2',
+        date: '2026-07-31',
+        highlights: [
+            'Build Card art is now verified against each game\'s own wiki as the correct, official character art (177/177 checked), and bundled with the app instead of fetched live — no more dependency on a third-party site while using the app.',
+            'Fixed Rover\'s Build Card art showing a non-canonical render instead of the real official reference art.',
+        ],
+    },
+    {
         version: '1.11.1',
         date: '2026-07-31',
         highlights: [
@@ -59,14 +67,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
             "Fixed a WuWa bug where a weapon's refinement rank reset to R1 every time you switched away and back.",
             'GI artifact optimization is now slot-aware — faster, and no longer able to suggest an impossible 2-of-the-same-slot build.',
             'Full GI roster re-audit: dozens of data fixes across Travelers, Noelle, Nilou, Cyno, Yanfei, Ganyu, and more.',
-        ],
-    },
-    {
-        version: '1.8.1',
-        date: '2026-07-28',
-        highlights: [
-            'Fixed party creation searching the whole game roster instead of just your owned characters.',
-            "Fixed the reference-enemy picker's selection highlight not following your clicks.",
         ],
     },
 ];
