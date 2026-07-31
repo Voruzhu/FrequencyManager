@@ -23,6 +23,8 @@ import type {
 } from '@shared/types/game-bundle';
 import { WW_ECHO_SELF_BUFFS, WW_ECHO_ITEM_ICONS } from '@shared/game-data/echo-set-names';
 import { useGameDataStore } from '../stores/gameDataStore';
+import { useHotfixStore } from '../stores/hotfixStore';
+import { applyHotfixes } from '../lib/hotfixes';
 // `bundle.ts` is the SAME pre-derived GameBundle (`buildGameBundle(...)`)
 // the Electron backend serves over IPC — real full roster, real OCR rules,
 // everything — assembled from plain-data adapter modules with no Node/
@@ -66,7 +68,8 @@ const EMBEDDED: Record<string, GameBundle> = {
  */
 export function getGameData(gameId: string): GameData {
     const fromBackend = useGameDataStore.getState().getBundle(gameId);
-    return fromBackend ?? EMBEDDED[gameId] ?? EMBEDDED['wuthering-waves'];
+    const bundle = fromBackend ?? EMBEDDED[gameId] ?? EMBEDDED['wuthering-waves'];
+    return applyHotfixes(bundle, useHotfixStore.getState().patches[gameId] ?? []);
 }
 
 /**
@@ -76,7 +79,9 @@ export function getGameData(gameId: string): GameData {
  */
 export function useGameData(gameId: string): GameData {
     const fromBackend = useGameDataStore((s) => s.bundles[gameId]);
-    return fromBackend ?? EMBEDDED[gameId] ?? EMBEDDED['wuthering-waves'];
+    const patches = useHotfixStore((s) => s.patches[gameId]);
+    const bundle = fromBackend ?? EMBEDDED[gameId] ?? EMBEDDED['wuthering-waves'];
+    return applyHotfixes(bundle, patches ?? []);
 }
 
 /** Format a stat value according to its catalog definition. */

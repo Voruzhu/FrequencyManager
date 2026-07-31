@@ -14,6 +14,7 @@ import { useModuleStore } from '../../stores/moduleStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useGameStore } from '../../stores/gameStore';
 import { useGameDataStore } from '../../stores/gameDataStore';
+import { useHotfixStore } from '../../stores/hotfixStore';
 import { useInventoryStore } from '../../stores/inventoryStore';
 
 /**
@@ -24,6 +25,7 @@ export function AppShell() {
     const refreshModules = useModuleStore((s) => s.refreshModules);
     const syncGame = useGameStore((s) => s.syncFromBackend);
     const loadBundle = useGameDataStore((s) => s.loadBundle);
+    const loadHotfixes = useHotfixStore((s) => s.loadHotfixes);
     const { open: inspectorOpen, setOpen: setInspectorOpen } = useSelectionStore();
 
     useEffect(() => {
@@ -44,6 +46,14 @@ export function AppShell() {
         // fallback (identical shape, built-ins only) renders so there's no flash.
         const bundlesReady = gamesReady.then(() =>
             Promise.all(useGameStore.getState().games.map((g) => loadBundle(g.id))),
+        );
+
+        // Fetch each game's mid-cycle data-correction patches (balance-patch
+        // stat fixes delivered without a new app release, see lib/hotfixes.ts).
+        // Independent of the bundle fetch above — getGameData()/useGameData()
+        // apply whatever's cached here on top of the bundle, empty until this lands.
+        void gamesReady.then(() =>
+            Promise.all(useGameStore.getState().games.map((g) => loadHotfixes(g.id))),
         );
 
         // Seed each game's inventory with its starter character on first open.
