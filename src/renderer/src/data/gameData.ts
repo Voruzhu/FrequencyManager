@@ -85,8 +85,17 @@ export function useGameData(gameId: string): GameData {
 }
 
 /** Format a stat value according to its catalog definition. */
+/** Rounds to 1 decimal place before formatting — buff-stacking math can
+ * accumulate float imprecision (e.g. 113.69999999999999 instead of 113.7);
+ * every real value this app computes is meaningful to at most 1 decimal, so
+ * rounding here is a safe, general fix at the display boundary rather than
+ * chasing down every possible source of the imprecision upstream. */
+function round1(v: number): number {
+    return Math.round(v * 10) / 10;
+}
+
 export function formatCatalogValue(def: StatDef, v: number): string {
-    return def.percent ? `${v}%` : v.toLocaleString();
+    return def.percent ? `${round1(v)}%` : round1(v).toLocaleString();
 }
 
 /**
@@ -134,7 +143,7 @@ export function isPercentStat(key: string): boolean {
 
 /** Format a gear stat instance value (which carries only key/label/value). */
 export function formatGearStat(stat: { key: string; value: number }): string {
-    return isPercentStat(stat.key) ? `${stat.value}%` : `${stat.value}`;
+    return isPercentStat(stat.key) ? `${round1(stat.value)}%` : `${round1(stat.value)}`;
 }
 
 /**
