@@ -113,9 +113,16 @@ data entry — tracked here rather than guessed at):
   throughout this project) doesn't cover Lunar reactions at all yet. Too
   new/undocumented to implement without guessing; re-check once community
   theorycrafting catches up.
-- No self-facing RES% stat primitive (only `resShred`, which debuffs the
-  enemy) — Arlecchino's real P2 is defensive RES%; her previous entry was a
-  fabricated Pyro DMG% buff and has been removed rather than left wrong.
+- **Assessed 2026-07-31 — not actually a gap, a different feature
+  category.** No self-facing RES% stat primitive exists (only `resShred`,
+  which debuffs the enemy) because this app has NO damage-taken/
+  survivability calculation anywhere — it's a damage-DEALT calculator.
+  `resByElement` on `EnemyEntry` is the ENEMY's own RES, never the
+  player character's. A self-RES% stat would have zero consumers; adding
+  one would be dead data, not a fix. Arlecchino's real P2 (defensive RES%)
+  correctly stays unmodeled — same treatment as other non-damage passives
+  (healing, movement speed) already get. Her previous entry was a
+  fabricated Pyro DMG% buff, already removed.
 - ~~No "live party-composition-count" buff scaling~~ **CORRECTED 2026-07-31
   — this was never actually blocked.** Party-composition-dependent buffs
   just need the SAME "assume the common/max case, mark conditional" pattern
