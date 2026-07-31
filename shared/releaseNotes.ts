@@ -14,6 +14,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.11.1',
+        date: '2026-07-31',
+        highlights: [
+            'Build Card redesign — the character art is now a full-bleed background (not a side column), with floating panels for stats, weapon, and every equipped piece.',
+            'Build Card gear panels now color-grade each substat individually by how well it rolled (a 5-tier red-to-green gradient), fixed a text-overflow bug, and softened the panel borders.',
+            'Fixed a real display bug where stacked buffs could show something like "113.69999999999999%" instead of "113.7%" — affected every stat/gear display in the app.',
+            'Fixed the "Compare builds" window growing past the screen on characters with a long skill list; it now scrolls internally and got wider so long values stop wrapping awkwardly.',
+        ],
+    },
+    {
         version: '1.11.0',
         date: '2026-07-31',
         highlights: [
@@ -57,15 +67,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         highlights: [
             'Fixed party creation searching the whole game roster instead of just your owned characters.',
             "Fixed the reference-enemy picker's selection highlight not following your clicks.",
-        ],
-    },
-    {
-        version: '1.8.0',
-        date: '2026-07-27',
-        highlights: [
-            'Duplicate and rename saved loadouts, not just save/apply/delete.',
-            'Compare two rotations side-by-side — pin one as A, another as B, see the damage diff.',
-            'Roster Overview gets a new "Avg skill DMG" column vs. a reference enemy of your choice.',
         ],
     },
 ];
