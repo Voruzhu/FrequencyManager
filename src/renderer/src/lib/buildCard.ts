@@ -280,7 +280,13 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
     const statPanelW = 340;
     const statPanelX = CARD_WIDTH - PAD - statPanelW;
     const statRowH = 22;
-    const statPanelH = 56 + Math.ceil(data.stats.length / 2) * statRowH + 16;
+    // Content below actually starts 90px into the panel (22 to the hero
+    // label + 30 to the hero value + 18 to the divider + 20 to the first
+    // stat row's baseline) — the old formula assumed only 56px of header
+    // space, so the last row's text sat right at the bottom border with
+    // ~0 real margin. +16 past the last row's baseline covers descenders.
+    const statRows = Math.max(1, Math.ceil(data.stats.length / 2));
+    const statPanelH = 90 + (statRows - 1) * statRowH + 16;
     const statPanelY = PAD;
     panel(ctx, theme, statPanelX, statPanelY, statPanelW, statPanelH);
     {
