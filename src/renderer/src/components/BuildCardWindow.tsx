@@ -6,7 +6,7 @@ import { catalogStatLabel, formatCatalogValue, formatGearStat, gearIcon, getSequ
 import { activeSetBonuses, type BuildStats } from '../data/optimizer';
 import { drawBuildCard, CARD_WIDTH, CARD_HEIGHT, type BuildCardTheme, type BuildCardData } from '@/lib/buildCard';
 import { downloadBlob } from '@/lib/fileIO';
-import { fetchCharacterArtUrl } from '@/lib/characterArt';
+import { characterCardArtSrc } from '@/lib/characterArt';
 import { statRelevance } from '@/lib/statRelevance';
 import { subStatRollRatio } from '@shared/calc/gearEfficiency';
 import { useBuildCardPrefsStore } from '../stores/buildCardPrefsStore';
@@ -50,17 +50,13 @@ export function BuildCardWindow({
 }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [wikiArtUrl, setWikiArtUrl] = useState<string | undefined>(undefined);
     const customImage = useBuildCardPrefsStore((s) => s.customImages[gameId]?.[character.id]);
     const lastAccentColor = useBuildCardPrefsStore((s) => s.lastAccentColor);
     const [accent, setAccent] = useState<string | undefined>(lastAccentColor);
     const sequence = useSequenceStore((s) => s.getSequence(gameId, character.id));
-
-    useEffect(() => {
-        let cancelled = false;
-        void fetchCharacterArtUrl(character.id).then((url) => { if (!cancelled) setWikiArtUrl(url); });
-        return () => { cancelled = true; };
-    }, [character.id]);
+    // Bundled with the game package (see character-card-art.ts) — no
+    // network fetch, resolves synchronously exactly like any other icon.
+    const bundledArtUrl = characterCardArtSrc(gameId, character.id);
 
     const topSkill = character.skills.reduce<{ id: string; value: number } | null>((best, s) => {
         const v = skillDamage[s.id] ?? 0;
@@ -75,7 +71,7 @@ export function BuildCardWindow({
         element: character.element,
         weaponType: character.weaponType,
         rarity: character.rarity,
-        imageUrl: customImage ?? wikiArtUrl,
+        imageUrl: customImage ?? bundledArtUrl,
         sequenceLabel: getSequenceLabel(gameId),
         sequenceValue: sequence,
         sequenceMax: SEQUENCE_MAX,

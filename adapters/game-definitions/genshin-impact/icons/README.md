@@ -23,3 +23,15 @@ The path a piece of data points at is its `icon` field in the game module, e.g.
     icons/talents/<id>.png        (add `icon` on the passive/talent data)
 
 Use the exact `id` from the module data as the filename.
+
+## `characters-card/` — full-size character card art (build-card export)
+
+121/121 characters, sourced from genshin-impact.fandom.com's own "Card" file
+per character (HoYoverse's official promotional card art), verified against
+each character's own wiki page's canonical "page image" before download —
+see `scripts/generate-character-wiki-art.cjs`, `verify-character-wiki-art.cjs`,
+and `download-character-wiki-art.cjs`, and `shared/game-data/character-wiki-art.ts`
+for the exact source file per character. Bundled locally (not fetched live)
+for reliability and to avoid any runtime dependency on a third-party site —
+same reasoning as every other icon in this folder. Consumed by
+`lib/characterArt.ts`'s `characterCardArtSrc()`.

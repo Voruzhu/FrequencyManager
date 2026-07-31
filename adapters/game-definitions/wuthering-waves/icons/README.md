@@ -31,3 +31,16 @@ The path a piece of data points at is its `icon` field in the game module, e.g.
     icons/talents/<id>.png        (add `icon` on the passive/talent data)
 
 Use the exact `id` from the module data as the filename.
+
+## `characters-card/` — full-size character card art (build-card export)
+
+56/56 resonators, sourced from wutheringwaves.fandom.com's own "Card" file
+per character (Kuro's official promotional card art — the file itself
+carries a visible Kuro Games logo/copyright watermark), verified against
+each character's own wiki page's canonical "page image" before download —
+see `scripts/generate-character-wiki-art.cjs`, `verify-character-wiki-art.cjs`,
+and `download-character-wiki-art.cjs`, and `shared/game-data/character-wiki-art.ts`
+for the exact source file per character. Bundled locally (not fetched live)
+for reliability and to avoid any runtime dependency on a third-party site —
+same reasoning as every other icon in this folder. Consumed by
+`lib/characterArt.ts`'s `characterCardArtSrc()`.

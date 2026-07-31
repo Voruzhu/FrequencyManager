@@ -1,5 +1,18 @@
 # Build Card v2 — Design Spec
 
+> **SUPERSEDED (2026-07-31, same day, post-ship):** the "fetch live, never
+> bundle" decision below was reversed after shipping — the wiki's own "Card"
+> file per character turned out to be small enough (~330KB avg, 59MB total
+> for all 177) that bundling was practical after all, and a live third-party
+> fetch was a real reliability/security concern the user raised (an
+> uncontrolled external dependency, tamperable if the source were ever
+> compromised). All 177 characters' art is now downloaded once and committed
+> under `icons/characters-card/`, served through the exact same mechanism
+> every other icon already uses — see the icons/README.md in each game's
+> folder and `scripts/download-character-wiki-art.cjs`. The sourcing/
+> verification work below (which wiki file, confirmed against each
+> character's own page) still stands and fed directly into the download.
+
 ## Context
 
 The just-shipped build-card PNG export (Calculator's "Build card" button, `src/renderer/src/lib/buildCard.ts` + `BuildCardWindow.tsx`) draws a minimal canvas card: character name/element/weapon, hero skill damage, an 8-stat grid, and a weapon/set footer line. Two mockup directions were shown as an artifact before building; the shipped version deliberately used the app's single existing accent color (no per-element palette exists anywhere else in the app) and no character art (only small 256×256 icons exist in the data, no portrait/splash assets).
