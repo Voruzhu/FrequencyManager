@@ -14,6 +14,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.10.1',
+        date: '2026-07-31',
+        highlights: [
+            'End-game mode presets are no longer empty — real Trounce Domain, Imaginarium Theater, and Tower of Adversity data seeded in.',
+            'More GI data fixes: Charlotte, Nefer (was missing her entire "Phantasm Performance" combo), Nicole (was missing "Arcane Projection", her main damage mechanic).',
+        ],
+    },
+    {
         version: '1.10.0',
         date: '2026-07-31',
         highlights: [
