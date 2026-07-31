@@ -8,6 +8,7 @@ import { drawBuildCard, CARD_WIDTH, CARD_HEIGHT, type BuildCardTheme, type Build
 import { downloadBlob } from '@/lib/fileIO';
 import { fetchCharacterArtUrl } from '@/lib/characterArt';
 import { statRelevance } from '@/lib/statRelevance';
+import { subStatRollRatio } from '@shared/calc/gearEfficiency';
 import { useBuildCardPrefsStore } from '../stores/buildCardPrefsStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { iconSrc } from '@/lib/icons';
@@ -28,6 +29,9 @@ function readTheme(): BuildCardTheme {
         muted: `rgb(${v('--muted-foreground')})`,
         accent: `rgb(${v('--primary')})`,
         accentSoft: `rgb(${v('--primary')} / 0.15)`,
+        success: `rgb(${v('--success')})`,
+        warning: `rgb(${v('--warning')})`,
+        destructive: `rgb(${v('--destructive')})`,
     };
 }
 
@@ -88,7 +92,7 @@ export function BuildCardWindow({
             name: g.name,
             setName: g.setName,
             mainStat: { label: g.mainStat.label, value: formatGearStat(g.mainStat) },
-            subStats: g.subStats.map((s) => ({ label: s.label, value: formatGearStat(s) })),
+            subStats: g.subStats.map((s) => ({ label: s.label, value: formatGearStat(s), rollRatio: subStatRollRatio(s.key, s.value, g.rarity, data.gearCatalog) })),
         })),
         activeSetLine: setBonus?.name,
         activeSetDetail: setBonus ? (setBonus.tier === 'full' ? 'Full set' : '2pc') : undefined,

@@ -19,6 +19,13 @@ export interface BuildCardTheme {
     muted: string;
     accent: string;
     accentSoft: string;
+    /** Same semantic tokens the Inventory screen's roll-quality badge
+     * already uses (--success/--warning/--destructive) — reused here, not
+     * reinvented, so a build card's roll-quality color means the same thing
+     * an Inventory badge's color does. */
+    success: string;
+    warning: string;
+    destructive: string;
 }
 
 export interface BuildCardStatRow {
@@ -32,7 +39,11 @@ export interface BuildCardGearPiece {
     name: string;
     setName: string;
     mainStat: { label: string; value: string };
-    subStats: Array<{ label: string; value: string }>;
+    /** `rollRatio` (0-1, actual/max at this piece's rarity — see
+     * shared/calc/gearEfficiency.ts's subStatRollRatio) grades this ONE
+     * substat's own roll quality; undefined when no catalog range exists
+     * for it (falls back to a neutral color, never a fabricated grade). */
+    subStats: Array<{ label: string; value: string; rollRatio?: number }>;
 }
 
 export interface BuildCardData {
@@ -96,6 +107,43 @@ function relevanceColor(theme: BuildCardTheme, relevance: BuildCardStatRow['rele
     return theme.text;
 }
 
+/** Parses a theme color string — always `rgb(r g b)`, this module's own
+ * convention (see BuildCardWindow's readTheme) — into its 3 components, for
+ * interpolation. Falls back to opaque black on anything unparseable rather
+ * than throwing mid-render over a cosmetic color. */
+function parseRgb(color: string): [number, number, number] {
+    const m = color.match(/rgb\(\s*(\d+)\s+(\d+)\s+(\d+)/);
+    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+}
+
+function lerpColor(a: string, b: string, t: number): string {
+    const [ar, ag, ab] = parseRgb(a);
+    const [br, bg, bb] = parseRgb(b);
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return `rgb(${r} ${g} ${bl})`;
+}
+
+/**
+ * 5-tier roll-quality gradient (red -> orange -> yellow -> lime -> green),
+ * built from ONLY the app's existing 3 semantic colors (destructive/warning/
+ * success — same tokens the Inventory roll badge uses) by interpolating the
+ * 2 in-between tiers, rather than inventing new fixed hex colors that could
+ * clash with a custom theme. Bands are even fifths of `ratio` (0-1);
+ * undefined (no catalog range for this stat) reads as neutral, not a
+ * fabricated grade.
+ */
+function rollGradeColor(theme: BuildCardTheme, ratio: number | undefined): string {
+    if (ratio == null) return theme.muted;
+    const r = Math.max(0, Math.min(1, ratio));
+    if (r < 0.2) return theme.destructive;
+    if (r < 0.4) return lerpColor(theme.destructive, theme.warning, (r - 0.2) / 0.2);
+    if (r < 0.6) return theme.warning;
+    if (r < 0.8) return lerpColor(theme.warning, theme.success, (r - 0.6) / 0.2);
+    return theme.success;
+}
+
 /** Cuts `text` down with a trailing "…" if it doesn't fit `maxWidth` at the
  * context's CURRENT font — panel widths are fixed, so a long gear/set name
  * needs to degrade gracefully instead of overrunning the panel edge. */
@@ -118,10 +166,11 @@ function panel(ctx: CanvasRenderingContext2D, theme: BuildCardTheme, x: number, 
     ctx.fillStyle = theme.surface2;
     ctx.globalAlpha = 0.88;
     ctx.fill();
-    ctx.globalAlpha = 1;
     ctx.strokeStyle = theme.border;
     ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.45;
     ctx.stroke();
+    ctx.globalAlpha = 1;
 }
 
 export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, theme: BuildCardTheme): Promise<void> {
@@ -302,13 +351,26 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
     // Gear row — a full-width strip of per-piece panels along the bottom,
     // matching the reference's horizontal echo/artifact card row.
     if (data.gearPieces.length > 0) {
-        const stripH = 150;
+        // Tall enough for icon + name + set + main stat + 5 substats (WW's
+        // real max) at this line spacing, with real margin to spare — the
+        // previous height (150) fit that exactly with ~0 slack, which read
+        // as "clipped" the moment any line ran a pixel past its estimate.
+        const stripH = 180;
         const stripY = CARD_HEIGHT - PAD - stripH;
         const gap = 12;
         const pieceW = (CARD_WIDTH - PAD * 2 - gap * (data.gearPieces.length - 1)) / data.gearPieces.length;
         data.gearPieces.forEach((piece, i) => {
             const px = PAD + i * (pieceW + gap);
             panel(ctx, theme, px, stripY, pieceW, stripH);
+            // Clip to the panel's own bounds as a hard backstop — text
+            // should never need to escape it given the sizing above, but a
+            // clip means a future content/line-count change degrades into
+            // "cut off" rather than "spills past the border" if it ever
+            // does run long.
+            ctx.save();
+            roundRect(ctx, px, stripY, pieceW, stripH, 10);
+            ctx.clip();
+
             const img = gearImgs[i];
             const iconSize = 40;
             const tx = px + 12;
@@ -330,9 +392,20 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
             ctx.font = `9px ${MONO}`;
             ctx.fillStyle = theme.muted;
             piece.subStats.forEach((s) => {
-                ctx.fillText(truncate(ctx, `${s.label} ${s.value}`, pieceW - 24), tx, ty);
+                // Label in muted text, value colored by this substat's OWN
+                // roll quality (not the piece's blended average) — the
+                // point is to see which specific rolls are good/bad.
+                ctx.font = `9px ${MONO}`;
+                ctx.fillStyle = theme.muted;
+                const label = truncate(ctx, `${s.label} `, pieceW - 24 - 40);
+                ctx.fillText(label, tx, ty);
+                ctx.font = `600 9px ${MONO}`;
+                ctx.fillStyle = rollGradeColor(theme, s.rollRatio);
+                ctx.fillText(s.value, tx + ctx.measureText(label).width, ty);
                 ty += 13;
             });
+
+            ctx.restore();
         });
     }
 

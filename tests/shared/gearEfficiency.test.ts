@@ -1,4 +1,4 @@
-import { gearEfficiency } from '../../shared/calc/gearEfficiency';
+import { gearEfficiency, subStatRollRatio } from '../../shared/calc/gearEfficiency';
 import { WW_GEAR_CATALOG, GI_GEAR_CATALOG } from '../../shared/game-data/gear-catalogs';
 
 describe('gearEfficiency', () => {
@@ -55,5 +55,27 @@ describe('gearEfficiency', () => {
         const fresh = gearEfficiency({ rarity: 5, subStats: [] }, WW_GEAR_CATALOG);
         expect(fresh.rollPct).toBe(0);
         expect(fresh.critValue).toBeUndefined();
+    });
+});
+
+describe('subStatRollRatio', () => {
+    it('returns a 0-1 ratio for a real substat/rarity combination', () => {
+        expect(subStatRollRatio('atkPct', 11.6, 5, WW_GEAR_CATALOG)).toBeCloseTo(1, 5);
+        expect(subStatRollRatio('atkPct', 5.8, 5, WW_GEAR_CATALOG)).toBeCloseTo(0.5, 5);
+    });
+
+    it('clamps to 1 instead of overshooting past the catalog max', () => {
+        expect(subStatRollRatio('atkPct', 999, 5, WW_GEAR_CATALOG)).toBe(1);
+    });
+
+    it('returns undefined for a stat key with no catalog range at all', () => {
+        expect(subStatRollRatio('someFutureStat', 10, 5, WW_GEAR_CATALOG)).toBeUndefined();
+    });
+
+    it('gearEfficiency\'s aggregate rollPct is the average of the individual ratios this returns (kept in sync by construction, not by convention)', () => {
+        const gear = { rarity: 5 as const, subStats: [{ key: 'atkPct', value: 11.6 }, { key: 'defPct', value: 7.35 }] };
+        const r1 = subStatRollRatio('atkPct', 11.6, 5, WW_GEAR_CATALOG)!;
+        const r2 = subStatRollRatio('defPct', 7.35, 5, WW_GEAR_CATALOG)!;
+        expect(gearEfficiency(gear, WW_GEAR_CATALOG).rollPct).toBeCloseTo(((r1 + r2) / 2) * 100, 5);
     });
 });

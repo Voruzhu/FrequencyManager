@@ -16,6 +16,22 @@ export interface GearEfficiency {
     critValue?: number;
 }
 
+/** One substat's own roll ratio (0-1, actual/max at this rarity) — the same
+ * lookup `gearEfficiency` averages across every substat, exposed standalone
+ * so a caller can grade EACH substat individually (e.g. the build card's
+ * per-line color grade) instead of only a piece-wide blend. Returns
+ * undefined when the stat has no catalog range at this rarity (nothing to
+ * compare against — never fabricate a ratio). */
+export function subStatRollRatio(
+    key: string,
+    value: number,
+    rarity: number,
+    catalog: Pick<GearCatalog, 'subs'>,
+): number | undefined {
+    const range = catalog.subs.find((s) => s.key === key)?.byRarity[rarity];
+    return range && range.max > 0 ? Math.min(1, value / range.max) : undefined;
+}
+
 export function gearEfficiency(
     gear: { rarity: number; subStats: Array<{ key: string; value: number }> },
     catalog: Pick<GearCatalog, 'subs'>,
@@ -26,8 +42,8 @@ export function gearEfficiency(
     let hasCrit = false;
 
     for (const sub of gear.subStats) {
-        const range = catalog.subs.find((s) => s.key === sub.key)?.byRarity[gear.rarity];
-        if (range && range.max > 0) ratios.push(Math.min(1, sub.value / range.max));
+        const ratio = subStatRollRatio(sub.key, sub.value, gear.rarity, catalog);
+        if (ratio != null) ratios.push(ratio);
         if (sub.key === 'critRate') { critRate = sub.value; hasCrit = true; }
         if (sub.key === 'critDmg') { critDmg = sub.value; hasCrit = true; }
     }
