@@ -194,15 +194,18 @@ const PASSIVE_SLOT_TAGS: Record<string, RegExp[]> = {
  * original index in `character.selfBuffs` (needed to reconstruct the SAME id `characterAutoBuffs`/
  * `passiveBuffId` would use for it, so toggling here stays in sync with the Calculator's own chips).
  * Also searches `character.teamBuffs` (team-wide Inherent Skill/passive-talent effects, e.g. Baizhi's
- * Euphonia ATK buff) — those have no per-instance `conditional` field since they're always
- * unconditionally applied via `partyEffects()`, so they're normalized to `conditional: false` here
- * (renders as "Always active", never a toggle — a toggle would be misleading since nothing here
- * actually gates them). */
-export function getPassiveSlotBuffs(gameId: string, character: CharacterData, slotIndex: number): Array<{ sb: NonNullable<CharacterData['selfBuffs']>[number]; index: number }> {
+ * Euphonia ATK buff), tagged `isTeam: true`. Team buffs — conditional or not — are NEVER routed
+ * through this window's self-buff toggle (`passiveBuffId`/`calc.buffs`): a conditional team buff's
+ * real toggle lives on the teammate's party-effect chip in the Calculator (`partyEffectsList` /
+ * `party.disabled`, see `src/renderer/src/lib/party.ts`), a completely different opt-out mechanism
+ * scoped to actual party membership — wiring a second toggle here would either do nothing (viewed
+ * character isn't in the active party) or double-apply the buff (it is). `isTeam` lets the caller
+ * render team entries as informational only, labeled by their real `conditional` value. */
+export function getPassiveSlotBuffs(gameId: string, character: CharacterData, slotIndex: number): Array<{ sb: NonNullable<CharacterData['selfBuffs']>[number]; index: number; isTeam?: boolean }> {
     const tag = PASSIVE_SLOT_TAGS[gameId]?.[slotIndex];
     if (!tag) return [];
     const self = (character.selfBuffs ?? []).map((sb, index) => ({ sb, index }));
-    const team = (character.teamBuffs ?? []).map((tb, i) => ({ sb: { ...tb, conditional: false as const }, index: self.length + i }));
+    const team = (character.teamBuffs ?? []).map((tb, i) => ({ sb: tb, index: self.length + i, isTeam: true as const }));
     return [...self, ...team].filter(({ sb }) => tag.test(sb.label));
 }
 

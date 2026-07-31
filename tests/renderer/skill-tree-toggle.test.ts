@@ -163,14 +163,26 @@ describe('getPassiveSlotBuffs — also matches character.teamBuffs (e.g. Baizhi\
         expect(matches.some((m) => m.sb.stat === 'atkPct' && m.sb.value === 15)).toBe(true);
     });
 
-    it('normalizes teamBuffs entries to conditional:false — always "Always active", never a misleading toggle', () => {
+    it('tags teamBuffs entries isTeam:true and preserves their real conditional value (no forced normalization)', () => {
         const c = char({
             selfBuffs: [],
             teamBuffs: [{ stat: 'elemDmg', label: 'DMG bonus to active party member (P2)', value: 40 }],
         });
         const matches = getPassiveSlotBuffs('genshin-impact', c, 1);
         expect(matches).toHaveLength(1);
-        expect(matches[0].sb.conditional).toBe(false);
+        expect(matches[0].isTeam).toBe(true);
+        expect(matches[0].sb.conditional).toBeUndefined();
+    });
+
+    it('a conditional teamBuffs entry is still tagged isTeam:true — the Talents window never wires a self-buff toggle to it', () => {
+        const c = char({
+            selfBuffs: [],
+            teamBuffs: [{ stat: 'atkPct', label: 'ATK% (4-type case) (P1)', value: 20, conditional: true }],
+        });
+        const matches = getPassiveSlotBuffs('genshin-impact', c, 0);
+        expect(matches).toHaveLength(1);
+        expect(matches[0].isTeam).toBe(true);
+        expect(matches[0].sb.conditional).toBe(true);
     });
 
     it('describePassiveSlot surfaces the real teamBuffs text instead of falling back to generic boilerplate', () => {

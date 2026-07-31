@@ -253,9 +253,10 @@ export function TalentsWindow() {
                         );
                     }
 
-                    // Every matching buff is unconditional — already always-applied via
-                    // characterAutoBuffs, a toggle here would be misleading (it'd do nothing).
-                    if (matches.every(({ sb }) => sb.conditional === false)) {
+                    // Team buffs never get a toggle here (see getPassiveSlotBuffs doc) — shown as
+                    // informational only, labeled by their real conditional value.
+                    if (matches.every(({ isTeam, sb }) => isTeam || sb.conditional === false)) {
+                        const anyConditional = matches.some(({ sb }) => sb.conditional !== false);
                         return (
                             <div key={p.id} className="flex items-center gap-3 rounded-md border border-primary/40 bg-primary/5 p-2">
                                 <IconSlot icon={Star} active />
@@ -263,12 +264,14 @@ export function TalentsWindow() {
                                     <div className="truncate text-sm font-medium text-foreground">{p.name}</div>
                                     <div className="truncate text-xs text-muted-foreground">{description}</div>
                                 </div>
-                                <Badge variant="outline">Always active</Badge>
+                                <Badge variant="outline" title={anyConditional ? 'Situational — toggle as a team effect in the Calculator when this character is in the active party' : undefined}>
+                                    {anyConditional ? 'Team effect (situational)' : 'Always active'}
+                                </Badge>
                             </div>
                         );
                     }
 
-                    const toggleable = matches.filter(({ sb }) => sb.conditional !== false);
+                    const toggleable = matches.filter(({ isTeam, sb }) => !isTeam && sb.conditional !== false);
                     const ids = toggleable.map(({ sb, index }) => passiveBuffId(character.id, sb, index));
                     const on = ids.every((id) => hasBuff(id));
                     const toggle = () => {
