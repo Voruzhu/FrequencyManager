@@ -29,21 +29,27 @@ const OVERRIDES = {
         'yunjin': 'Yun Jin Card.png',
     },
     'wuthering-waves': {
-        'rover-spectro': 'Male Rover 1.jpg',
-        'rover-havoc': 'Male Rover 1.jpg',
-        'rover-aero': 'Male Rover 1.jpg',
-        'rover-electro': 'Male Rover 1.jpg',
+        'rover-spectro': 'Rover 1.png',
+        'rover-havoc': 'Rover 1.png',
+        'rover-aero': 'Rover 1.png',
+        'rover-electro': 'Rover 1.png',
+        'verina': "Verina's Card.jpg",
+        'yangyang-xuanling': 'Yangyang Xuanling Card.jpg',
     },
 };
 
-// WW's wiki uses "Splash Art" for most (mainly 5-star/limited) characters
-// but "Card" for others (mainly 4-star/standard characters) — confirmed by
-// checking several of each during this script's development (Jinhsi/Jiyan
-// use Splash Art; Sanhua/Baizhi/Yangyang use Card). GI only ever uses "Card".
-// Each game tries its candidate suffixes in order and keeps the first hit.
+// WW's wiki has BOTH "Splash Art" and "Card" files for most characters —
+// both are real official art, but a verification pass (comparing against
+// MediaWiki's own canonical "page image" for each character's page) showed
+// "Card" is the wiki's actual primary choice almost everywhere, AND "Card"
+// files carry Kuro's own visible logo/copyright watermark baked into the
+// image — the strongest available evidence of authenticity. GI only ever
+// uses "Card" already (and matched 121/121 on verification). Try "Card"
+// first for both games now; "Splash Art" is a same-character fallback, not
+// a different character or an unofficial source.
 const WIKIS = {
     'genshin-impact': { host: 'genshin-impact.fandom.com', suffixes: ['Card'] },
-    'wuthering-waves': { host: 'wutheringwaves.fandom.com', suffixes: ['Splash Art', 'Card'] },
+    'wuthering-waves': { host: 'wutheringwaves.fandom.com', suffixes: ['Card', 'Splash Art'] },
 };
 
 async function resolveTitle(host, title) {
