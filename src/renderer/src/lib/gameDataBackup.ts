@@ -1,7 +1,8 @@
 /**
  * @fileoverview Export/import/clear ONE game's owned data — the inventory,
- * loadouts, sequences, party setups, and saved rotations that live in
- * `byGame[gameId]` slices across 5 separate zustand stores. Distinct from
+ * loadouts, sequences, party setups, saved rotations, named-loadout library
+ * entries, and build-card custom character images that live in
+ * `byGame[gameId]` slices across 7 separate zustand stores. Distinct from
  * Settings > Data's existing full-app backup (every store, every game, plus
  * settings/theme/etc.) — this is scoped to a single game, for a user who
  * wants to back up or reset just their Wuthering Waves (or just their
@@ -12,6 +13,8 @@ import { useLoadoutStore, type CharacterLoadout } from '../stores/loadoutStore';
 import { useSequenceStore } from '../stores/sequenceStore';
 import { usePartyStore, type Party } from '../stores/partyStore';
 import { useRotationStore, type SavedRotation } from '../stores/rotationStore';
+import { useNamedLoadoutStore, type SavedLoadout } from '../stores/namedLoadoutStore';
+import { useBuildCardPrefsStore } from '../stores/buildCardPrefsStore';
 import { useCalcStore } from '../stores/calcStore';
 
 export interface GameDataPayload {
@@ -20,6 +23,9 @@ export interface GameDataPayload {
     sequences?: Record<string, number>;
     party?: Record<string, Party>;
     rotations?: Record<string, SavedRotation>;
+    namedLoadouts?: Record<string, SavedLoadout>;
+    /** byCharacterId[characterId] = data URL of a build-card custom image override. */
+    buildCardImages?: Record<string, string>;
 }
 
 export interface GameDataEnvelope {
@@ -40,6 +46,8 @@ export interface GameDataCounts {
     loadouts: number;
     partySetups: number;
     rotations: number;
+    namedLoadouts: number;
+    buildCardImages: number;
 }
 
 export function gameDataCounts(gameId: string): GameDataCounts {
@@ -51,6 +59,8 @@ export function gameDataCounts(gameId: string): GameDataCounts {
         loadouts: Object.keys(useLoadoutStore.getState().byGame[gameId] ?? {}).length,
         partySetups: Object.keys(usePartyStore.getState().byGame[gameId] ?? {}).length,
         rotations: Object.keys(useRotationStore.getState().byGame[gameId] ?? {}).length,
+        namedLoadouts: Object.keys(useNamedLoadoutStore.getState().byGame[gameId] ?? {}).length,
+        buildCardImages: Object.keys(useBuildCardPrefsStore.getState().customImages[gameId] ?? {}).length,
     };
 }
 
@@ -68,11 +78,13 @@ export function exportGameData(gameId: string, gameLabel: string, appVersion: st
             sequences: useSequenceStore.getState().byGame[gameId],
             party: usePartyStore.getState().byGame[gameId],
             rotations: useRotationStore.getState().byGame[gameId],
+            namedLoadouts: useNamedLoadoutStore.getState().byGame[gameId],
+            buildCardImages: useBuildCardPrefsStore.getState().customImages[gameId],
         },
     };
 }
 
-/** Overwrites `gameId`'s slice in each of the 5 stores with the payload's data. Fields absent from the payload are left untouched (not wiped). */
+/** Overwrites `gameId`'s slice in each of the 7 stores with the payload's data. Fields absent from the payload are left untouched (not wiped). */
 export function importGameData(gameId: string, data: GameDataPayload): void {
     if (data.inventory !== undefined) {
         useInventoryStore.setState((s) => ({ byGame: { ...s.byGame, [gameId]: data.inventory! } }));
@@ -89,15 +101,22 @@ export function importGameData(gameId: string, data: GameDataPayload): void {
     if (data.rotations !== undefined) {
         useRotationStore.setState((s) => ({ byGame: { ...s.byGame, [gameId]: data.rotations! } }));
     }
+    if (data.namedLoadouts !== undefined) {
+        useNamedLoadoutStore.setState((s) => ({ byGame: { ...s.byGame, [gameId]: data.namedLoadouts! } }));
+    }
+    if (data.buildCardImages !== undefined) {
+        useBuildCardPrefsStore.setState((s) => ({ customImages: { ...s.customImages, [gameId]: data.buildCardImages! } }));
+    }
 }
 
 /**
- * Wipes `gameId`'s slice from all 5 stores — owned characters/weapons/gear,
- * every character's equipped loadout, saved sequences, party setups, and
- * rotations. Also resets the Calculator's current working build
- * (`calcStore`), since it isn't itself game-scoped and would otherwise keep
- * pointing at a characterId/gearIds that no longer exist. Callers are
- * responsible for confirming with the user first — this doesn't ask.
+ * Wipes `gameId`'s slice from all 7 stores — owned characters/weapons/gear,
+ * every character's equipped loadout, saved sequences, party setups,
+ * rotations, the named-loadout library, and build-card custom images. Also
+ * resets the Calculator's current working build (`calcStore`), since it
+ * isn't itself game-scoped and would otherwise keep pointing at a
+ * characterId/gearIds that no longer exist. Callers are responsible for
+ * confirming with the user first — this doesn't ask.
  */
 export function clearGameData(gameId: string): void {
     const dropKey = <T,>(byGame: Record<string, T>): Record<string, T> => {
@@ -110,5 +129,7 @@ export function clearGameData(gameId: string): void {
     useSequenceStore.setState((s) => ({ byGame: dropKey(s.byGame) }));
     usePartyStore.setState((s) => ({ byGame: dropKey(s.byGame) }));
     useRotationStore.setState((s) => ({ byGame: dropKey(s.byGame) }));
+    useNamedLoadoutStore.setState((s) => ({ byGame: dropKey(s.byGame) }));
+    useBuildCardPrefsStore.setState((s) => ({ customImages: dropKey(s.customImages) }));
     useCalcStore.setState({ characterId: '', equipped: { gearIds: [] }, results: null });
 }

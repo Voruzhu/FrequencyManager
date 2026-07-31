@@ -23,6 +23,7 @@ import { mapGoodArtifactToDraft, type GoodFile } from '../lib/goodImport';
 import type { GearEntry } from '@shared/types/game-bundle';
 import { hasElectronBridge, openExternalLink } from '@/lib/platform';
 import { downloadTextFile, pickTextFile } from '@/lib/fileIO';
+import { webStorageGetAll, webStorageSet } from '../lib/userStorage';
 
 interface AppUpdateInfo {
     repo: string;
@@ -74,6 +75,15 @@ const scannerBridge = () => (window as unknown as {
  * right before the last full-app import — lets a bad/corrupted backup be
  * undone via `restorePreviousImport` instead of being unrecoverable. */
 const PRE_IMPORT_SNAPSHOT_KEY = '__fm_pre_import_snapshot__';
+
+/** The snapshot key's value comes back as a raw object on Electron (passed
+ * through IPC untouched) but as a JSON string on web (localStorage only
+ * holds strings, see webStorageGetAll) — normalize both to the same shape. */
+function parseSnapshotValue(raw: unknown): Record<string, unknown> | undefined {
+    if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+    if (typeof raw === 'string') { try { return JSON.parse(raw) as Record<string, unknown>; } catch { return undefined; } }
+    return undefined;
+}
 
 const dataBridge = () => (window as unknown as {
     frequencyManager?: {
@@ -159,13 +169,24 @@ export function SettingsScreen() {
 
     // Data — real backup/restore of all durable user data (the user-data.json
     // that backs settings, saved builds, active screen, active game).
+    // Electron has a single bulk storage:getAll/set IPC call; the web build has
+    // no such call (each store just reads/writes its own localStorage key), so
+    // these two fall back to scanning localStorage directly on web instead of
+    // silently treating "no bridge" as "no data" (that used to make Export
+    // report success with an empty payload on web).
     const [exportText, setExportText] = useState('');
     const [importText, setImportText] = useState('');
     const appVersion = useAppVersion('1.0.0');
 
+    const storageGetAllUniversal = async (): Promise<Record<string, unknown>> =>
+        isElectron ? ((await dataBridge()?.storageGetAll?.()) ?? {}) : webStorageGetAll();
+    const storageSetUniversal = async (key: string, value: unknown): Promise<void> => {
+        if (isElectron) { await dataBridge()?.storageSet?.(key, value); return; }
+        webStorageSet(key, value);
+    };
+
     const doExport = async () => {
-        const b = dataBridge();
-        const data = (await b?.storageGetAll?.()) ?? {};
+        const data = await storageGetAllUniversal();
         const envelope = {
             schemaVersion: '1.0',
             kind: 'frequency-manager-userdata',
@@ -197,19 +218,17 @@ export function SettingsScreen() {
             toast.error('Not a valid FrequencyManager backup file', { description: 'The file is missing the expected data, or is empty.' });
             return;
         }
-        const b = dataBridge();
-        if (!b?.storageSet || !b?.storageGetAll) { toast.error('Storage unavailable'); return; }
         try {
             // Snapshot everything as it is RIGHT NOW, before writing anything
             // from the import — a bad/corrupted backup would otherwise
             // overwrite the user's real data with no way back. See
             // `restorePreviousImport` below.
-            const current = await b.storageGetAll();
+            const current = await storageGetAllUniversal();
             delete current[PRE_IMPORT_SNAPSHOT_KEY];
-            await b.storageSet(PRE_IMPORT_SNAPSHOT_KEY, current);
+            await storageSetUniversal(PRE_IMPORT_SNAPSHOT_KEY, current);
             for (const [k, v] of Object.entries(parsed.data)) {
                 if (k === PRE_IMPORT_SNAPSHOT_KEY) continue; // never import someone else's snapshot key
-                await b.storageSet(k, v);
+                await storageSetUniversal(k, v);
             }
             toast.success('Imported — reloading to apply…', { description: 'Your previous data was snapshotted — use "Restore previous state" below if this import looks wrong.' });
             setTimeout(() => window.location.reload(), 700);
@@ -218,16 +237,14 @@ export function SettingsScreen() {
         }
     };
     const restorePreviousImport = async () => {
-        const b = dataBridge();
-        if (!b?.storageGetAll || !b?.storageSet) { toast.error('Storage unavailable'); return; }
-        const current = await b.storageGetAll();
-        const snapshot = current[PRE_IMPORT_SNAPSHOT_KEY] as Record<string, unknown> | undefined;
-        if (!snapshot || typeof snapshot !== 'object' || Object.keys(snapshot).length === 0) {
+        const current = await storageGetAllUniversal();
+        const snapshot = parseSnapshotValue(current[PRE_IMPORT_SNAPSHOT_KEY]);
+        if (!snapshot || Object.keys(snapshot).length === 0) {
             toast.info('No previous snapshot to restore', { description: 'A snapshot is only saved right before an import.' });
             return;
         }
         if (!window.confirm('Restore your data to how it was right before the last import? This replaces everything currently saved.')) return;
-        for (const [k, v] of Object.entries(snapshot)) await b.storageSet(k, v);
+        for (const [k, v] of Object.entries(snapshot)) await storageSetUniversal(k, v);
         toast.success('Restored — reloading…');
         setTimeout(() => window.location.reload(), 700);
     };
@@ -279,12 +296,13 @@ export function SettingsScreen() {
     };
     const doGameCleanup = () => {
         const c = gameDataCounts(activeGameId);
-        const total = c.characters + c.weapons + c.gear + c.loadouts + c.partySetups + c.rotations;
+        const total = c.characters + c.weapons + c.gear + c.loadouts + c.partySetups + c.rotations + c.namedLoadouts + c.buildCardImages;
         if (total === 0) { toast.info(`No ${activeGameLabel} data to clean up`); return; }
         const confirmed = window.confirm(
             `Permanently delete ALL ${activeGameLabel} data?\n\n`
             + `${c.characters} character(s), ${c.weapons} weapon(s), ${c.gear} gear piece(s), `
-            + `${c.loadouts} loadout(s), ${c.partySetups} party setup(s), ${c.rotations} saved rotation(s).\n\n`
+            + `${c.loadouts} loadout(s), ${c.partySetups} party setup(s), ${c.rotations} saved rotation(s), `
+            + `${c.namedLoadouts} saved loadout preset(s), ${c.buildCardImages} build-card image(s).\n\n`
             + `This cannot be undone.`,
         );
         if (!confirmed) return;

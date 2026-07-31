@@ -29,6 +29,32 @@ const bridge = () => (typeof window === 'undefined' ? undefined : (window as unk
     };
 }).frequencyManager);
 
+/** Web-only equivalent of Electron's `storage:getAll` IPC handler — collects
+ * every localStorage key on this origin (all of it is ours; nothing else
+ * shares this origin). Lets SettingsScreen's full-app backup work on the web
+ * build instead of silently exporting nothing (there's no bulk-read IPC call
+ * to fall back to there). Values are returned as the raw strings localStorage
+ * holds them as, matching what Electron's real storage:getAll returns for
+ * every zustand-backed key (zustand's own createJSONStorage already stringifies
+ * before calling setItem below). */
+export function webStorageGetAll(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key === null) continue;
+        const v = localStorage.getItem(key);
+        if (v !== null) out[key] = v;
+    }
+    return out;
+}
+
+/** Web-only equivalent of Electron's `storage:set` IPC handler, for bulk
+ * import/restore. Non-string values (only the pre-import snapshot key uses
+ * one, see SettingsScreen.tsx) are stringified rather than dropped. */
+export function webStorageSet(key: string, value: unknown): void {
+    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+}
+
 export const userStorage: StateStorage = {
     getItem: async (name) => {
         const b = bridge();

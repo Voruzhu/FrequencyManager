@@ -12,6 +12,8 @@ import { useLoadoutStore } from '../../src/renderer/src/stores/loadoutStore';
 import { useSequenceStore } from '../../src/renderer/src/stores/sequenceStore';
 import { usePartyStore } from '../../src/renderer/src/stores/partyStore';
 import { useRotationStore } from '../../src/renderer/src/stores/rotationStore';
+import { useNamedLoadoutStore } from '../../src/renderer/src/stores/namedLoadoutStore';
+import { useBuildCardPrefsStore } from '../../src/renderer/src/stores/buildCardPrefsStore';
 import { useCalcStore } from '../../src/renderer/src/stores/calcStore';
 import { gameDataCounts, exportGameData, importGameData, clearGameData } from '../../src/renderer/src/lib/gameDataBackup';
 
@@ -29,6 +31,8 @@ function seed() {
     useSequenceStore.setState({ byGame: { [GAME]: { jinhsi: 2 }, [OTHER_GAME]: { x: 0 } } });
     usePartyStore.setState({ byGame: { [GAME]: { jinhsi: { teammates: [], disabled: [] } }, [OTHER_GAME]: {} } });
     useRotationStore.setState({ byGame: { [GAME]: { r1: { id: 'r1', name: 'Rot', partyId: 'p1', steps: [], enabledSelfBuffIds: {} } }, [OTHER_GAME]: {} } });
+    useNamedLoadoutStore.setState({ byGame: { [GAME]: { l1: { id: 'l1', name: 'BiS', characterId: 'jinhsi', loadout: { weaponId: 'w1', gearIds: ['g1'] } } }, [OTHER_GAME]: {} } });
+    useBuildCardPrefsStore.setState({ customImages: { [GAME]: { jinhsi: 'data:image/png;base64,AAA' }, [OTHER_GAME]: {} } });
     useCalcStore.setState({ characterId: 'jinhsi', equipped: { weaponId: 'w1', gearIds: ['g1'] }, results: [{}] as never });
 }
 
@@ -38,12 +42,12 @@ describe('gameDataBackup — export/import/clear scoped to ONE game', () => {
     });
 
     it('gameDataCounts reflects only the target game, not other games', () => {
-        expect(gameDataCounts(GAME)).toEqual({ characters: 1, weapons: 1, gear: 1, loadouts: 1, partySetups: 1, rotations: 1 });
-        expect(gameDataCounts(OTHER_GAME)).toEqual({ characters: 1, weapons: 0, gear: 0, loadouts: 1, partySetups: 0, rotations: 0 });
-        expect(gameDataCounts('never-seen-game')).toEqual({ characters: 0, weapons: 0, gear: 0, loadouts: 0, partySetups: 0, rotations: 0 });
+        expect(gameDataCounts(GAME)).toEqual({ characters: 1, weapons: 1, gear: 1, loadouts: 1, partySetups: 1, rotations: 1, namedLoadouts: 1, buildCardImages: 1 });
+        expect(gameDataCounts(OTHER_GAME)).toEqual({ characters: 1, weapons: 0, gear: 0, loadouts: 1, partySetups: 0, rotations: 0, namedLoadouts: 0, buildCardImages: 0 });
+        expect(gameDataCounts('never-seen-game')).toEqual({ characters: 0, weapons: 0, gear: 0, loadouts: 0, partySetups: 0, rotations: 0, namedLoadouts: 0, buildCardImages: 0 });
     });
 
-    it('exportGameData captures exactly this game\'s slice from all 5 stores, tagged with its gameId', () => {
+    it('exportGameData captures exactly this game\'s slice from all 7 stores, tagged with its gameId', () => {
         const envelope = exportGameData(GAME, 'Wuthering Waves', '1.2.3');
         expect(envelope.kind).toBe('frequency-manager-game-data');
         expect(envelope.gameId).toBe(GAME);
@@ -53,6 +57,8 @@ describe('gameDataBackup — export/import/clear scoped to ONE game', () => {
         expect(envelope.data.loadouts?.jinhsi).toEqual({ weaponId: 'w1', gearIds: ['g1'] });
         expect(envelope.data.sequences?.jinhsi).toBe(2);
         expect(envelope.data.rotations?.r1?.name).toBe('Rot');
+        expect(envelope.data.namedLoadouts?.l1?.name).toBe('BiS');
+        expect(envelope.data.buildCardImages?.jinhsi).toBe('data:image/png;base64,AAA');
     });
 
     it('importGameData overwrites only the target game\'s slice, leaving other games untouched', () => {
@@ -76,13 +82,15 @@ describe('gameDataBackup — export/import/clear scoped to ONE game', () => {
         expect(useLoadoutStore.getState().byGame[GAME].jinhsi).toEqual({ weaponId: 'w1', gearIds: ['g1'] });
     });
 
-    it('clearGameData wipes the target game from all 5 stores and resets the working calc build, but leaves other games alone', () => {
+    it('clearGameData wipes the target game from all 7 stores and resets the working calc build, but leaves other games alone', () => {
         clearGameData(GAME);
         expect(useInventoryStore.getState().byGame[GAME]).toBeUndefined();
         expect(useLoadoutStore.getState().byGame[GAME]).toBeUndefined();
         expect(useSequenceStore.getState().byGame[GAME]).toBeUndefined();
         expect(usePartyStore.getState().byGame[GAME]).toBeUndefined();
         expect(useRotationStore.getState().byGame[GAME]).toBeUndefined();
+        expect(useNamedLoadoutStore.getState().byGame[GAME]).toBeUndefined();
+        expect(useBuildCardPrefsStore.getState().customImages[GAME]).toBeUndefined();
         expect(useCalcStore.getState().characterId).toBe('');
         expect(useCalcStore.getState().equipped).toEqual({ gearIds: [] });
         expect(useCalcStore.getState().results).toBeNull();
