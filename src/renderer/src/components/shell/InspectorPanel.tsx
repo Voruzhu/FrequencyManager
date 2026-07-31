@@ -27,6 +27,7 @@ import { EnemyPicker } from '../EnemyPicker';
 import { GearCard, GearStatsList } from '../GearCard';
 import { GearFilterBar } from '../GearFilterBar';
 import { AddGearWindow } from '../InventoryWindows';
+import { TuningOddsWindow } from '../TuningOddsWindow';
 import { gearToInitial } from '@/lib/gearEdit';
 import { mainSlotEchoId } from '@/lib/selfBuffs';
 
@@ -376,6 +377,13 @@ function GearView({ g }: { g: GearData }) {
             </div>
             <GearStatsList g={live} />
             <Button variant="secondary" className="w-full" onClick={edit}>Edit {data.gearLabel.toLowerCase()}</Button>
+            {/* Tuning odds — WW echoes only (`cost` is WW's tell, same as `meta` above); Genshin
+                artifacts have no reliable sourced substat weight table, see TuningOddsWindow's doc comment. */}
+            {live.cost != null && live.subStats.length > 0 && (
+                <Button variant="outline" className="w-full" onClick={() => openWindow('Tuning odds', <TuningOddsWindow gear={live} data={data} />)}>
+                    Tuning odds
+                </Button>
+            )}
 
             {setBonus && (setBonus.twoPieceBuffs.length > 0 || setBonus.fullSetOnlyBuffs.length > 0) && (
                 <section>

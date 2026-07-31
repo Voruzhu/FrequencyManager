@@ -181,6 +181,16 @@ and what's off — that's exactly what this section is tracking against.
 
 ## 🗺️ Upcoming features
 
+- **2026-07-31 feature batch shipped**: team-buff conditional/toggleable
+  entries (Lynette's assumed-4-type ATK% buff, Yunjin P2, Xianyun P1), an
+  auto-updating character-data hotfix channel (reuses the endgame-presets
+  pipeline, ships empty until a correction is ever needed), a side-by-side
+  build comparison tool (Calculator's new "Compare" button — weapon vs
+  weapon, or vs a saved loadout's full gear set), and a WW echo Tuning odds
+  tool (real, disclosed uniform-per-grade mechanic — Genshin artifacts are
+  deliberately NOT covered by an equivalent substat-upgrade simulator: no
+  reliable official per-roll weight table was found despite research, and
+  this project doesn't model mechanics on guessed numbers).
 - **Genshin Impact full-roster re-audit** — give Genshin the same treatment
   Wuthering Waves just got: every character's kit, every weapon, cross-checked
   against 2+ independent sources, fixing wrong values/scopes/missing buffs
