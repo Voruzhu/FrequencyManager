@@ -199,7 +199,7 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
         const dw = charImg.width * scale;
         const dh = charImg.height * scale;
         const dx = (CARD_WIDTH - dw) / 2;
-        const dy = Math.min(0, -(dh - CARD_HEIGHT) * 0.4);
+        const dy = Math.min(0, -(dh - CARD_HEIGHT) * 0.3);
         ctx.drawImage(charImg, dx, dy, dw, dh);
 
         // Dark wash for legibility everywhere, layered with two directional
