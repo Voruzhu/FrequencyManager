@@ -14,6 +14,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.11.3',
+        date: '2026-07-31',
+        highlights: [
+            'Fixed Settings > Data\'s full-app Export/Import silently doing nothing on the web build — it now genuinely backs up and restores everything, same as the desktop app.',
+            'Settings > Data\'s per-game backup now also includes your saved loadout library and Build Card custom images, not just inventory/loadouts/party/rotations.',
+            'Fixed the Build Card stats panel\'s bottom border nearly clipping the last row of text.',
+            'Fixed the Genshin Impact Build Card generator using the wrong official art (a promotional poster) instead of the real in-game Wish/gacha splash art — re-sourced all 116 affected characters.',
+        ],
+    },
+    {
         version: '1.11.2',
         date: '2026-07-31',
         highlights: [
@@ -56,17 +66,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         highlights: [
             'Rotation Builder: set a real time limit on any rotation and see if it clears in time, not just an abstract DPS number.',
             'New "End-game mode presets" picker in Rotation Builder — auto-delivered, updates without needing a new app release (starts empty; real Tower of Adversity/Spiral Abyss/Trounce Domain data is a follow-up content pass).',
-        ],
-    },
-    {
-        version: '1.9.0',
-        date: '2026-07-30',
-        highlights: [
-            'New GI reactions: Bloom, Hyperbloom, Burgeon, Swirl, and Burning (first-tick) join Vaporize/Melt/Aggravate/Spread in the Calculator.',
-            'New "Fill remaining slots" button — lock your currently-equipped gear and let the Optimizer search only the empty slots.',
-            "Fixed a WuWa bug where a weapon's refinement rank reset to R1 every time you switched away and back.",
-            'GI artifact optimization is now slot-aware — faster, and no longer able to suggest an impossible 2-of-the-same-slot build.',
-            'Full GI roster re-audit: dozens of data fixes across Travelers, Noelle, Nilou, Cyno, Yanfei, Ganyu, and more.',
         ],
     },
 ];
