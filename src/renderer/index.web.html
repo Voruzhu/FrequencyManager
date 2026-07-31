@@ -48,9 +48,14 @@
             a fresh commit by up to a day, defeating the point of an
             auto-updating feed). Same trust boundary as the icon CDN above —
             both read from this app's own public repo, no third party.
+          - `connect-src` allows genshin-impact.fandom.com/wutheringwaves.
+            fandom.com, `img-src` allows static.wikia.nocookie.net — the
+            build-card export (lib/characterArt.ts) resolves a character's
+            real portrait art live via each wiki's own MediaWiki API, never
+            bundled (see docs/superpowers/specs/2026-07-31-build-card-v2-design.md).
         -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://raw.githubusercontent.com data:;" />
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.jsdelivr.net https://static.wikia.nocookie.net; connect-src 'self' https://cdn.jsdelivr.net https://raw.githubusercontent.com https://genshin-impact.fandom.com https://wutheringwaves.fandom.com data:;" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FrequencyManager — Damage Calculator &amp; Gear Optimizer</title>
     <meta name="description"
