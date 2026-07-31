@@ -1434,6 +1434,21 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             { id: 'burst_2', name: 'Burst (2nd Hit)', type: 'Burst', scaling: 'atk', element: 'Dendro',
             multipliers: [3.3696, 3.6223, 3.875, 4.212, 4.4647, 4.7174, 5.0544, 5.3914, 5.7283, 6.0653],
             scaling2: 'em', multipliers2: [6.7392, 7.2446, 7.7501, 8.424, 8.9294, 9.4349, 10.1088, 10.7827, 11.4566, 12.1306] },
+        // Previously missing entirely — "Phantasm Performance," a core,
+        // frequently-triggered combo tied to her Skill (fires during
+        // Charged Attacks in Shadow Dance state), separate from the base
+        // Skill-cast hit above. Full 10-level tables sourced from KQM
+        // library, 2026-07-31.
+        { id: 'skill_phantasm1', name: 'Phantasm Performance (1-Hit)', type: 'Skill', scaling: 'atk', element: 'Dendro',
+            multipliers: [0.246, 0.265, 0.283, 0.308, 0.326, 0.345, 0.370, 0.394, 0.419, 0.444],
+            scaling2: 'em', multipliers2: [0.493, 0.530, 0.567, 0.616, 0.653, 0.690, 0.739, 0.788, 0.838, 0.887] },
+        { id: 'skill_phantasm2', name: 'Phantasm Performance (2-Hit)', type: 'Skill', scaling: 'atk', element: 'Dendro',
+            multipliers: [0.320, 0.344, 0.368, 0.400, 0.424, 0.448, 0.480, 0.513, 0.545, 0.577],
+            scaling2: 'em', multipliers2: [0.641, 0.689, 0.737, 0.801, 0.849, 0.897, 0.961, 1.025, 1.089, 1.153] },
+        { id: 'skill_phantasm_shade', name: 'Phantasm Performance (Shade, Hit 1/2 x2)', type: 'Skill', scaling: 'em', element: 'Dendro',
+            multipliers: [0.960, 1.032, 1.104, 1.200, 1.272, 1.344, 1.440, 1.536, 1.632, 1.728] },
+        { id: 'skill_phantasm_shade3', name: 'Phantasm Performance (Shade, Hit 3)', type: 'Skill', scaling: 'em', element: 'Dendro',
+            multipliers: [1.280, 1.376, 1.472, 1.600, 1.696, 1.792, 1.920, 2.048, 2.176, 2.304] },
 ],
     nicole: [
         { id: 'na', name: "Allegoria", type: 'Normal', scaling: 'atk', element: 'Pyro',
@@ -1442,6 +1457,14 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
             multipliers: [1.384, 1.4878, 1.5916, 1.73, 1.8338, 1.9376, 2.076, 2.2144, 2.3528, 2.4912] },
         { id: 'burst', name: "Revelation: Ladder of Divine Ascent", type: 'Burst', scaling: 'atk', element: 'Pyro',
             multipliers: [3.168, 3.4056, 3.6432, 3.96, 4.1976, 4.4352, 4.752, 5.0688, 5.3856, 5.7024] },
+        // Previously missing entirely — "Arcane Projection," her actual
+        // primary damage-dealing mechanic (party members' hits trigger a
+        // coordinated attack). Full 10-level table sourced from KQM
+        // library, 2026-07-31. Modeled as one representative instance (this
+        // app's convention for "x N" procs, e.g. WW's "per shell x6" style
+        // entries) — real kit fires up to 4 per Silent Contemplation cycle.
+        { id: 'skill_arcaneprojection', name: 'Arcane Projection (per instance, up to x4)', type: 'Skill', scaling: 'atk', element: 'Pyro',
+            multipliers: [0.99, 1.08, 1.17, 1.26, 1.35, 1.44, 1.53, 1.62, 1.71, 1.80] },
     ],
     prune: [
         { id: 'na', name: "Badaboom! Hexbuster Hammer", type: 'Normal', scaling: 'atk', element: 'Anemo',

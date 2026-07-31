@@ -116,6 +116,12 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // (3 non-Fontainian teammates) case, conditional — same established
     // "assume the common/max case" convention as Navia's/Kaveh's entries.
     "charlotte": [{"stat":"elemDmg","label":"Cryo DMG +15%, 3 non-Fontainian teammates, Diversified Investigation (P1)","value":15,"conditional":true}],
+    // Nefer's Burst consumes all banked Veil of Falsehood stacks (max 3,
+    // base kit) to boost its own DMG — core kit mechanic, not an ascension
+    // passive, but modeled the same way self-buffs already are here.
+    // Modeled at max stacks: 40%/stack at talent lvl 10 x 3 = 120%
+    // (verified via KQM library + separate max-stack confirmation, 2026-07-31).
+    "nefer": [{"stat":"dmgBonus","label":"Burst DMG +120%, 3 Veil of Falsehood stacks consumed","value":120,"conditional":true,"appliesTo":["ult"]}],
 };
 
 /**

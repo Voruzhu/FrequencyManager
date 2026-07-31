@@ -133,10 +133,12 @@ data entry — tracked here rather than guessed at):
   conflicting sourced numbers for the exact talent-level-10 percentage (one
   source implies ~14.88-40.176%, another's partial L8 data of 23.8-35.7%
   doesn't reconcile with that) — not an engine gap, a sourcing gap.
-- Nefer's "Phantasm Performance" multi-hit combo and Nicole's "Arcane
-  Projection" — real mechanics exist but no source gave clean, confident
-  per-level numbers to enter (unlike everything above, which was 2-source
-  verified before being added).
+- ~~Nefer's "Phantasm Performance"/Nicole's "Arcane Projection"~~ **FIXED
+  2026-07-31** — a fresh KQM library pass got full, clean 10-level tables
+  for both (the earlier "no clean numbers" finding was from a different,
+  less-precise source pass). Added as new skill entries. Nefer's Burst
+  per-Veil-of-Falsehood-stack DMG bonus also added (max 3 stacks, 120% at
+  talent lvl 10).
 
 ### OCR scan support
 
