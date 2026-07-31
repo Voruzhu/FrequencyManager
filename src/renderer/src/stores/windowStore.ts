@@ -11,7 +11,11 @@ interface WindowState {
     open: boolean;
     title: string;
     content: ReactNode | null;
-    openWindow: (title: string, content: ReactNode) => void;
+    /** Most windows are content-sized (max-w-lg); a few (wide tables,
+     * side-by-side comparisons) need more horizontal room. Opt-in per call
+     * so every existing `openWindow(title, content)` call site is unaffected. */
+    wide: boolean;
+    openWindow: (title: string, content: ReactNode, options?: { wide?: boolean }) => void;
     closeWindow: () => void;
 }
 
@@ -19,6 +23,7 @@ export const useWindowStore = create<WindowState>((set) => ({
     open: false,
     title: '',
     content: null,
-    openWindow: (title, content) => set({ open: true, title, content }),
+    wide: false,
+    openWindow: (title, content, options) => set({ open: true, title, content, wide: options?.wide ?? false }),
     closeWindow: () => set({ open: false, content: null }),
 }));

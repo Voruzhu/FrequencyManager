@@ -628,7 +628,7 @@ function CharacterSummary({ c, data, computeForLoadout }: { c: CharacterData; da
                     <Button variant="secondary" size="sm" onClick={() => openWindow('Talents', <TalentsWindow />)}>
                         <Star /> Talents
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => openWindow('Compare builds', <CompareBuildsWindow character={c} data={data} gameId={activeGameId} currentLoadout={equipped} computeFor={computeForLoadout} />)}>
+                    <Button variant="secondary" size="sm" onClick={() => openWindow('Compare builds', <CompareBuildsWindow character={c} data={data} gameId={activeGameId} currentLoadout={equipped} computeFor={computeForLoadout} />, { wide: true })}>
                         <Layers /> Compare
                     </Button>
                     <Button

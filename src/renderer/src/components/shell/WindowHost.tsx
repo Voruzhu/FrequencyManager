@@ -6,10 +6,10 @@ import { useWindowStore } from '../../stores/windowStore';
  * holds and shows it in a modal dialog. Mounted once in AppShell.
  */
 export function WindowHost() {
-    const { open, title, content, closeWindow } = useWindowStore();
+    const { open, title, content, wide, closeWindow } = useWindowStore();
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o) closeWindow(); }}>
-            <DialogContent>
+            <DialogContent className={wide ? 'max-w-3xl' : undefined}>
                 <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
                 {content}
             </DialogContent>

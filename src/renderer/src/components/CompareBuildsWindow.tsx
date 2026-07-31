@@ -73,9 +73,9 @@ export function CompareBuildsWindow({
                 </div>
             </div>
 
-            <div className="overflow-x-auto rounded-md border border-border">
+            <div className="max-h-[50vh] overflow-y-auto overflow-x-auto rounded-md border border-border">
                 <table className="w-full text-sm">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                         <tr className="border-b border-border bg-surface text-xs text-muted-foreground">
                             <th className="px-2.5 py-1.5 text-left font-medium">Stat</th>
                             <th className="px-2.5 py-1.5 text-right font-medium">Current</th>
