@@ -221,7 +221,7 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
  * in bundle.ts's `character` buff array (matched by name); deliberately not
  * duplicated here.
  */
-export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>> = {
+export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>> = {
     // Inherent I "Euphonia" — ATK+15% for 20s to whichever Resonator picks
     // up the field Baizhi's Resonance Skill deploys (any teammate, not just
     // Baizhi) — genuinely missing anywhere else in this codebase. wuthering.gg,

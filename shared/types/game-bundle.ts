@@ -211,7 +211,7 @@ export interface CharacterEntry {
      * common case — most kit team support comes from weapons/sets/
      * constellations instead).
      */
-    teamBuffs?: Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
+    teamBuffs?: Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>;
 }
 
 export interface WeaponEntry {

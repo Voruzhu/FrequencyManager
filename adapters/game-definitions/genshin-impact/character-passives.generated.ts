@@ -134,7 +134,7 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
  * bundle.ts's `character` buff array (cb-gi-aloy-team); deliberately not
  * duplicated here.
  */
-export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>> = {
+export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: string; value: number; conditional?: boolean; appliesTo?: string[]; scaleOff?: BuffEntry['scaleOff']; stacksMax?: number; autoTrigger?: { skillIds: string[]; durationSeconds: number } }>> = {
     // P2 "Kiongozi" (verified 2026-07-25, icy-veins/KQM): "...every point of
     // Fighting Spirit present when it is used increases the DMG that the
     // CURRENT ACTIVE PARTY MEMBER deals by 0.2%. The maximum increase
@@ -144,7 +144,7 @@ export const CHARACTER_TEAM_BUFFS: Record<string, Array<{ stat: string; label: s
     // team-wide passive-talent buffs missing from both channels.
     "xiangling": [{"stat":"atkPct","label":"ATK% for 10s, to whoever picks up the Chili Pepper left by Guoba Attack (P4, Beware, It's Super Hot!)","value":10}],
     "candace": [{"stat":"dmgBonus","label":"NA-elemental-hit DMG · 0.5% per 1000 of Candace's own Max HP, to allies under Prayer of the Crimson Crown (P2)","value":0,"appliesTo":["normal"],"scaleOff":{"sourceStat":"hp","basis":"total","ratio":0.0005}}],
-    "lynette": [{"stat":"atkPct","label":"ATK% for 10s post-Burst, scaling with party elemental-type count (1-4 types: 8/12/16/20%) — modeled at the common 4-type case (P1, Sophisticated Synergy)","value":20}],
+    "lynette": [{"stat":"atkPct","label":"ATK% for 10s post-Burst, scaling with party elemental-type count (1-4 types: 8/12/16/20%) — modeled at the common 4-type case (P1, Sophisticated Synergy)","value":20,"conditional":true}],
     // Nicole's Skill grants "Grace of Kenosis" to the active character: flat
     // ATK = 15% of Nicole's own ATK, capped at 600 (confirmed via aggregated
     // search of icy-veins/game8). Her separate "Arcane Projection"

@@ -128,18 +128,33 @@ data entry — tracked here rather than guessed at):
   just need the SAME "assume the common/max case, mark conditional" pattern
   already used everywhere else in this file (Navia's "2 elemental
   teammates" 40% ATK is the exact same shape). Added Charlotte's P1 Cryo
-  DMG branch (self-buff, max case) this pass. The REAL, still-open gap:
-  **team buffs (`CHARACTER_TEAM_BUFFS`/bundle.ts's `character` array) have
-  no conditional/toggle mechanism at all** — only self-buffs distinguish
-  auto (`characterAutoBuffs`) vs opt-in (`conditionalCharacterBuffs`);
-  `partyEffects` always includes every team buff unconditionally. Yunjin's
-  P2 (boosts her own team-wide NA buff by party elemental-type count) and
-  Xianyun's P1 (team-wide Plunge Crit Rate) are genuinely blocked on THIS —
-  adding them as always-on would misrepresent them as permanently active.
-  Nahida's Pyro-teammate-count burst buff is blocked on a DIFFERENT thing:
-  conflicting sourced numbers for the exact talent-level-10 percentage (one
-  source implies ~14.88-40.176%, another's partial L8 data of 23.8-35.7%
-  doesn't reconcile with that) — not an engine gap, a sourcing gap.
+  DMG branch (self-buff, max case) this pass.
+- ~~`CHARACTER_TEAM_BUFFS` had no conditional/toggle mechanism~~ **FIXED
+  2026-07-31.** `CharacterEntry.teamBuffs`/`CHARACTER_TEAM_BUFFS` gained the
+  same `conditional?: boolean` field self-buffs already had; `partyEffects`
+  (`src/renderer/src/lib/party.ts`) now splits each character's team buffs
+  into the existing unconditional bundle (`passive-<id>-team`, unchanged
+  id/behavior) plus one separately-toggleable effect per conditional entry
+  (`passive-<id>-team-cN`) — surfaces automatically as its own chip in
+  CalculatorScreen's existing `partyEffectsList` UI, no new UI code needed.
+  Known simplification: these chips are opt-OUT (default ON) like every
+  other party effect, not opt-in like self-buffs' conditional chips — kept
+  simple since it matches the surrounding mechanism; revisit only if this
+  causes real over-counting complaints. Marked Lynette's "assumed 4-type
+  case" ATK% buff (P1, `character-passives.generated.ts`) as the first real
+  consumer. On investigation, Yunjin's P2 (extra NA-DMG scaling with party
+  elemental-type count) and Xianyun's P1 (stacking team Plunge Crit Rate)
+  turned out to be a DIFFERENT, already-per-entry-toggleable mechanism —
+  `bundle.ts`'s `data.buffs.character` array already gives every entry its
+  own effect id/toggle chip, so no engine gap existed there; added both as
+  new entries (`cb-gi-yunjin-p2`, `cb-gi-xianyun-p1`, real sourced numbers:
+  11.5% of DEF at 4 elemental types; 4+6+8+10=28% Crit Rate at 4 stacks),
+  each modeled at its max case with the toggle available for less-ideal
+  parties. Nahida's Pyro-teammate-count burst buff remains unmodeled for a
+  DIFFERENT reason: conflicting sourced numbers for the exact talent-level-
+  10 percentage (one source implies ~14.88-40.176%, another's partial L8
+  data of 23.8-35.7% doesn't reconcile with that) — not an engine gap, a
+  sourcing gap.
 - ~~Nefer's "Phantasm Performance"/Nicole's "Arcane Projection"~~ **FIXED
   2026-07-31** — a fresh KQM library pass got full, clean 10-level tables
   for both (the earlier "no clean numbers" finding was from a different,

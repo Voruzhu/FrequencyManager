@@ -210,4 +210,31 @@ describe('partyEffects — character.teamBuffs (Inherent Skill/passive talent te
         const effects = partyEffects(partyData, [teammate]);
         expect(effects.some((e) => e.id === 'passive-t1-team')).toBe(false);
     });
+
+    it('a conditional teamBuffs entry becomes its own separately-toggleable effect, distinct from the unconditional bundle', () => {
+        const withTeamBuffs: CharacterEntry = {
+            ...makeChar('yunjin'),
+            teamBuffs: [
+                { stat: 'flatDmgAdd', label: 'Cliffbreaker\'s Banner (NA DMG)', value: 4020 },
+                { stat: 'flatDmgAdd', label: 'Breaking Conventions (extra NA DMG)', value: 1150, conditional: true },
+            ],
+        };
+        const teammate: PartyMemberResolved = { id: 't1', character: withTeamBuffs, gear: [] };
+        const effects = partyEffects(partyData, [teammate]);
+        const auto = effects.find((e) => e.id === 'passive-t1-team');
+        const conditional = effects.find((e) => e.id === 'passive-t1-team-c0');
+        expect(auto?.buffs).toHaveLength(1);
+        expect(auto?.buffs[0]).toMatchObject({ value: 4020 });
+        expect(conditional?.buffs).toHaveLength(1);
+        expect(conditional?.buffs[0]).toMatchObject({ value: 1150 });
+    });
+
+    it('a character with ONLY conditional teamBuffs contributes no unconditional bundle, only the per-entry effect', () => {
+        const withTeamBuffs: CharacterEntry = { ...makeChar('lynette'), teamBuffs: [{ stat: 'atkPct', label: 'ATK% (4-type case)', value: 20, conditional: true }] };
+        const teammate: PartyMemberResolved = { id: 't1', character: withTeamBuffs, gear: [] };
+        const effects = partyEffects(partyData, [teammate]);
+        expect(effects.some((e) => e.id === 'passive-t1-team')).toBe(false);
+        const conditional = effects.find((e) => e.id === 'passive-t1-team-c0');
+        expect(conditional?.buffs[0]).toMatchObject({ value: 20 });
+    });
 });

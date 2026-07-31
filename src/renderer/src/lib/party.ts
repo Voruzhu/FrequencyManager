@@ -182,15 +182,39 @@ export function partyEffects(data: Pick<GameBundle, 'id' | 'buffs' | 'setBonuses
         // above — no unlock-level gate, since an Inherent Skill/passive
         // talent is always available, same "always applies" treatment as
         // this character's own CHARACTER_SELF_BUFFS-sourced selfBuffs).
-        if (m.character.teamBuffs && m.character.teamBuffs.length > 0) {
+        // Split into two groups, NOT one bundled effect: unconditional ones
+        // keep the original bundled id/shape unchanged (zero behavior change
+        // for every character that predates `conditional` on team buffs);
+        // each CONDITIONAL entry becomes its own separate effect, so it gets
+        // its own toggle chip in the existing party-effects UI (which
+        // already renders one chip per effect id — no new UI needed). KNOWN
+        // LIMITATION: that UI's chips are opt-OUT (`party.disabled`), so a
+        // newly-added conditional team buff defaults ON, same as everything
+        // else there, until manually toggled off — unlike self-buffs' own
+        // conditional chips, which default off (opt-in). Accepted rather
+        // than building a parallel opt-in list for 2 known cases; revisit if
+        // this actually causes real over-counting complaints.
+        const teamBuffs = m.character.teamBuffs ?? [];
+        const autoTeamBuffs = teamBuffs.filter((b) => !b.conditional);
+        if (autoTeamBuffs.length > 0) {
             effects.push({
                 id: `passive-${m.id}-team`,
                 name: m.character.name,
                 source: m.character.name,
                 category: 'kit',
-                buffs: m.character.teamBuffs.map((b) => ({ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) })),
+                buffs: autoTeamBuffs.map((b) => ({ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) })),
             });
         }
+        teamBuffs.filter((b) => b.conditional).forEach((b, i) => {
+            effects.push({
+                id: `passive-${m.id}-team-c${i}`,
+                name: `${m.character.name} (conditional)`,
+                source: m.character.name,
+                category: 'kit',
+                buffs: [{ ...b, value: resolveBuffValue(m, b, data.statCatalog, members) }],
+                description: b.label,
+            });
+        });
     }
     return effects;
 }
