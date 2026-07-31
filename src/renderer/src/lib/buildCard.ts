@@ -55,8 +55,13 @@ export interface BuildCardData {
     critValue?: number;
 }
 
-export const CARD_WIDTH = 480;
-export const CARD_HEIGHT = 1080;
+export const CARD_WIDTH = 520;
+export const CARD_HEIGHT = 900;
+
+const IMAGE_COL_WIDTH = 180;
+const PAD = 16;
+const RIGHT_X = IMAGE_COL_WIDTH + PAD;
+const RIGHT_W = CARD_WIDTH - RIGHT_X - PAD;
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = '"IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif';
@@ -87,12 +92,25 @@ function relevanceColor(theme: BuildCardTheme, relevance: BuildCardStatRow['rele
     return theme.text;
 }
 
+/** Cuts `text` down with a trailing "…" if it doesn't fit `maxWidth` at the
+ * context's CURRENT font — the right column is narrow enough (squeezed next
+ * to the image column) that long gear/set names would otherwise silently
+ * overrun into the margin or overlap the next line's text. */
+function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let lo = 0, hi = text.length;
+    while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (ctx.measureText(text.slice(0, mid) + '…').width <= maxWidth) lo = mid; else hi = mid - 1;
+    }
+    return text.slice(0, lo) + '…';
+}
+
 export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, theme: BuildCardTheme): Promise<void> {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     canvas.width = CARD_WIDTH;
     canvas.height = CARD_HEIGHT;
-    const pad = 24;
 
     const [charImg, ...gearImgs] = await Promise.all([
         loadImage(data.imageUrl),
@@ -107,170 +125,183 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    let y = pad;
-
-    // Character image — a fixed-height cover-fit band across the top, drawn
-    // BEHIND the header text (a translucent scrim keeps the header legible
-    // over any image). No image resolved -> just the plain surface color.
-    const imgBandHeight = 200;
+    // Left column: a full-height vertical portrait strip — the point is to
+    // frame the character tightly (a tall narrow crop reads as "portrait",
+    // not "banner"), not to leave room for text on top of it. No image
+    // resolved -> the column just stays the plain surface color.
+    ctx.save();
+    roundRect(ctx, 0, 0, IMAGE_COL_WIDTH, CARD_HEIGHT, 12);
+    ctx.clip();
     if (charImg) {
-        ctx.save();
-        roundRect(ctx, 0, 0, CARD_WIDTH, imgBandHeight, 12);
-        ctx.clip();
-        const scale = Math.max(CARD_WIDTH / charImg.width, imgBandHeight / charImg.height);
+        const scale = Math.max(IMAGE_COL_WIDTH / charImg.width, CARD_HEIGHT / charImg.height);
         const dw = charImg.width * scale;
         const dh = charImg.height * scale;
-        ctx.drawImage(charImg, (CARD_WIDTH - dw) / 2, (imgBandHeight - dh) / 2, dw, dh);
-        ctx.fillStyle = 'rgba(0,0,0,0.35)';
-        ctx.fillRect(0, 0, CARD_WIDTH, imgBandHeight);
-        ctx.restore();
-        y = imgBandHeight + 16;
+        // Bias the crop toward the top third (faces/portraits sit there far
+        // more often than a character's feet), rather than centering blindly.
+        const dy = Math.min(0, -(dh - CARD_HEIGHT) * 0.25);
+        ctx.drawImage(charImg, (IMAGE_COL_WIDTH - dw) / 2, dy, dw, dh);
+        // A left-edge-to-right gradient fade into the surface color, so the
+        // seam between image and right column reads as intentional, not a
+        // hard cut.
+        const grad = ctx.createLinearGradient(IMAGE_COL_WIDTH - 40, 0, IMAGE_COL_WIDTH, 0);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, theme.surface);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, IMAGE_COL_WIDTH, CARD_HEIGHT);
     }
+    ctx.restore();
+    ctx.strokeStyle = theme.border;
+    ctx.beginPath();
+    ctx.moveTo(IMAGE_COL_WIDTH, 0);
+    ctx.lineTo(IMAGE_COL_WIDTH, CARD_HEIGHT);
+    ctx.stroke();
 
+    let y = PAD + 8;
     ctx.textBaseline = 'alphabetic';
+
     ctx.fillStyle = theme.accent;
-    ctx.font = `600 11px ${MONO}`;
-    ctx.fillText(data.gameId === 'genshin-impact' ? 'GENSHIN IMPACT BUILD' : 'WUTHERING WAVES BUILD', pad, y + 11);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = theme.muted;
-    ctx.fillText('★'.repeat(Math.max(0, data.rarity)), CARD_WIDTH - pad, y + 11);
-    ctx.textAlign = 'left';
-    y += 34;
+    ctx.font = `600 10px ${MONO}`;
+    ctx.fillText(data.gameId === 'genshin-impact' ? 'GENSHIN IMPACT BUILD' : 'WUTHERING WAVES BUILD', RIGHT_X, y);
+    y += 20;
 
     ctx.fillStyle = theme.text;
-    ctx.font = `600 26px ${SANS}`;
-    ctx.fillText(data.characterName, pad, y);
-    if (data.sequenceLabel && data.sequenceValue != null) {
-        const nameWidth = ctx.measureText(data.characterName).width;
-        ctx.font = `600 12px ${MONO}`;
-        ctx.fillStyle = theme.accent;
-        ctx.fillText(`${data.sequenceLabel} ${data.sequenceValue}/${data.sequenceMax ?? 6}`, pad + nameWidth + 12, y);
-    }
-    y += 22;
+    ctx.font = `600 21px ${SANS}`;
+    ctx.fillText(truncate(ctx, data.characterName, RIGHT_W), RIGHT_X, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = theme.muted;
+    ctx.font = `10px ${MONO}`;
+    ctx.fillText('★'.repeat(Math.max(0, data.rarity)), CARD_WIDTH - PAD, y);
+    ctx.textAlign = 'left';
+    y += 18;
 
-    ctx.font = `12px ${MONO}`;
+    ctx.font = `11px ${MONO}`;
     ctx.fillStyle = theme.accent;
-    ctx.fillText(data.element, pad, y);
+    ctx.fillText(data.element, RIGHT_X, y);
     const elemWidth = ctx.measureText(data.element).width;
     ctx.fillStyle = theme.muted;
-    ctx.fillText(`  ·  ${data.weaponType}`, pad + elemWidth, y);
-    y += 20;
+    ctx.fillText(`  ·  ${data.weaponType}`, RIGHT_X + elemWidth, y);
+    if (data.sequenceLabel && data.sequenceValue != null) {
+        ctx.textAlign = 'right';
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(`${data.sequenceLabel} ${data.sequenceValue}/${data.sequenceMax ?? 6}`, CARD_WIDTH - PAD, y);
+        ctx.textAlign = 'left';
+    }
+    y += 16;
 
     ctx.strokeStyle = theme.border;
     ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(CARD_WIDTH - pad, y);
+    ctx.moveTo(RIGHT_X, y);
+    ctx.lineTo(CARD_WIDTH - PAD, y);
     ctx.stroke();
-    y += 22;
-
-    // Hero readout — the biggest single number on the card.
-    ctx.font = `11px ${MONO}`;
-    ctx.fillStyle = theme.muted;
-    ctx.fillText(data.heroLabel.toUpperCase(), pad, y);
-    y += 40;
-    ctx.font = `600 48px ${MONO}`;
-    ctx.fillStyle = theme.accent;
-    ctx.fillText(data.heroValue, pad, y);
     y += 16;
+
+    // Hero readout — the biggest single number on the card, sized DOWN from
+    // the original top-banner layout since the right column is now narrower.
+    ctx.font = `10px ${MONO}`;
+    ctx.fillStyle = theme.muted;
+    ctx.fillText(truncate(ctx, data.heroLabel.toUpperCase(), RIGHT_W), RIGHT_X, y);
+    y += 30;
+    ctx.font = `600 34px ${MONO}`;
+    ctx.fillStyle = theme.accent;
+    ctx.fillText(data.heroValue, RIGHT_X, y);
+    y += 12;
 
     ctx.strokeStyle = theme.accent;
     ctx.globalAlpha = 0.6;
     ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(CARD_WIDTH - pad, y);
+    ctx.moveTo(RIGHT_X, y);
+    ctx.lineTo(CARD_WIDTH - PAD, y);
     ctx.stroke();
     ctx.globalAlpha = 1;
-    y += 26;
+    y += 18;
 
-    // Stat grid — colored by kit relevance instead of a flat text color.
-    const colWidth = (CARD_WIDTH - pad * 2 - 16) / 2;
-    const rowHeight = 26;
-    data.stats.forEach((row, i) => {
-        const col = i % 2;
-        const rowIdx = Math.floor(i / 2);
-        const x = pad + col * (colWidth + 16);
-        const rowY = y + rowIdx * rowHeight;
-        ctx.font = `11px ${MONO}`;
+    // Stat list — single column (the right column is too narrow for 2), each
+    // row tighter than the original layout.
+    const rowHeight = 19;
+    data.stats.forEach((row) => {
+        ctx.font = `10px ${MONO}`;
         ctx.fillStyle = theme.muted;
-        ctx.fillText(row.label, x, rowY);
-        ctx.font = `600 12px ${MONO}`;
+        ctx.fillText(row.label, RIGHT_X, y);
+        ctx.font = `600 11px ${MONO}`;
         ctx.fillStyle = relevanceColor(theme, row.relevance);
         ctx.textAlign = 'right';
-        ctx.fillText(row.value, x + colWidth, rowY);
+        ctx.fillText(row.value, CARD_WIDTH - PAD, y);
         ctx.textAlign = 'left';
+        y += rowHeight;
     });
-    y += Math.ceil(data.stats.length / 2) * rowHeight + 16;
+    y += 10;
 
-    // Per-gear-piece rows: icon + set + main/substats, each ~3 lines tall.
+    // Per-gear-piece rows: icon + set + main/substats, tightened.
     if (data.gearPieces.length > 0) {
-        ctx.font = `11px ${MONO}`;
+        ctx.font = `10px ${MONO}`;
         ctx.fillStyle = theme.muted;
-        ctx.fillText('LOADOUT', pad, y);
-        y += 18;
-        const gearRowHeight = 58;
+        ctx.fillText('LOADOUT', RIGHT_X, y);
+        y += 15;
+        const iconSize = 24;
+        const gearRowHeight = 46;
         data.gearPieces.forEach((piece, i) => {
             const rowY = y + i * gearRowHeight;
             const img = gearImgs[i];
-            if (img) ctx.drawImage(img, pad, rowY, 32, 32);
-            const textX = pad + (img ? 40 : 0);
-            ctx.font = `600 12px ${SANS}`;
+            if (img) ctx.drawImage(img, RIGHT_X, rowY - 10, iconSize, iconSize);
+            const textX = RIGHT_X + (img ? iconSize + 8 : 0);
+            const textW = RIGHT_W - (img ? iconSize + 8 : 0);
+            ctx.font = `600 11px ${SANS}`;
             ctx.fillStyle = theme.text;
-            ctx.fillText(piece.name, textX, rowY + 12);
-            ctx.font = `10px ${MONO}`;
+            ctx.fillText(truncate(ctx, piece.name, textW), textX, rowY);
+            ctx.font = `9px ${MONO}`;
             ctx.fillStyle = theme.muted;
-            ctx.fillText(`${piece.setName} — ${piece.mainStat.label} ${piece.mainStat.value}`, textX, rowY + 26);
-            ctx.fillText(piece.subStats.map((s) => `${s.label} ${s.value}`).join('  ·  '), textX, rowY + 40);
+            ctx.fillText(truncate(ctx, `${piece.setName} — ${piece.mainStat.label} ${piece.mainStat.value}`, textW), textX, rowY + 12);
+            ctx.fillText(truncate(ctx, piece.subStats.map((s) => `${s.label} ${s.value}`).join(' · '), textW), textX, rowY + 24);
         });
-        y += data.gearPieces.length * gearRowHeight + 12;
+        y += data.gearPieces.length * gearRowHeight + 8;
     }
 
-    // Footer strip: weapon + active set bonus + branding, sized to its actual content.
+    // Footer strip: weapon + active set bonus + branding, confined to the
+    // right column (the image column stays undisturbed to the very bottom).
     const footerRowCount = (data.weaponLine ? 1 : 0) + (data.activeSetLine ? 1 : 0);
-    const footerHeight = footerRowCount * 24 + 44;
+    const footerHeight = footerRowCount * 18 + 34;
     const footerTop = CARD_HEIGHT - footerHeight;
     {
-        ctx.fillStyle = theme.surface2;
-        ctx.fillRect(0, footerTop, CARD_WIDTH, footerHeight);
         ctx.strokeStyle = theme.border;
         ctx.beginPath();
-        ctx.moveTo(0, footerTop);
-        ctx.lineTo(CARD_WIDTH, footerTop);
+        ctx.moveTo(RIGHT_X, footerTop);
+        ctx.lineTo(CARD_WIDTH - PAD, footerTop);
         ctx.stroke();
 
-        let fy = footerTop + 24;
+        let fy = footerTop + 18;
         if (data.weaponLine) {
-            ctx.font = `600 13px ${SANS}`;
+            ctx.font = `600 11px ${SANS}`;
             ctx.fillStyle = theme.text;
-            ctx.fillText(data.weaponLine, pad, fy);
+            ctx.fillText(truncate(ctx, data.weaponLine, RIGHT_W - 40), RIGHT_X, fy);
             if (data.weaponDetail) {
-                ctx.font = `11px ${MONO}`;
+                ctx.font = `9px ${MONO}`;
                 ctx.fillStyle = theme.muted;
                 ctx.textAlign = 'right';
-                ctx.fillText(data.weaponDetail, CARD_WIDTH - pad, fy);
+                ctx.fillText(data.weaponDetail, CARD_WIDTH - PAD, fy);
                 ctx.textAlign = 'left';
             }
-            fy += 24;
+            fy += 18;
         }
         if (data.activeSetLine) {
-            ctx.font = `600 13px ${SANS}`;
+            ctx.font = `600 11px ${SANS}`;
             ctx.fillStyle = theme.accent;
-            ctx.fillText(data.activeSetLine, pad, fy);
+            ctx.fillText(truncate(ctx, data.activeSetLine, RIGHT_W - 40), RIGHT_X, fy);
             if (data.activeSetDetail) {
-                ctx.font = `11px ${MONO}`;
+                ctx.font = `9px ${MONO}`;
                 ctx.fillStyle = theme.muted;
                 ctx.textAlign = 'right';
-                ctx.fillText(data.activeSetDetail, CARD_WIDTH - pad, fy);
+                ctx.fillText(data.activeSetDetail, CARD_WIDTH - PAD, fy);
                 ctx.textAlign = 'left';
             }
-            fy += 24;
+            fy += 18;
         }
 
-        ctx.font = `11px ${MONO}`;
+        ctx.font = `9px ${MONO}`;
         ctx.fillStyle = theme.muted;
-        ctx.fillText('[ FrequencyManager ]', pad, CARD_HEIGHT - pad + 4);
+        ctx.fillText('[ FrequencyManager ]', RIGHT_X, CARD_HEIGHT - PAD + 2);
         if (data.critValue != null) {
             ctx.textAlign = 'right';
-            ctx.fillText(`CV ${data.critValue.toFixed(1)}`, CARD_WIDTH - pad, CARD_HEIGHT - pad + 4);
+            ctx.fillText(`CV ${data.critValue.toFixed(1)}`, CARD_WIDTH - PAD, CARD_HEIGHT - PAD + 2);
             ctx.textAlign = 'left';
         }
     }
