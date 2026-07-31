@@ -104,13 +104,35 @@ Shenhe, Xilonen, Zibai, Skirk, Lauma, Nicole, and others).
 data entry — tracked here rather than guessed at):
 - No damage channel exists for the newer "Lunar-Charged"/"Lunar-Crystallize"/
   "Lunar-Bloom" reaction family (Flins, Columbina, Ineffa, Zibai C2, Baizhu
-  P2, Lauma's burst all have real mechanics riding on this).
+  P2, Lauma's burst all have real mechanics riding on this). **Attempted
+  2026-07-31, blocked on sourcing, not just unstarted**: one source
+  describes Lunar-Charged as a 300%-of-original-hit direct multiplier,
+  another gives an entirely different indirect-standalone-instance formula
+  with an unexplained "Elevation Multiplier" term — even KQM library's own
+  dedicated transformative-reactions page (the most reliable source used
+  throughout this project) doesn't cover Lunar reactions at all yet. Too
+  new/undocumented to implement without guessing; re-check once community
+  theorycrafting catches up.
 - No self-facing RES% stat primitive (only `resShred`, which debuffs the
   enemy) — Arlecchino's real P2 is defensive RES%; her previous entry was a
   fabricated Pyro DMG% buff and has been removed rather than left wrong.
-- No "live party-composition-count" buff scaling (Charlotte P2, Yunjin P2,
-  Xianyun P1, Nahida's Pyro-teammate-count burst buff) — BuffEntry has no
-  way to express "value depends on how many of element X are in the party."
+- ~~No "live party-composition-count" buff scaling~~ **CORRECTED 2026-07-31
+  — this was never actually blocked.** Party-composition-dependent buffs
+  just need the SAME "assume the common/max case, mark conditional" pattern
+  already used everywhere else in this file (Navia's "2 elemental
+  teammates" 40% ATK is the exact same shape). Added Charlotte's P1 Cryo
+  DMG branch (self-buff, max case) this pass. The REAL, still-open gap:
+  **team buffs (`CHARACTER_TEAM_BUFFS`/bundle.ts's `character` array) have
+  no conditional/toggle mechanism at all** — only self-buffs distinguish
+  auto (`characterAutoBuffs`) vs opt-in (`conditionalCharacterBuffs`);
+  `partyEffects` always includes every team buff unconditionally. Yunjin's
+  P2 (boosts her own team-wide NA buff by party elemental-type count) and
+  Xianyun's P1 (team-wide Plunge Crit Rate) are genuinely blocked on THIS —
+  adding them as always-on would misrepresent them as permanently active.
+  Nahida's Pyro-teammate-count burst buff is blocked on a DIFFERENT thing:
+  conflicting sourced numbers for the exact talent-level-10 percentage (one
+  source implies ~14.88-40.176%, another's partial L8 data of 23.8-35.7%
+  doesn't reconcile with that) — not an engine gap, a sourcing gap.
 - Nefer's "Phantasm Performance" multi-hit combo and Nicole's "Arcane
   Projection" — real mechanics exist but no source gave clean, confident
   per-level numbers to enter (unlike everything above, which was 2-source

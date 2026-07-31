@@ -109,6 +109,13 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // equivalent +% dmgBonus (170%->+70%, 160%->+60%) at 3 stacks.
     "skirk": [{"stat":"dmgBonus","label":"Normal/Charged DMG +70%, Warp mode, 3 Death's Crossing stacks (P1, Return to Oblivion)","value":70,"conditional":true,"appliesTo":["normal","charged"]},{"stat":"dmgBonus","label":"Burst DMG +60%, 3 Death's Crossing stacks (P1, Return to Oblivion)","value":60,"conditional":true,"appliesTo":["ult"]}],
     "lauma": [{"stat":"dmgBonus","label":"Skill DMG · 0.04% per own EM point, capped 32% (P4)","value":0,"conditional":false,"appliesTo":["skill"],"scaleOff":{"sourceStat":"elementalMastery","basis":"total","ratio":0.04,"cap":32}}],
+    // Added 2026-07-31. Real passive is 2 mutually-exclusive branches (5/10/
+    // 15% Healing Bonus per non-self Fontainian teammate, OR 5/10/15% Cryo
+    // DMG per non-Fontainian teammate) — only the damage-relevant Cryo DMG
+    // branch is modeled (this app doesn't track healing), at its max
+    // (3 non-Fontainian teammates) case, conditional — same established
+    // "assume the common/max case" convention as Navia's/Kaveh's entries.
+    "charlotte": [{"stat":"elemDmg","label":"Cryo DMG +15%, 3 non-Fontainian teammates, Diversified Investigation (P1)","value":15,"conditional":true}],
 };
 
 /**
