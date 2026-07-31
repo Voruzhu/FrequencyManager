@@ -1,5 +1,26 @@
 {
     "schemaVersion": "1.0",
-    "generatedAt": "2026-07-30",
-    "presets": []
+    "generatedAt": "2026-07-31",
+    "presets": [
+        {
+            "id": "gi-trounce-golden-wolflord",
+            "category": "trounce-domain",
+            "displayName": "Trounce Domain — Golden Wolflord",
+            "waves": [{ "enemyId": "gi-wolflord" }],
+            "sourceNote": "Permanent boss, no in-combat time limit (weekly reward collection resets Monday 4am server time, not a combat clock) — confirmed via community wiki/guide cross-check, 2026-07-31."
+        },
+        {
+            "id": "gi-theater-season25",
+            "category": "imaginarium-theater",
+            "displayName": "Imaginarium Theater — Season 25 (Pyro/Cryo/Electro)",
+            "cycleLabel": "2026-07-01 to 2026-07-30 (Luna VII) — verify this hasn't rotated to a new season before relying on it",
+            "waves": [
+                { "enemyId": "gi-jadeplume" },
+                { "enemyId": "gi-geovishap" },
+                { "enemyId": "gi-aeonblight" }
+            ],
+            "specialRuleNote": "Only Pyro/Cryo/Electro characters (plus Special Guests) usable. \"Treacherous Thunder\" stage effect: thunder strikes your characters partway through. Real lineup also includes a 4th enemy, \"Super-Heavy Landrover: Mechanized Fortress\" (Lv.95), not yet in this app's enemy catalog — omitted rather than guessing its RES.",
+            "sourceNote": "No confirmed exact time-limit clock for this mode (unlike Abyss/ToA) — left unset rather than guessed. Enemies/season dates via community wiki cross-check, 2026-07-31."
+        }
+    ]
 }

@@ -1,5 +1,18 @@
 {
     "schemaVersion": "1.0",
-    "generatedAt": "2026-07-30",
-    "presets": []
+    "generatedAt": "2026-07-31",
+    "presets": [
+        {
+            "id": "ww-toa-hazard-example",
+            "category": "tower-of-adversity",
+            "displayName": "Tower of Adversity — Hazard Zone (example 2-wave floor)",
+            "cycleLabel": "Current cycle: 2026-07-20 to 2026-08-27 — exact floor/boss lineup for this cycle not confirmed, see sourceNote",
+            "waves": [
+                { "enemyId": "ww-thundering-mephis" },
+                { "enemyId": "ww-jue" }
+            ],
+            "timeLimitSeconds": 360,
+            "sourceNote": "Time limit (180s/half x2 halves = 360s) confirmed via community guide cross-check, 2026-07-31. The 2 bosses here are real, catalog-sourced Hazard Zone enemies used as a representative example — this cycle's ACTUAL confirmed floor lineup wasn't obtainable (only which player characters counter it was found, not the enemy side) — swap the waves to match your real current floor before trusting the comparison."
+        }
+    ]
 }
