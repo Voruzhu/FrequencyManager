@@ -127,7 +127,7 @@ export function BuildCardWindow({
     return (
         <div className="space-y-3">
             <div className="flex justify-center rounded-md border border-border bg-surface-2 p-3">
-                <canvas ref={canvasRef} width={CARD_WIDTH} height={CARD_HEIGHT} style={{ width: CARD_WIDTH / 1.6, height: CARD_HEIGHT / 1.6 }} />
+                <canvas ref={canvasRef} width={CARD_WIDTH} height={CARD_HEIGHT} style={{ width: CARD_WIDTH / 2.6, height: CARD_HEIGHT / 2.6 }} />
             </div>
             <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -4,6 +4,11 @@
  * passed in as resolved CSS color strings (read from the live theme's
  * computed style by the caller) so the card matches whichever theme —
  * light or dark — the user actually has active, instead of a fixed palette.
+ *
+ * Layout: full-bleed character art behind the ENTIRE card (not a column —
+ * the point is that the art IS the background, like an official in-game
+ * character-showcase screen), with a dark gradient wash for legibility and
+ * floating panels for the actual build info on top of it.
  */
 
 export interface BuildCardTheme {
@@ -55,13 +60,12 @@ export interface BuildCardData {
     critValue?: number;
 }
 
-export const CARD_WIDTH = 520;
-export const CARD_HEIGHT = 900;
+// Fixed landscape dimensions (16:9-ish, matches the reference's proportions
+// and doubles as a standard social/Discord-embed-friendly aspect ratio).
+export const CARD_WIDTH = 1200;
+export const CARD_HEIGHT = 675;
 
-const IMAGE_COL_WIDTH = 180;
-const PAD = 16;
-const RIGHT_X = IMAGE_COL_WIDTH + PAD;
-const RIGHT_W = CARD_WIDTH - RIGHT_X - PAD;
+const PAD = 24;
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = '"IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif';
@@ -93,9 +97,8 @@ function relevanceColor(theme: BuildCardTheme, relevance: BuildCardStatRow['rele
 }
 
 /** Cuts `text` down with a trailing "…" if it doesn't fit `maxWidth` at the
- * context's CURRENT font — the right column is narrow enough (squeezed next
- * to the image column) that long gear/set names would otherwise silently
- * overrun into the margin or overlap the next line's text. */
+ * context's CURRENT font — panel widths are fixed, so a long gear/set name
+ * needs to degrade gracefully instead of overrunning the panel edge. */
 function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
     if (ctx.measureText(text).width <= maxWidth) return text;
     let lo = 0, hi = text.length;
@@ -104,6 +107,21 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
         if (ctx.measureText(text.slice(0, mid) + '…').width <= maxWidth) lo = mid; else hi = mid - 1;
     }
     return text.slice(0, lo) + '…';
+}
+
+/** A floating opaque-ish panel — the reference image's cards (weapon, QR,
+ * echoes) read as distinct UI floating over the background art, not
+ * see-through onto it, so this panel fill is deliberately near-opaque
+ * (0.88) rather than a light translucent glass effect. */
+function panel(ctx: CanvasRenderingContext2D, theme: BuildCardTheme, x: number, y: number, w: number, h: number) {
+    roundRect(ctx, x, y, w, h, 10);
+    ctx.fillStyle = theme.surface2;
+    ctx.globalAlpha = 0.88;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = theme.border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 }
 
 export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, theme: BuildCardTheme): Promise<void> {
@@ -117,192 +135,205 @@ export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardDa
         ...data.gearPieces.map((g) => loadImage(g.iconUrl)),
     ]);
 
-    // Base card.
-    roundRect(ctx, 0, 0, CARD_WIDTH, CARD_HEIGHT, 12);
+    // Base card + full-bleed background art (cover-fit across the ENTIRE
+    // canvas, cropped toward the top third — faces/portraits sit there far
+    // more often than a character's feet). No image resolved -> plain
+    // surface color, same as before.
+    roundRect(ctx, 0, 0, CARD_WIDTH, CARD_HEIGHT, 16);
     ctx.fillStyle = theme.surface;
     ctx.fill();
-    ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Left column: a full-height vertical portrait strip — the point is to
-    // frame the character tightly (a tall narrow crop reads as "portrait",
-    // not "banner"), not to leave room for text on top of it. No image
-    // resolved -> the column just stays the plain surface color.
     ctx.save();
-    roundRect(ctx, 0, 0, IMAGE_COL_WIDTH, CARD_HEIGHT, 12);
+    roundRect(ctx, 0, 0, CARD_WIDTH, CARD_HEIGHT, 16);
     ctx.clip();
     if (charImg) {
-        const scale = Math.max(IMAGE_COL_WIDTH / charImg.width, CARD_HEIGHT / charImg.height);
+        const scale = Math.max(CARD_WIDTH / charImg.width, CARD_HEIGHT / charImg.height);
         const dw = charImg.width * scale;
         const dh = charImg.height * scale;
-        // Bias the crop toward the top third (faces/portraits sit there far
-        // more often than a character's feet), rather than centering blindly.
-        const dy = Math.min(0, -(dh - CARD_HEIGHT) * 0.25);
-        ctx.drawImage(charImg, (IMAGE_COL_WIDTH - dw) / 2, dy, dw, dh);
-        // A left-edge-to-right gradient fade into the surface color, so the
-        // seam between image and right column reads as intentional, not a
-        // hard cut.
-        const grad = ctx.createLinearGradient(IMAGE_COL_WIDTH - 40, 0, IMAGE_COL_WIDTH, 0);
-        grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(1, theme.surface);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, IMAGE_COL_WIDTH, CARD_HEIGHT);
+        const dx = (CARD_WIDTH - dw) / 2;
+        const dy = Math.min(0, -(dh - CARD_HEIGHT) * 0.4);
+        ctx.drawImage(charImg, dx, dy, dw, dh);
+
+        // Dark wash for legibility everywhere, layered with two directional
+        // gradients so panels stay readable regardless of where the crop
+        // happened to place the character: a left-to-right darkening (name/
+        // header sits top-left, directly over the art, no panel behind it)
+        // and a top-to-bottom darkening (the gear row sits at the very
+        // bottom, which needs the strongest wash of all).
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+        const vGrad = ctx.createLinearGradient(0, CARD_HEIGHT * 0.45, 0, CARD_HEIGHT);
+        vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        vGrad.addColorStop(1, 'rgba(0,0,0,0.65)');
+        ctx.fillStyle = vGrad;
+        ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+        const hGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH * 0.5, 0);
+        hGrad.addColorStop(0, 'rgba(0,0,0,0.35)');
+        hGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = hGrad;
+        // Full card height, NOT just the top half — the gradient's own
+        // right-side stop already fades to fully transparent, so bounding
+        // this fillRect to a fraction of the height left a hard rectangular
+        // seam where the extra tint abruptly stopped (visible as a "weird
+        // border" partway down the left side).
+        ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
     }
     ctx.restore();
     ctx.strokeStyle = theme.border;
-    ctx.beginPath();
-    ctx.moveTo(IMAGE_COL_WIDTH, 0);
-    ctx.lineTo(IMAGE_COL_WIDTH, CARD_HEIGHT);
+    ctx.lineWidth = 1;
+    roundRect(ctx, 0.5, 0.5, CARD_WIDTH - 1, CARD_HEIGHT - 1, 16);
     ctx.stroke();
 
-    let y = PAD + 8;
     ctx.textBaseline = 'alphabetic';
 
+    // Header — name/element/weapon/rarity/sequence directly over the art, no
+    // panel behind it (matches the reference: plain light text over a dark-
+    // enough wash reads fine, and keeps the character unobscured). Flows
+    // forward from a generous top margin (HEADER_TOP), well clear of both
+    // the card's top edge and its rounded corner, rather than backward
+    // offsets from a single anchor line — those had crept close enough to
+    // the top edge to look clipped.
+    const HEADER_TOP = PAD + 20;
+    let hy = HEADER_TOP;
+    ctx.font = `600 11px ${MONO}`;
     ctx.fillStyle = theme.accent;
-    ctx.font = `600 10px ${MONO}`;
-    ctx.fillText(data.gameId === 'genshin-impact' ? 'GENSHIN IMPACT BUILD' : 'WUTHERING WAVES BUILD', RIGHT_X, y);
-    y += 20;
+    ctx.fillText(data.gameId === 'genshin-impact' ? 'GENSHIN IMPACT BUILD' : 'WUTHERING WAVES BUILD', PAD, hy);
+    hy += 32;
 
-    ctx.fillStyle = theme.text;
-    ctx.font = `600 21px ${SANS}`;
-    ctx.fillText(truncate(ctx, data.characterName, RIGHT_W), RIGHT_X, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = theme.muted;
-    ctx.font = `10px ${MONO}`;
-    ctx.fillText('★'.repeat(Math.max(0, data.rarity)), CARD_WIDTH - PAD, y);
-    ctx.textAlign = 'left';
-    y += 18;
-
-    ctx.font = `11px ${MONO}`;
-    ctx.fillStyle = theme.accent;
-    ctx.fillText(data.element, RIGHT_X, y);
-    const elemWidth = ctx.measureText(data.element).width;
-    ctx.fillStyle = theme.muted;
-    ctx.fillText(`  ·  ${data.weaponType}`, RIGHT_X + elemWidth, y);
+    let hx = PAD;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `600 34px ${SANS}`;
+    ctx.fillText(data.characterName, hx, hy);
+    hx += ctx.measureText(data.characterName).width + 14;
     if (data.sequenceLabel && data.sequenceValue != null) {
-        ctx.textAlign = 'right';
+        ctx.font = `600 13px ${MONO}`;
         ctx.fillStyle = theme.accent;
-        ctx.fillText(`${data.sequenceLabel} ${data.sequenceValue}/${data.sequenceMax ?? 6}`, CARD_WIDTH - PAD, y);
-        ctx.textAlign = 'left';
+        ctx.fillText(`${data.sequenceLabel} ${data.sequenceValue}/${data.sequenceMax ?? 6}`, hx, hy);
     }
-    y += 16;
+    hy += 26;
 
-    ctx.strokeStyle = theme.border;
-    ctx.beginPath();
-    ctx.moveTo(RIGHT_X, y);
-    ctx.lineTo(CARD_WIDTH - PAD, y);
-    ctx.stroke();
-    y += 16;
+    ctx.font = `12px ${MONO}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(`${data.element}  ·  ${data.weaponType}  ·  ${'★'.repeat(Math.max(0, data.rarity))}`, PAD, hy);
+    hy += 26;
 
-    // Hero readout — the biggest single number on the card, sized DOWN from
-    // the original top-banner layout since the right column is now narrower.
+    // Branding + CV — a final header line, still over the art in the same
+    // top-left block (NOT the bottom corner: the gear strip already claims
+    // the full-width bottom edge when any gear is equipped).
     ctx.font = `10px ${MONO}`;
-    ctx.fillStyle = theme.muted;
-    ctx.fillText(truncate(ctx, data.heroLabel.toUpperCase(), RIGHT_W), RIGHT_X, y);
-    y += 30;
-    ctx.font = `600 34px ${MONO}`;
-    ctx.fillStyle = theme.accent;
-    ctx.fillText(data.heroValue, RIGHT_X, y);
-    y += 12;
-
-    ctx.strokeStyle = theme.accent;
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.moveTo(RIGHT_X, y);
-    ctx.lineTo(CARD_WIDTH - PAD, y);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    y += 18;
-
-    // Stat list — single column (the right column is too narrow for 2), each
-    // row tighter than the original layout.
-    const rowHeight = 19;
-    data.stats.forEach((row) => {
-        ctx.font = `10px ${MONO}`;
-        ctx.fillStyle = theme.muted;
-        ctx.fillText(row.label, RIGHT_X, y);
-        ctx.font = `600 11px ${MONO}`;
-        ctx.fillStyle = relevanceColor(theme, row.relevance);
-        ctx.textAlign = 'right';
-        ctx.fillText(row.value, CARD_WIDTH - PAD, y);
-        ctx.textAlign = 'left';
-        y += rowHeight;
-    });
-    y += 10;
-
-    // Per-gear-piece rows: icon + set + main/substats, tightened.
-    if (data.gearPieces.length > 0) {
-        ctx.font = `10px ${MONO}`;
-        ctx.fillStyle = theme.muted;
-        ctx.fillText('LOADOUT', RIGHT_X, y);
-        y += 15;
-        const iconSize = 24;
-        const gearRowHeight = 46;
-        data.gearPieces.forEach((piece, i) => {
-            const rowY = y + i * gearRowHeight;
-            const img = gearImgs[i];
-            if (img) ctx.drawImage(img, RIGHT_X, rowY - 10, iconSize, iconSize);
-            const textX = RIGHT_X + (img ? iconSize + 8 : 0);
-            const textW = RIGHT_W - (img ? iconSize + 8 : 0);
-            ctx.font = `600 11px ${SANS}`;
-            ctx.fillStyle = theme.text;
-            ctx.fillText(truncate(ctx, piece.name, textW), textX, rowY);
-            ctx.font = `9px ${MONO}`;
-            ctx.fillStyle = theme.muted;
-            ctx.fillText(truncate(ctx, `${piece.setName} — ${piece.mainStat.label} ${piece.mainStat.value}`, textW), textX, rowY + 12);
-            ctx.fillText(truncate(ctx, piece.subStats.map((s) => `${s.label} ${s.value}`).join(' · '), textW), textX, rowY + 24);
-        });
-        y += data.gearPieces.length * gearRowHeight + 8;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('[ FrequencyManager ]', PAD, hy);
+    if (data.critValue != null) {
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(`CV ${data.critValue.toFixed(1)}`, PAD + 150, hy);
     }
 
-    // Footer strip: weapon + active set bonus + branding, confined to the
-    // right column (the image column stays undisturbed to the very bottom).
-    const footerRowCount = (data.weaponLine ? 1 : 0) + (data.activeSetLine ? 1 : 0);
-    const footerHeight = footerRowCount * 18 + 34;
-    const footerTop = CARD_HEIGHT - footerHeight;
+    // Stats panel — top-right, floating over the art.
+    const statPanelW = 340;
+    const statPanelX = CARD_WIDTH - PAD - statPanelW;
+    const statRowH = 22;
+    const statPanelH = 56 + Math.ceil(data.stats.length / 2) * statRowH + 16;
+    const statPanelY = PAD;
+    panel(ctx, theme, statPanelX, statPanelY, statPanelW, statPanelH);
     {
+        const px = statPanelX + 16;
+        let py = statPanelY + 22;
+        ctx.font = `10px ${MONO}`;
+        ctx.fillStyle = theme.muted;
+        ctx.fillText(truncate(ctx, data.heroLabel.toUpperCase(), statPanelW - 32), px, py);
+        py += 30;
+        ctx.font = `600 28px ${MONO}`;
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(data.heroValue, px, py);
+        py += 18;
         ctx.strokeStyle = theme.border;
         ctx.beginPath();
-        ctx.moveTo(RIGHT_X, footerTop);
-        ctx.lineTo(CARD_WIDTH - PAD, footerTop);
+        ctx.moveTo(px, py);
+        ctx.lineTo(statPanelX + statPanelW - 16, py);
         ctx.stroke();
+        py += 20;
+        const colW = (statPanelW - 32 - 12) / 2;
+        data.stats.forEach((row, i) => {
+            const col = i % 2;
+            const rowIdx = Math.floor(i / 2);
+            const x = px + col * (colW + 12);
+            const rowY = py + rowIdx * statRowH;
+            ctx.font = `600 11px ${MONO}`;
+            const valueWidth = ctx.measureText(row.value).width;
+            ctx.fillStyle = relevanceColor(theme, row.relevance);
+            ctx.textAlign = 'right';
+            ctx.fillText(row.value, x + colW, rowY);
+            ctx.textAlign = 'left';
+            ctx.font = `9px ${MONO}`;
+            ctx.fillStyle = theme.muted;
+            ctx.fillText(truncate(ctx, row.label, colW - valueWidth - 8), x, rowY);
+        });
+    }
 
-        let fy = footerTop + 18;
-        if (data.weaponLine) {
-            ctx.font = `600 11px ${SANS}`;
-            ctx.fillStyle = theme.text;
-            ctx.fillText(truncate(ctx, data.weaponLine, RIGHT_W - 40), RIGHT_X, fy);
-            if (data.weaponDetail) {
-                ctx.font = `9px ${MONO}`;
-                ctx.fillStyle = theme.muted;
-                ctx.textAlign = 'right';
-                ctx.fillText(data.weaponDetail, CARD_WIDTH - PAD, fy);
-                ctx.textAlign = 'left';
-            }
-            fy += 18;
+    // Weapon panel — below the stats panel, same width.
+    if (data.weaponLine) {
+        const wpY = statPanelY + statPanelH + 14;
+        const wpH = 60;
+        panel(ctx, theme, statPanelX, wpY, statPanelW, wpH);
+        const px = statPanelX + 16;
+        ctx.font = `600 14px ${SANS}`;
+        ctx.fillStyle = theme.text;
+        ctx.fillText(truncate(ctx, data.weaponLine, statPanelW - 100), px, wpY + 26);
+        if (data.weaponDetail) {
+            ctx.font = `10px ${MONO}`;
+            ctx.fillStyle = theme.muted;
+            ctx.textAlign = 'right';
+            ctx.fillText(data.weaponDetail, statPanelX + statPanelW - 16, wpY + 26);
+            ctx.textAlign = 'left';
         }
         if (data.activeSetLine) {
-            ctx.font = `600 11px ${SANS}`;
+            ctx.font = `11px ${MONO}`;
             ctx.fillStyle = theme.accent;
-            ctx.fillText(truncate(ctx, data.activeSetLine, RIGHT_W - 40), RIGHT_X, fy);
+            ctx.fillText(truncate(ctx, data.activeSetLine, statPanelW - 100), px, wpY + 44);
             if (data.activeSetDetail) {
                 ctx.font = `9px ${MONO}`;
                 ctx.fillStyle = theme.muted;
                 ctx.textAlign = 'right';
-                ctx.fillText(data.activeSetDetail, CARD_WIDTH - PAD, fy);
+                ctx.fillText(data.activeSetDetail, statPanelX + statPanelW - 16, wpY + 44);
                 ctx.textAlign = 'left';
             }
-            fy += 18;
-        }
-
-        ctx.font = `9px ${MONO}`;
-        ctx.fillStyle = theme.muted;
-        ctx.fillText('[ FrequencyManager ]', RIGHT_X, CARD_HEIGHT - PAD + 2);
-        if (data.critValue != null) {
-            ctx.textAlign = 'right';
-            ctx.fillText(`CV ${data.critValue.toFixed(1)}`, CARD_WIDTH - PAD, CARD_HEIGHT - PAD + 2);
-            ctx.textAlign = 'left';
         }
     }
+
+    // Gear row — a full-width strip of per-piece panels along the bottom,
+    // matching the reference's horizontal echo/artifact card row.
+    if (data.gearPieces.length > 0) {
+        const stripH = 150;
+        const stripY = CARD_HEIGHT - PAD - stripH;
+        const gap = 12;
+        const pieceW = (CARD_WIDTH - PAD * 2 - gap * (data.gearPieces.length - 1)) / data.gearPieces.length;
+        data.gearPieces.forEach((piece, i) => {
+            const px = PAD + i * (pieceW + gap);
+            panel(ctx, theme, px, stripY, pieceW, stripH);
+            const img = gearImgs[i];
+            const iconSize = 40;
+            const tx = px + 12;
+            let ty = stripY + 16;
+            if (img) { ctx.drawImage(img, tx, ty, iconSize, iconSize); }
+            const textX = img ? tx + iconSize + 8 : tx;
+            const textW = pieceW - (img ? iconSize + 8 + 12 : 24);
+            ctx.font = `600 11px ${SANS}`;
+            ctx.fillStyle = theme.text;
+            ctx.fillText(truncate(ctx, piece.name, textW), textX, ty + 12);
+            ctx.font = `9px ${MONO}`;
+            ctx.fillStyle = theme.muted;
+            ctx.fillText(truncate(ctx, piece.setName, textW), textX, ty + 26);
+            ty += iconSize + 14;
+            ctx.font = `600 10px ${MONO}`;
+            ctx.fillStyle = theme.accent;
+            ctx.fillText(truncate(ctx, `${piece.mainStat.label} ${piece.mainStat.value}`, pieceW - 24), tx, ty);
+            ty += 16;
+            ctx.font = `9px ${MONO}`;
+            ctx.fillStyle = theme.muted;
+            piece.subStats.forEach((s) => {
+                ctx.fillText(truncate(ctx, `${s.label} ${s.value}`, pieceW - 24), tx, ty);
+                ty += 13;
+            });
+        });
+    }
+
 }
