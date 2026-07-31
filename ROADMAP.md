@@ -199,6 +199,24 @@ and what's off — that's exactly what this section is tracking against.
   accent color rather than a per-element palette, since no such system
   exists anywhere else in the app and inventing one just for this export
   would be inconsistent with it.
+- **Build card v2 (2026-07-31)** — real character portrait art, fetched
+  live (never bundled — ~1GB across 297 characters would be the wrong
+  call) from Fandom wikis via their own MediaWiki `imageinfo` API, cached
+  client-side. All 177 real characters (121 GI + 56 WW) resolved after
+  handling real naming quirks: GI Travelers share one "Traveler Male
+  Card.png" (no per-element wiki variant), Childe is filed under
+  "Tartaglia", WW splits between "Splash Art" (mostly 5-star) and "Card"
+  (mostly 4-star, several `.jpg` not `.png`) suffixes, and Rover shares one
+  "Male Rover 1.jpg" across all element variants. Also added: Sequence/
+  Constellation level badge, per-equipped-piece icon + main/substat rows,
+  the resulting active set-bonus line, kit-derived stat color grading
+  (`statRelevance` — element match / real scaling stat / crit-vs-healer
+  split / EM-only-if-actually-scaled-off, all from data already in the
+  bundle, never fabricated), an accent-color picker, and a persisted
+  custom-image override. Redesigned mid-build per live feedback into a
+  full-height vertical portrait column on the left with a tightened
+  single-column right side, rather than the original horizontal top
+  banner — approved against a live screenshot before committing.
 - **Genshin Impact full-roster re-audit** — give Genshin the same treatment
   Wuthering Waves just got: every character's kit, every weapon, cross-checked
   against 2+ independent sources, fixing wrong values/scopes/missing buffs
