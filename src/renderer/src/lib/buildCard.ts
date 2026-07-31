@@ -19,6 +19,15 @@ export interface BuildCardTheme {
 export interface BuildCardStatRow {
     label: string;
     value: string;
+    relevance: 'low' | 'medium' | 'high';
+}
+
+export interface BuildCardGearPiece {
+    iconUrl?: string;
+    name: string;
+    setName: string;
+    mainStat: { label: string; value: string };
+    subStats: Array<{ label: string; value: string }>;
 }
 
 export interface BuildCardData {
@@ -27,18 +36,27 @@ export interface BuildCardData {
     element: string;
     weaponType: string;
     rarity: number;
+    imageUrl?: string;
+    sequenceLabel?: string;
+    sequenceValue?: number;
+    sequenceMax?: number;
     heroLabel: string;
     heroValue: string;
     stats: BuildCardStatRow[];
     weaponLine?: string;
     weaponDetail?: string;
-    setLine?: string;
-    setDetail?: string;
+    gearPieces: BuildCardGearPiece[];
+    /** The RESULTING active set bonus (e.g. "Crimson Witch of Flames — 4pc"),
+     * distinct from each piece's own `setName` in `gearPieces` — this is the
+     * actual game-mechanical payoff of the equipped combination, not just a
+     * per-item label, so it's worth its own line. */
+    activeSetLine?: string;
+    activeSetDetail?: string;
     critValue?: number;
 }
 
 export const CARD_WIDTH = 480;
-export const CARD_HEIGHT = 680;
+export const CARD_HEIGHT = 1080;
 
 const MONO = '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
 const SANS = '"IBM Plex Sans", "Segoe UI", ui-sans-serif, system-ui, sans-serif';
@@ -49,12 +67,37 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
     else ctx.rect(x, y, w, h); // ancient-fallback: a square corner is a cosmetic degradation, not a broken export
 }
 
-export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, theme: BuildCardTheme): void {
+/** Loads an image for canvas drawing; resolves `null` instead of rejecting on
+ * any failure (broken URL, CORS block, 404) so one bad icon never blocks the
+ * rest of the card. */
+function loadImage(url: string | undefined): Promise<HTMLImageElement | null> {
+    if (!url) return Promise.resolve(null);
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+}
+
+function relevanceColor(theme: BuildCardTheme, relevance: BuildCardStatRow['relevance']): string {
+    if (relevance === 'high') return theme.accent;
+    if (relevance === 'low') return theme.muted;
+    return theme.text;
+}
+
+export async function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, theme: BuildCardTheme): Promise<void> {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     canvas.width = CARD_WIDTH;
     canvas.height = CARD_HEIGHT;
     const pad = 24;
+
+    const [charImg, ...gearImgs] = await Promise.all([
+        loadImage(data.imageUrl),
+        ...data.gearPieces.map((g) => loadImage(g.iconUrl)),
+    ]);
 
     // Base card.
     roundRect(ctx, 0, 0, CARD_WIDTH, CARD_HEIGHT, 12);
@@ -66,7 +109,24 @@ export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, th
 
     let y = pad;
 
-    // Header: eyebrow + rarity, name, element/weapon/rarity meta.
+    // Character image — a fixed-height cover-fit band across the top, drawn
+    // BEHIND the header text (a translucent scrim keeps the header legible
+    // over any image). No image resolved -> just the plain surface color.
+    const imgBandHeight = 200;
+    if (charImg) {
+        ctx.save();
+        roundRect(ctx, 0, 0, CARD_WIDTH, imgBandHeight, 12);
+        ctx.clip();
+        const scale = Math.max(CARD_WIDTH / charImg.width, imgBandHeight / charImg.height);
+        const dw = charImg.width * scale;
+        const dh = charImg.height * scale;
+        ctx.drawImage(charImg, (CARD_WIDTH - dw) / 2, (imgBandHeight - dh) / 2, dw, dh);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, 0, CARD_WIDTH, imgBandHeight);
+        ctx.restore();
+        y = imgBandHeight + 16;
+    }
+
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = theme.accent;
     ctx.font = `600 11px ${MONO}`;
@@ -80,6 +140,12 @@ export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, th
     ctx.fillStyle = theme.text;
     ctx.font = `600 26px ${SANS}`;
     ctx.fillText(data.characterName, pad, y);
+    if (data.sequenceLabel && data.sequenceValue != null) {
+        const nameWidth = ctx.measureText(data.characterName).width;
+        ctx.font = `600 12px ${MONO}`;
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(`${data.sequenceLabel} ${data.sequenceValue}/${data.sequenceMax ?? 6}`, pad + nameWidth + 12, y);
+    }
     y += 22;
 
     ctx.font = `12px ${MONO}`;
@@ -116,7 +182,7 @@ export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, th
     ctx.globalAlpha = 1;
     y += 26;
 
-    // Stat grid — 2 columns.
+    // Stat grid — colored by kit relevance instead of a flat text color.
     const colWidth = (CARD_WIDTH - pad * 2 - 16) / 2;
     const rowHeight = 26;
     data.stats.forEach((row, i) => {
@@ -128,17 +194,38 @@ export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, th
         ctx.fillStyle = theme.muted;
         ctx.fillText(row.label, x, rowY);
         ctx.font = `600 12px ${MONO}`;
-        ctx.fillStyle = theme.text;
+        ctx.fillStyle = relevanceColor(theme, row.relevance);
         ctx.textAlign = 'right';
         ctx.fillText(row.value, x + colWidth, rowY);
         ctx.textAlign = 'left';
     });
     y += Math.ceil(data.stats.length / 2) * rowHeight + 16;
 
-    // Footer strip: weapon + set, background band sized to its actual content
-    // (0-2 rows) rather than "whatever space is left" — an unequipped weapon
-    // or empty set shouldn't leave a big blank band above the watermark.
-    const footerRowCount = (data.weaponLine ? 1 : 0) + (data.setLine ? 1 : 0);
+    // Per-gear-piece rows: icon + set + main/substats, each ~3 lines tall.
+    if (data.gearPieces.length > 0) {
+        ctx.font = `11px ${MONO}`;
+        ctx.fillStyle = theme.muted;
+        ctx.fillText('LOADOUT', pad, y);
+        y += 18;
+        const gearRowHeight = 58;
+        data.gearPieces.forEach((piece, i) => {
+            const rowY = y + i * gearRowHeight;
+            const img = gearImgs[i];
+            if (img) ctx.drawImage(img, pad, rowY, 32, 32);
+            const textX = pad + (img ? 40 : 0);
+            ctx.font = `600 12px ${SANS}`;
+            ctx.fillStyle = theme.text;
+            ctx.fillText(piece.name, textX, rowY + 12);
+            ctx.font = `10px ${MONO}`;
+            ctx.fillStyle = theme.muted;
+            ctx.fillText(`${piece.setName} — ${piece.mainStat.label} ${piece.mainStat.value}`, textX, rowY + 26);
+            ctx.fillText(piece.subStats.map((s) => `${s.label} ${s.value}`).join('  ·  '), textX, rowY + 40);
+        });
+        y += data.gearPieces.length * gearRowHeight + 12;
+    }
+
+    // Footer strip: weapon + active set bonus + branding, sized to its actual content.
+    const footerRowCount = (data.weaponLine ? 1 : 0) + (data.activeSetLine ? 1 : 0);
     const footerHeight = footerRowCount * 24 + 44;
     const footerTop = CARD_HEIGHT - footerHeight;
     {
@@ -164,15 +251,15 @@ export function drawBuildCard(canvas: HTMLCanvasElement, data: BuildCardData, th
             }
             fy += 24;
         }
-        if (data.setLine) {
+        if (data.activeSetLine) {
             ctx.font = `600 13px ${SANS}`;
-            ctx.fillStyle = theme.text;
-            ctx.fillText(data.setLine, pad, fy);
-            if (data.setDetail) {
+            ctx.fillStyle = theme.accent;
+            ctx.fillText(data.activeSetLine, pad, fy);
+            if (data.activeSetDetail) {
                 ctx.font = `11px ${MONO}`;
                 ctx.fillStyle = theme.muted;
                 ctx.textAlign = 'right';
-                ctx.fillText(data.setDetail, CARD_WIDTH - pad, fy);
+                ctx.fillText(data.activeSetDetail, CARD_WIDTH - pad, fy);
                 ctx.textAlign = 'left';
             }
             fy += 24;
