@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste, Bookmark, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Wand2, Target as TargetIcon, CheckCircle2, XCircle, Sparkles, Skull, Users, Star, Layers, Calculator as CalculatorIcon, Search, ChevronsUpDown, Share2, ClipboardPaste, Bookmark, Image as ImageIcon, X } from 'lucide-react';
 import {
     PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Badge,
     ItemIcon, EmptyState, Progress, Switch,
@@ -37,8 +37,14 @@ import { runOptimizerPool } from '@/lib/optimizerPool';
 
 // Soft warning vs. hard block for the optimizer's combinatorial search size
 // (see the pre-flight check in `run()` below for the full reasoning).
-const OPTIMIZER_WARN_COMBOS = 20_000_000;
-const OPTIMIZER_BLOCK_COMBOS = 300_000_000;
+const OPTIMIZER_WARN_COMBOS = 5_000_000;
+const OPTIMIZER_BLOCK_COMBOS = 50_000_000;
+// Use local Web Worker pool instead of backend (main-process) optimizer when
+// combinations exceed this threshold. The backend optimizer runs single-threaded
+// on the main process and blocks the UI with no progress feedback. The local
+// pool parallelizes across threads and reports live progress.
+const OPTIMIZER_LOCAL_PREFERRED_COMBOS = 500_000;
+
 import { getWeaponScaling, refineMul, hasRefinement } from '../data/weaponScaling';
 
 const CRIT_MODES: CritMode[] = ['average', 'always', 'none'];
@@ -253,6 +259,11 @@ export function CalculatorScreen() {
         // moment anything could conceivably throw.
         optimizeStartRef.current = Date.now();
         calc.setOptimizeProgress({ done: 0, total: 0 });
+
+        // Create AbortController for cancellation support
+        const abortController = new AbortController();
+        calc.setOptimizeAbortController(abortController);
+
         try {
             // A user-declared set-bonus requirement (the Optimization card's
             // "Set bonus" picker) narrows the candidate pool to just those
@@ -339,9 +350,13 @@ export function CalculatorScreen() {
             // backend RPC has no notion of locked gear — skip straight to
             // the local engine (which does) whenever any is set, rather than
             // silently getting back a full, unlocked search.
+            // Also skip backend for large gear pools — it runs single-threaded
+            // on the main process and freezes the UI with no progress feedback.
+            const preferLocal = totalCombos > OPTIMIZER_LOCAL_PREFERRED_COMBOS;
+
             let res: Loadout[] | null = null;
             let source: 'backend' | 'local' = 'local';
-            if (lockedGear.length === 0) {
+            if (lockedGear.length === 0 && !preferLocal) {
                 try {
                     const bridge = (window as unknown as { frequencyManager?: { optimizeBuild?: (p: unknown) => Promise<{ ok: boolean; loadouts: Loadout[] } | null> } }).frequencyManager;
                     const out = await bridge?.optimizeBuild?.({ character: dmgCharacter, pool: optimizePool, config });
@@ -351,7 +366,7 @@ export function CalculatorScreen() {
                 }
             }
             if (!res) {
-                res = await runOptimizerPool(dmgCharacter, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p), undefined, lockedGear);
+                res = await runOptimizerPool(dmgCharacter, optimizePool, config, optimizerThreads, (p) => calc.setOptimizeProgress(p), abortController.signal, lockedGear);
             }
 
             calc.setResults(res);
@@ -363,9 +378,15 @@ export function CalculatorScreen() {
                 });
             }
         } catch (err) {
-            toast.error('Optimization failed', { description: err instanceof Error ? err.message : 'An unexpected error occurred.' });
+            // Don't show error toast for user-initiated cancellation
+            if (err instanceof Error && err.message === 'Optimization cancelled') {
+                toast.info('Optimization cancelled');
+            } else {
+                toast.error('Optimization failed', { description: err instanceof Error ? err.message : 'An unexpected error occurred.' });
+            }
         } finally {
             calc.setOptimizeProgress(null);
+            calc.setOptimizeAbortController(null);
         }
     };
 
@@ -560,7 +581,13 @@ export function CalculatorScreen() {
                                     <CalculatorIcon /> Calculate current loadout
                                 </Button>
                             </div>
-                            {calc.optimizeProgress !== null && <OptimizeProgressBar progress={calc.optimizeProgress} startedAt={optimizeStartRef.current} />}
+                            {calc.optimizeProgress !== null && calc.optimizeAbortController && (
+                                <OptimizeProgressBar
+                                    progress={calc.optimizeProgress}
+                                    startedAt={optimizeStartRef.current}
+                                    onCancel={() => calc.optimizeAbortController?.abort()}
+                                />
+                            )}
                         </CardContent>
                     </Card>
 
@@ -961,7 +988,7 @@ function SummaryLabel({ children, className }: { children: React.ReactNode; clas
  * the first worker reports its slice size — `total` starts at 0 both before
  * any worker has checked in and briefly during the backend-RPC attempt,
  * which has no progress feedback at all. */
-function OptimizeProgressBar({ progress, startedAt }: { progress: { done: number; total: number }; startedAt: number }) {
+function OptimizeProgressBar({ progress, startedAt, onCancel }: { progress: { done: number; total: number }; startedAt: number; onCancel: () => void }) {
     const { done, total } = progress;
     const percent = total > 0 ? (done / total) * 100 : undefined;
     const elapsedSec = (Date.now() - startedAt) / 1000;
@@ -976,10 +1003,15 @@ function OptimizeProgressBar({ progress, startedAt }: { progress: { done: number
     return (
         <div className="space-y-1.5">
             <Progress value={percent} />
-            <p className="text-xs text-muted-foreground">
-                {total > 0 ? `${done.toLocaleString()} / ${total.toLocaleString()} combinations` : 'Starting…'}
-                {etaLabel ? ` · ${etaLabel}` : ''}
-            </p>
+            <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                    {total > 0 ? `${done.toLocaleString()} / ${total.toLocaleString()} combinations` : 'Starting…'}
+                    {etaLabel ? ` · ${etaLabel}` : ''}
+                </p>
+                <Button variant="ghost" size="sm" onClick={onCancel} className="text-xs">
+                    <X className="w-3 h-3 mr-1" /> Cancel
+                </Button>
+            </div>
         </div>
     );
 }

@@ -175,6 +175,7 @@ export const CHARACTER_WIKI_ART: Record<string, CharacterWikiArt> = {
     'denia': { host: 'wutheringwaves.fandom.com', fileTitle: 'Denia Card.jpg' },
     'hiyuki': { host: 'wutheringwaves.fandom.com', fileTitle: 'Hiyuki Card.jpg' },
     'jianxin': { host: 'wutheringwaves.fandom.com', fileTitle: 'Jianxin Card.jpg' },
+    'qingxiao': { host: 'wutheringwaves.fandom.com', fileTitle: 'Qingxiao Card.jpg' },
     'lucilla': { host: 'wutheringwaves.fandom.com', fileTitle: 'Lucilla Card.jpg' },
     'lucy': { host: 'wutheringwaves.fandom.com', fileTitle: 'Lucy Card.jpg' },
     'rebecca': { host: 'wutheringwaves.fandom.com', fileTitle: 'Rebecca Card.jpg' },

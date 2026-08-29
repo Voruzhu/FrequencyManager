@@ -94,6 +94,7 @@ export const CHARACTERS: WUCharacter[] = [
     // Added 2026-07-17, sourced from api.encore.moe/en/character/1610 — the
     // current v3.5 Phase 1 banner character (rate-ups end 2026-07-30).
     { id: 'yangyang-xuanling', name: "Yangyang: Xuanling", element: 'Havoc', weapon: 'Sword', baseAtk: 425, baseHp: 11025, baseDef: 1149, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/yangyang-xuanling.webp' },
+    { id: 'qingxiao', name: 'Qingxiao', element: 'Aero', weapon: 'Sword', baseAtk: 463, baseHp: 10300, baseDef: 1112, baseCritRate: 5, baseCritDmg: 50, baseEnergyRegen: 100, icon: 'icons/characters/qingxiao.webp' },
 ];
 
 export function getCharacter(id: string): WUCharacter | undefined {

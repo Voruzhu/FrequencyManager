@@ -126,11 +126,21 @@ class StructuredLogger implements LoggerInterface {
 
         const output = JSON.stringify(logEntry);
 
-        switch (level) {
-            case 'debug': console.debug(output); break;
-            case 'info': console.info(output); break;
-            case 'warn': console.warn(output); break;
-            case 'error': console.error(output); break;
+        // Guard the console writes: on Windows, writing to a stdout/stderr
+        // pipe that has already been closed (e.g. the app launched detached
+        // or from a terminal that was since closed) throws `EPIPE: broken
+        // pipe`. `console.*` in the main process is synchronous, so without
+        // this an otherwise-unrelated log line becomes an uncaught exception
+        // that takes down the whole app at launch.
+        try {
+            switch (level) {
+                case 'debug': console.debug(output); break;
+                case 'info': console.info(output); break;
+                case 'warn': console.warn(output); break;
+                case 'error': console.error(output); break;
+            }
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'EPIPE') throw err;
         }
     }
 

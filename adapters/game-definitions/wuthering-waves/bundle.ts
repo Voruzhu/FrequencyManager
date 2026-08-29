@@ -10,7 +10,7 @@
  * as supplements. See `shared/game-data/derive.ts`.
  */
 
-import type { GameBundle, GameCatalogSupplements } from '@shared/types/game-bundle';
+import type { GameBundle, GameCatalogSupplements, GearEntry } from '@shared/types/game-bundle';
 import { buildGameBundle } from '@shared/game-data/derive';
 import { WW_GEAR_CATALOG, STARTER_CHARACTER } from '@shared/game-data/gear-catalogs';
 import { wutheringWaves } from './definition';
@@ -22,6 +22,7 @@ import { SKILL_MULTIPLIER_OVERRIDES } from './skill-multipliers.generated';
 import { SEQUENCE_OVERRIDES } from './sequences.generated';
 import { CHARACTER_SELF_BUFFS, CHARACTER_TEAM_BUFFS } from './character-passives.generated';
 import { CHARACTER_SKILL_TREE_BUFFS } from './character-skilltree.generated';
+import { ECHOES } from './echoes';
 
 /**
  * Apply imported accurate base stats (Dimbreath datamine, lvl-90 base x growth)
@@ -419,5 +420,21 @@ export const wutheringWavesModuleInput = {
 };
 
 export const wutheringWavesBundle: GameBundle = buildGameBundle(wutheringWavesModuleInput);
+
+// Convert ECHOES to GearEntry for the gear catalog
+const echoGear: GearEntry[] = ECHOES.map((e) => ({
+    kind: 'echo',
+    id: e.id,
+    name: e.name,
+    setName: e.setName,
+    rarity: e.cost === 4 ? 5 : e.cost === 3 ? 4 : 3,
+    cost: e.cost,
+    mainStat: { key: 'atk', label: 'ATK', value: 0 },
+    subStats: [],
+    icon: e.icon,
+}));
+
+// Add echoes to the bundle's gear array
+wutheringWavesBundle.gear = echoGear;
 
 export default wutheringWavesBundle;

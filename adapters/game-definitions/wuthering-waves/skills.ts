@@ -2599,4 +2599,90 @@ export const CHARACTER_SKILLS: Record<string, CharacterSkill[]> = {
         { id: 'outro', name: 'Outro Skill: As the Wind Wills', type: 'Outro Skill', scaling: 'atk', element: 'Havoc',
             multipliers: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0] },
 ],
+
+    'qingxiao': [
+        // Basic Attack - Stringblade (Stages 1-4 from DamageList)
+        { id: 'basic1', name: 'Basic Attack - Stringblade (Stage 1)', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1516, 0.1640, 0.1765, 0.1939, 0.2063, 0.2206, 0.2405, 0.2603, 0.2802, 0.3013] },
+        { id: 'basic2', name: 'Basic Attack - Stringblade (Stage 2)', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1866, 0.2019, 0.2172, 0.2386, 0.2539, 0.2715, 0.2960, 0.3204, 0.3449, 0.3709] },
+        { id: 'basic3', name: 'Basic Attack - Stringblade (Stage 3)', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1225, 0.1326, 0.1426, 0.1567, 0.1667, 0.1783, 0.1944, 0.2104, 0.2265, 0.2436] },
+        { id: 'basic4', name: 'Basic Attack - Stringblade (Stage 4)', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.4363, 0.4721, 0.5078, 0.5579, 0.5937, 0.6348, 0.6921, 0.7493, 0.8065, 0.8673] },
+        // Mid-air Attack
+        { id: 'midair', name: 'Mid-air Attack - Stringblade', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.4340, 0.4696, 0.5052, 0.5550, 0.5906, 0.6316, 0.6885, 0.7454, 0.8024, 0.8629] },
+        // Heavy Attack
+        { id: 'heavy', name: 'Heavy Attack - Stringblade', type: 'Heavy', scaling: 'atk', element: 'Aero',
+            multipliers: [0.0735, 0.0796, 0.0856, 0.0940, 0.1001, 0.1070, 0.1166, 0.1263, 0.1359, 0.1462] },
+        // Heavy Attack - Ephemeral Transcendence (Forte Heavy)
+        { id: 'heavyEphemeral', name: 'Heavy Attack - Ephemeral Transcendence', type: 'Heavy', scaling: 'atk', element: 'Aero',
+            multipliers: [1.103, 1.193, 1.284, 1.410, 1.501, 1.605, 1.749, 1.894, 2.039, 2.192] },
+        // Heavy Attack - Heaven's Reckoning (Forte finisher)
+        { id: 'heavyHeavensReckoning', name: 'Heavy Attack - Heaven\'s Reckoning: Ephemeral Transcendence', type: 'Heavy', scaling: 'atk', element: 'Aero',
+            multipliers: [1.323, 1.4315, 1.540, 1.6919, 1.8004, 1.9251, 2.0987, 2.2723, 2.4459, 2.6303] },
+        // Dodge Counter
+        { id: 'dodgeCounter', name: 'Dodge Counter - Stringblade', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1029, 0.1114, 0.1198, 0.1316, 0.1401, 0.1498, 0.1633, 0.1768, 0.1903, 0.2046] },
+        // Resonance Skill - Severing Note: Judgement
+        { id: 'skill', name: 'Resonance Skill - Severing Note: Judgement', type: 'Skill', scaling: 'atk', element: 'Aero', cooldown: 12,
+            multipliers: [0.1428, 0.1546, 0.1663, 0.1827, 0.1944, 0.2078, 0.2266, 0.2453, 0.2640, 0.2840] },
+        // Severing Note follow-up hits
+        { id: 'skillFollowup1', name: 'Severing Note Follow-up 1', type: 'Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1666, 0.1803, 0.1940, 0.2131, 0.2268, 0.2425, 0.2643, 0.2862, 0.3080, 0.3313] },
+        { id: 'skillFollowup2', name: 'Severing Note Follow-up 2', type: 'Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1050, 0.1137, 0.1223, 0.1343, 0.1429, 0.1528, 0.1666, 0.1804, 0.1942, 0.2088] },
+        { id: 'skillJudgement', name: 'Severing Note: Judgement Main', type: 'Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.490, 0.5302, 0.5704, 0.6267, 0.6668, 0.7130, 0.7773, 0.8416, 0.9059, 0.9742] },
+        { id: 'skillMindlock', name: 'Severing Note Mindlock Application', type: 'Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.210, 0.2273, 0.2445, 0.2686, 0.2858, 0.3056, 0.3332, 0.3607, 0.3883, 0.4176] },
+        { id: 'skillMindlockHeavy', name: 'Severing Note Heavy Mindlock', type: 'Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.980, 1.0604, 1.1408, 1.2533, 1.3336, 1.4260, 1.5546, 1.6832, 1.8118, 1.9484] },
+        // Resonance Liberation - Billows Beneath Heaven
+        { id: 'ult', name: 'Resonance Liberation - Billows Beneath Heaven', type: 'Ultimate', scaling: 'atk', element: 'Aero', cooldown: 25,
+            multipliers: [0.168, 0.1818, 0.1956, 0.2149, 0.2287, 0.2445, 0.2665, 0.2886, 0.3106, 0.3341] },
+        { id: 'ultMain', name: 'Billows Beneath Heaven Main', type: 'Ultimate', scaling: 'atk', element: 'Aero',
+            multipliers: [6.72, 7.2711, 7.8221, 8.5936, 9.1446, 9.7783, 10.66, 11.5416, 12.4233, 13.3601] },
+        // Intro Skill - Tonality Shift
+        { id: 'intro1', name: 'Intro Skill: Tonality Shift (Hit 1)', type: 'Intro Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.2002, 0.2166, 0.2330, 0.2560, 0.2724, 0.2913, 0.3175, 0.3438, 0.3700, 0.3979] },
+        { id: 'intro2', name: 'Intro Skill: Tonality Shift (Hit 2)', type: 'Intro Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [0.2335, 0.2527, 0.2718, 0.2986, 0.3178, 0.3398, 0.3704, 0.4011, 0.4317, 0.4642] },
+        // Forte Circuit - Ephemeral Transcendence Heavy Attack
+        { id: 'forteHeavy', name: 'Forte Circuit: Heavy Attack - Ephemeral Transcendence', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.140, 0.1515, 0.1630, 0.1791, 0.1906, 0.2038, 0.2221, 0.2405, 0.2589, 0.2784] },
+        { id: 'forteHeavyFinisher', name: 'Forte Circuit: Heavy Attack - Heaven\'s Reckoning', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [2.24, 2.4237, 2.6074, 2.8646, 3.0482, 3.2595, 3.5534, 3.8472, 4.1411, 4.4534] },
+        { id: 'forteHeavyBonus', name: 'Forte Circuit: Heavy Attack Bonus', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.28, 0.303, 0.326, 0.3581, 0.3811, 0.4075, 0.4442, 0.4809, 0.5177, 0.5567] },
+        // Forte Circuit Basic Attacks in Ephemeral Transcendence
+        { id: 'forteBasic1', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 1)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.2258, 0.2443, 0.2628, 0.2887, 0.3073, 0.3285, 0.3582, 0.3878, 0.4174, 0.4489] },
+        { id: 'forteBasic2', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 2)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1129, 0.1222, 0.1314, 0.1444, 0.1537, 0.1643, 0.1791, 0.1939, 0.2087, 0.2245] },
+        { id: 'forteBasic3', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 3)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1162, 0.1258, 0.1353, 0.1486, 0.1582, 0.1691, 0.1844, 0.1996, 0.2149, 0.2311] },
+        { id: 'forteBasic4', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 4)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1050, 0.1137, 0.1223, 0.1343, 0.1429, 0.1528, 0.1666, 0.1804, 0.1942, 0.2088] },
+        { id: 'forteBasic5', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 5)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.1575, 0.1705, 0.1834, 0.2015, 0.2144, 0.2292, 0.2499, 0.2706, 0.2912, 0.3132] },
+        { id: 'forteBasic6', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 6)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.0910, 0.0985, 0.1060, 0.1164, 0.1239, 0.1325, 0.1444, 0.1563, 0.1683, 0.1810] },
+        { id: 'forteBasic7', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 7)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.546, 0.5908, 0.6356, 0.6983, 0.7430, 0.7945, 0.8662, 0.9378, 1.0094, 1.0856] },
+        { id: 'forteBasic8', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 8)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.133, 0.144, 0.1549, 0.1701, 0.1810, 0.1936, 0.211, 0.2285, 0.2459, 0.2645] },
+        { id: 'forteBasic9', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 9)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.798, 0.8635, 0.9289, 1.0205, 1.086, 1.1612, 1.2659, 1.3706, 1.4753, 1.5866] },
+        { id: 'forteBasic10', name: 'Forte Basic Attack - Ephemeral Transcendence (Hit 10)', type: 'Forte', scaling: 'atk', element: 'Aero',
+            multipliers: [0.4515, 0.4886, 0.5256, 0.5774, 0.6145, 0.657, 0.7163, 0.7755, 0.8347, 0.8977] },
+        // Outro Skill - Lingering Song
+        { id: 'outro', name: 'Outro Skill: Lingering Song', type: 'Outro Skill', scaling: 'atk', element: 'Aero',
+            multipliers: [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0] },
+        // Juque Perdition (Exorcising Seal trigger)
+        { id: 'juquePerdition', name: 'Juque Perdition', type: 'Basic', scaling: 'atk', element: 'Aero',
+            multipliers: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0] },
+],
+
 };

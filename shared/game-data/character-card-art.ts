@@ -172,6 +172,7 @@ export const CHARACTER_CARD_ART: Record<string, string> = {
     'denia': 'icons/characters-card/denia.jpg',
     'hiyuki': 'icons/characters-card/hiyuki.jpg',
     'jianxin': 'icons/characters-card/jianxin.jpg',
+    'qingxiao': 'icons/characters-card/qingxiao.jpg',
     'lucilla': 'icons/characters-card/lucilla.jpg',
     'lucy': 'icons/characters-card/lucy.jpg',
     'rebecca': 'icons/characters-card/rebecca.jpg',

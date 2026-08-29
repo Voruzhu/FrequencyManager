@@ -654,6 +654,27 @@ export function combinations<T>(arr: T[], k: number, firstIndices?: Set<number>)
     return result;
 }
 
+/** Lazy `combinations` — yields each k-combo one at a time instead of
+ * materializing the whole list, so a very large gear pool doesn't hold every
+ * combination array in memory at once (the streaming worker path relies on
+ * this for O(1)-memory ranging + scoring). Semantics identical to
+ * `combinations`: same order, same `firstIndices` partitioning. */
+export function* combinationsIter<T>(arr: T[], k: number, firstIndices?: Set<number>): Generator<T[]> {
+    if (k <= 0) { yield []; return; }
+    if (k > arr.length) return;
+    if (k === arr.length) { if (!firstIndices || firstIndices.has(0)) yield arr.slice(); return; }
+    function* rec(start: number, combo: T[]): Generator<T[]> {
+        if (combo.length === k) { yield combo.slice(); return; }
+        for (let i = start; i < arr.length; i++) {
+            if (combo.length === 0 && firstIndices && !firstIndices.has(i)) continue;
+            combo.push(arr[i]);
+            yield* rec(i + 1, combo);
+            combo.pop();
+        }
+    }
+    yield* rec(0, []);
+}
+
 /** `C(n, k)` — the binomial coefficient, used to estimate how much work each
  * possible "first pick" index represents (`subtreeSize`) for load-balancing
  * across worker threads, without generating the actual combinations. */
@@ -750,6 +771,17 @@ export function cartesianCombos<T>(groups: T[][], firstIndices?: Set<number>): T
         for (const r of restCombos) out.push([first[i], ...r]);
     }
     return out;
+}
+
+/** Lazy `cartesianCombos` — same product, yielded one combo at a time (see
+ * `combinationsIter` for why streaming matters). */
+export function* cartesianCombosIter<T>(groups: T[][], firstIndices?: Set<number>): Generator<T[]> {
+    if (groups.length === 0) { yield []; return; }
+    const [first, ...rest] = groups;
+    for (let i = 0; i < first.length; i++) {
+        if (firstIndices && !firstIndices.has(i)) continue;
+        for (const r of cartesianCombosIter(rest)) yield [first[i], ...r];
+    }
 }
 
 /** Total combos a `slotGroupsFor` result represents — the product of each
@@ -1130,6 +1162,86 @@ export function scoreAndRank(base: BaseLoadout[], ranges: TargetRange[], topN: n
     });
     loadouts.sort((a, b) => (Number(b.meets) - Number(a.meets)) || (b.score - a.score));
     return loadouts.slice(0, Math.max(1, topN));
+}
+
+/** Fresh [lo, hi] accumulator per maximize-target, seeded at the empty range
+ * sentinels — the starting state for `accumulateTargetRanges()` during the
+ * streaming worker's pass-1 (see that fn's doc). */
+export function newTargetRanges(maxTargets: Target[]): TargetRange[] {
+    return maxTargets.map((t) => ({ t, lo: Infinity, hi: -Infinity }));
+}
+
+/** Accumulate per-maximize-target [lo, hi] across a BATCH of base loadouts,
+ * in place — identical math to `targetRanges` but bounded memory, so the
+ * streaming worker can fold each chunk's min/max into the running global
+ * local range without ever holding the full `BaseLoadout[]` for its slice. */
+export function accumulateTargetRanges(acc: TargetRange[], base: BaseLoadout[], maxTargets: Target[]): void {
+    for (let i = 0; i < maxTargets.length; i++) {
+        const t = maxTargets[i];
+        let lo = acc[i].lo, hi = acc[i].hi;
+        for (const b of base) {
+            const v = targetValue(t, b.stats, b.skillDamage);
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+        acc[i].lo = lo; acc[i].hi = hi;
+    }
+}
+
+/** Fold one base loadout into a running top-N, normalized against the given
+ * (global) ranges — the exact scoring rule `scoreAndRank` uses, but memory-
+ * bounded: only the top-N loadouts are ever retained (the streaming worker's
+ * pass-2 recomputes each combo's base loadout on the fly, scores it, and
+ * discards it unless it belongs in the running top-N). Returns the new
+ * running top-N (sorted best-first, length ≤ `topN`). */
+export function scoreAndRankStreaming(top: Loadout[], b: BaseLoadout, ranges: TargetRange[], topN: number): Loadout[] {
+    let score: number;
+    if (ranges.length > 0) {
+        score = ranges.reduce((acc, r) => {
+            const v = targetValue(r.t, b.stats, b.skillDamage);
+            const n = r.hi > r.lo ? (v - r.lo) / (r.hi - r.lo) : 1;
+            return acc + n;
+        }, 0);
+    } else {
+        score = b.stats.atk ?? 0; // no maximize targets → rank by ATK as a sensible default
+    }
+    const loadout: Loadout = { ...b, score, meets: b.failed.length === 0 };
+    top.push(loadout);
+    top.sort((a, b2) => (Number(b2.meets) - Number(a.meets)) || (b2.score - a.score));
+    if (top.length > topN) top.length = topN;
+    return top;
+}
+
+/** Build a factory that lazily yields this worker's (locked-prefixed,
+ * cost-budget-filtered) gear combos one at a time. Each call to the RETURNED
+ * factory builds a FRESH underlying generator, so the same factory can be
+ * safely walked multiple times (the streaming worker walks it once to count
+ * combos, once for pass-1 ranges, and once for pass-2 scoring) without one
+ * pass consuming another's iterator. This is the regression guard for the
+ * "fill remaining slots → no loadout stays within the cost budget" bug: the
+ * underlying `combinationsIter` / `cartesianCombosIter` are one-shot
+ * generators, so they MUST be recreated per factory call, never captured in
+ * the closure. */
+export function streamCombos(
+    pool: GearEntry[],
+    k: number,
+    firstIndices: number[],
+    lockedGear: GearEntry[],
+    maxTotalCost: number | undefined,
+    slotGroups?: GearEntry[][],
+): () => Generator<GearEntry[]> {
+    const first = new Set(firstIndices);
+    const locked = lockedGear ?? [];
+    return function* () {
+        const base = slotGroups
+            ? cartesianCombosIter(slotGroups, first)
+            : combinationsIter(pool, k, first);
+        for (const fill of base) {
+            const combo = locked.length ? [...locked, ...fill] : fill;
+            if (!withinCostBudget(combo, maxTotalCost)) continue;
+            yield combo;
+        }
+    };
 }
 
 /** Single-threaded reference path — same composable pieces the worker pool

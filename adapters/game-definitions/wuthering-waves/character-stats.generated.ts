@@ -66,6 +66,7 @@ export const CHARACTER_STAT_OVERRIDES: Record<string, { baseAtk: number; baseHp:
     "rover-aero": { baseAtk: 438, baseHp: 10775, baseDef: 1137 },
     "rover-havoc": { baseAtk: 413, baseHp: 10825, baseDef: 1259 },
     "rover-electro": { baseAtk: 438, baseHp: 10775, baseDef: 1137 },
+    "qingxiao": { baseAtk: 462.5, baseHp: 10300, baseDef: 1112 },
 };
 
 export default CHARACTER_STAT_OVERRIDES;

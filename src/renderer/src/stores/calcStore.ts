@@ -90,6 +90,8 @@ interface CalcState {
      * optimization is currently running (drives the Calculator's progress
      * bar visibility). */
     optimizeProgress: { done: number; total: number } | null;
+    /** AbortController for cancelling in-flight optimization */
+    optimizeAbortController: AbortController | null;
     /** Set name(s) the user has declared they want active for the NEXT
      * optimize() run — normally 0-2 (one 5pc, or two 2pc, sets across 5
      * slots), but can be 3 for a character with access to a real
@@ -178,6 +180,7 @@ interface CalcState {
     setCritMode: (m: CritMode) => void;
     setResults: (r: Loadout[] | null) => void;
     setOptimizeProgress: (p: { done: number; total: number } | null) => void;
+    setOptimizeAbortController: (c: AbortController | null) => void;
     setRequiredSets: (sets: string[]) => void;
     setOnlyUnequipped: (v: boolean) => void;
 }
@@ -193,6 +196,7 @@ export const useCalcStore = create<CalcState>()(
     enemy: DUMMY,
     results: null,
     optimizeProgress: null,
+    optimizeAbortController: null,
     requiredSets: [],
     onlyUnequipped: false,
     skillLevels: {},
@@ -336,6 +340,7 @@ export const useCalcStore = create<CalcState>()(
 
     setResults: (r) => set({ results: r }),
     setOptimizeProgress: (p) => set({ optimizeProgress: p }),
+    setOptimizeAbortController: (c) => set({ optimizeAbortController: c }),
     // No fixed "2 sets max" here — the real limit depends on each set's own
     // piece threshold (a 1pc-threshold set like WW's Shadow of Shattered
     // Dreams leaves room for two more 2pc sets: 1+2+2 = 5), which only the

@@ -20,7 +20,7 @@
  */
 import type { CharacterEntry, GearEntry } from '@shared/types/game-bundle';
 import {
-    subtreeSize, fillSlotsFor, slotGroupsFor, mergeRanges,
+    subtreeSize, fillSlotsFor, slotGroupsFor, mergeRanges, totalCombinations,
     type OptimizeConfig, type Loadout, type TargetRange,
 } from '@shared/calc/optimizer';
 import type { WorkerInboundMessage, WorkerOutboundMessage } from '../workers/optimizerWorker';
@@ -101,7 +101,11 @@ export function runOptimizerPool(
             const lockedIds = new Set(lockedGear.map((g) => g.id));
             search = lockedIds.size > 0 ? pool.filter((g) => !lockedIds.has(g.id)) : pool;
             k = fillSlotsFor(pool.length, lockedGear.length);
-            effectiveThreads = Math.max(1, Math.min(threadCount, search.length - k + 1));
+            // Calculate total combos for the flat search to determine safe thread count
+            const totalCombos = totalCombinations(search.length, k);
+            // Ensure each worker gets at most ~1M combos (safety margin below worker's 10M cap)
+            const maxSafeThreads = Math.max(1, Math.ceil(totalCombos / 1_000_000));
+            effectiveThreads = Math.max(1, Math.min(threadCount, search.length - k + 1, maxSafeThreads));
             buckets = assignFirstIndices(search.length, k, effectiveThreads);
         }
 
@@ -176,6 +180,12 @@ export function runOptimizerPool(
                         resolve(merged);
                     }
                 }
+                if (msg.type === 'error') {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    fail(new Error(msg.message));
+                }
             };
 
             const idOffset = i * ID_OFFSET_STRIDE;
@@ -187,7 +197,17 @@ export function runOptimizerPool(
                 config,
                 lockedGear,
                 slotGroups: groups ?? undefined,
+                abortFlag: signal?.aborted ?? false,
             } satisfies WorkerInboundMessage);
+        }
+
+        // Send abort to all workers if signal is triggered
+        if (signal) {
+            signal.addEventListener('abort', () => {
+                for (const w of workers) {
+                    w.postMessage({ type: 'abort' } satisfies WorkerInboundMessage);
+                }
+            }, { once: true });
         }
     });
 }

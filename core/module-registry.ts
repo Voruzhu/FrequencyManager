@@ -418,11 +418,15 @@ export class ModuleRegistry implements ModuleRegistryInterface {
      */
     private log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
         const prefix = '[ModuleRegistry]';
-        switch (level) {
-            case 'debug': console.debug(`${prefix} ${message}`); break;
-            case 'info': console.info(`${prefix} ${message}`); break;
-            case 'warn': console.warn(`${prefix} ${message}`); break;
-            case 'error': console.error(`${prefix} ${message}`); break;
+        try {
+            switch (level) {
+                case 'debug': console.debug(`${prefix} ${message}`); break;
+                case 'info': console.info(`${prefix} ${message}`); break;
+                case 'warn': console.warn(`${prefix} ${message}`); break;
+                case 'error': console.error(`${prefix} ${message}`); break;
+            }
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'EPIPE') throw err;
         }
     }
 }

@@ -2,6 +2,7 @@ import {
     combinations, subtreeSize, totalCombinations, gearSlotsFor, fillSlotsFor,
     slotGroupsFor, cartesianCombos, totalSlotCombinations, cartesianSubtreeSize,
     computeBaseLoadouts, targetRanges, mergeRanges, scoreAndRank, optimize, withinCostBudget,
+    combinationsIter, cartesianCombosIter, newTargetRanges, accumulateTargetRanges, scoreAndRankStreaming, streamCombos,
     enemyMultiplier, skillDamage, isScopedBuff, gearScopedBuffs, activeSetBonuses, setBonusBuffEntries, mainSlotEchoBuffs,
     type Target, type OptimizeConfig,
 } from '../../shared/calc/optimizer';
@@ -26,6 +27,123 @@ describe('combinations — firstIndices partitioning', () => {
         for (let i = 0; i <= arr.length - k; i++) parts.push(combinations(arr, k, new Set([i])));
         const reassembled = parts.flat();
         expect(reassembled).toEqual(full);
+    });
+});
+
+describe('combinationsIter / cartesianCombosIter — lazy equals materialized', () => {
+    it('combinationsIter yields the exact same combos, in the same order (with and without firstIndices)', () => {
+        const arr = [0, 1, 2, 3, 4, 5];
+        const k = 3;
+        for (const first of [undefined, new Set([1, 3])]) {
+            expect([...combinationsIter(arr, k, first)]).toEqual(combinations(arr, k, first));
+        }
+    });
+
+    it('combinationsIter matches the edge cases combinations already handles', () => {
+        expect([...combinationsIter([0, 1], 0)]).toEqual(combinations([0, 1], 0));
+        expect([...combinationsIter([0], 5)]).toEqual(combinations([0], 5));
+        expect([...combinationsIter([0, 1, 2], 3)]).toEqual(combinations([0, 1, 2], 3));
+        // k === arr.length with a firstIndices that excludes index 0 → empty
+        expect([...combinationsIter([0, 1, 2], 3, new Set([1]))]).toEqual(combinations([0, 1, 2], 3, new Set([1])));
+    });
+
+    it('cartesianCombosIter yields the exact same combos, in the same order', () => {
+        const groups = [['a', 'b'], ['c', 'd'], ['e']];
+        expect([...cartesianCombosIter(groups)]).toEqual(cartesianCombos(groups));
+        expect([...cartesianCombosIter(groups, new Set([1]))]).toEqual(cartesianCombos(groups, new Set([1])));
+    });
+});
+
+describe('streaming ranges + scoring — equivalence to the single-pass path', () => {
+    it('accumulateTargetRanges + scoreAndRankStreaming over chunks produce the same top result as optimize()', () => {
+        const c = char();
+        const pool = [gear(10), gear(200), gear(50), gear(30), gear(20), gear(5), gear(80)];
+        const config = baseConfig({ topN: 3 });
+        const k = gearSlotsFor(pool.length);
+
+        const reference = optimize(c, pool, config);
+        const maxTargets = config.targets.filter((t) => t.mode === 'max');
+        const combos = combinations(pool, k);
+
+        // Pass 1: stream ranges in chunks of 2
+        const ranges = newTargetRanges(maxTargets);
+        for (let i = 0; i < combos.length; i += 2) {
+            const base = computeBaseLoadouts(c, combos.slice(i, i + 2), config, i);
+            accumulateTargetRanges(ranges, base, maxTargets);
+        }
+
+        // Pass 2: stream scoring in chunks of 2
+        let top: ReturnType<typeof scoreAndRankStreaming> = [];
+        for (let i = 0; i < combos.length; i += 2) {
+            const base = computeBaseLoadouts(c, combos.slice(i, i + 2), config, i);
+            for (const b of base) top = scoreAndRankStreaming(top, b, ranges, config.topN);
+        }
+        top.sort((a, b) => (Number(b.meets) - Number(a.meets)) || (b.score - a.score));
+
+        expect(top[0].score).toBeCloseTo(reference[0].score, 6);
+        expect(top[0].gear.map((g) => g.mainStat.value).sort()).toEqual(reference[0].gear.map((g) => g.mainStat.value).sort());
+    });
+});
+
+describe('streamCombos — locked + cost-budget streaming (fill-remaining-slots regression)', () => {
+    it('the same factory can be re-walked (count/pass-1/pass-2) and each walk yields identical, budget-filtered combos', () => {
+        const locked = [gear(10, 4), gear(10, 3), gear(10, 3), gear(10, 1)]; // 4-3-3-1 = 11
+        const pool = [...locked, gear(50, 1), gear(60, 1), gear(70, 3), gear(80, 3), gear(90, 4)];
+        const search = pool.filter((g) => !locked.some((l) => l.id === g.id)); // worker passes this, not the full pool
+        const k = fillSlotsFor(pool.length, locked.length); // 1 remaining slot
+
+        const factory = streamCombos(search, k, [0, 1, 2, 3, 4], locked, 12);
+
+        const walk = () => [...factory()];
+
+        const countWalk = walk();
+        const pass1 = walk();
+        const pass2 = walk();
+
+        // The regression: re-walking must NOT be empty after the first walk.
+        expect(countWalk.length).toBe(2);
+        expect(pass1).toEqual(countWalk);
+        expect(pass2).toEqual(countWalk);
+
+        for (const combo of pass1) {
+            // locked pieces always come first
+            expect(combo.slice(0, locked.length).map((g) => g.id)).toEqual(locked.map((g) => g.id));
+            // total stays within the 12-cost budget (the 4,3,3,1 fill must be a cost-1 piece)
+            const total = combo.reduce((a, b) => a + (b.cost ?? 0), 0);
+            expect(total).toBe(12);
+        }
+    });
+
+    it('streaming the same combos through computeBaseLoadouts/accumulate/ranges matches the single-pass optimize()', () => {
+        const c = char();
+        const locked = [gear(10, 4), gear(10, 3), gear(10, 3), gear(10, 1)];
+        const pool = [...locked, gear(50, 1), gear(60, 1), gear(70, 3), gear(80, 3), gear(90, 4)];
+        const search = pool.filter((g) => !locked.some((l) => l.id === g.id));
+        const config = baseConfig({ maxTotalCost: 12, topN: 3 });
+        const k = fillSlotsFor(pool.length, locked.length);
+
+        const reference = optimize(c, pool, config, locked);
+        expect(reference.length).toBe(2);
+
+        const factory = streamCombos(search, k, [0, 1, 2, 3, 4], locked, 12);
+        const maxTargets = config.targets.filter((t) => t.mode === 'max');
+        const ranges = newTargetRanges(maxTargets);
+        let idx = 0;
+        let batch: GearEntry[][] = [];
+        for (const combo of factory()) {
+            batch.push(combo);
+            if (batch.length >= 2) {
+                accumulateTargetRanges(ranges, computeBaseLoadouts(c, batch, config, idx), maxTargets);
+                idx += batch.length;
+                batch = [];
+            }
+        }
+        if (batch.length) accumulateTargetRanges(ranges, computeBaseLoadouts(c, batch, config, idx), maxTargets);
+
+        expect(ranges[0].lo).not.toBe(Infinity);
+        expect(ranges[0].hi).not.toBe(-Infinity);
+        expect(ranges[0].lo).toBeCloseTo(Math.min(...reference.map((r) => r.stats.atk ?? 0)), 0);
+        expect(ranges[0].hi).toBeCloseTo(Math.max(...reference.map((r) => r.stats.atk ?? 0)), 0);
     });
 });
 

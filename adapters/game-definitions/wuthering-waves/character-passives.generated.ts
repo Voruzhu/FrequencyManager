@@ -136,6 +136,7 @@ export const CHARACTER_SELF_BUFFS: Record<string, Array<{ stat: string; label: s
     // assume-max-stacks toggle, same convention as Cartethyia's similar
     // stacked-DMG-Amp Inherent above.
     "yangyang-xuanling": [{"stat":"elemDmg","label":"DMG Amplified +66% at 6 Havoc Bane stacks on target (Inherent I)","value":66,"conditional":true}],
+    "qingxiao": [{"stat":"critRate","label":"Crit Rate +16% (Inherent I)","value":16,"conditional":false},{"stat":"atkPct","label":"Upon entering combat, gain 25 stacks of Exorcising Seal. After Basic Attack - Stringblade, Mid-air Attack - Stringblade, or Basic Attack - Ephemeral Transcendence deals damage, if Qingxiao has Exorcising Seal, remove it and trigger Juque Perdition (Aero DMG = 400% ATK). Max 25 stacks, once per second. (Inherent I)","value":0,"conditional":false},{"stat":"dmgBonus","label":"Juque Perdition DMG +4% per Exorcising Seal removed for 2s (Inherent I)","value":4,"conditional":true,"appliesTo":["juquePerdition"]},{"stat":"atkPct","label":"Heavy Attack - Stringblade grants 1 stack of Swordlight Ward. Max stacks increased to 2. (Sequence 1)","value":0,"conditional":true,"appliesTo":["heavy"]},{"stat":"elemDmg","label":"DMG Amplified +66% at max Mindlock stacks (Inherent II)","value":66,"conditional":true}],
     // FIXED 2026-07-19 — Inherent I ("Quietude Within") real text names 3
     // specific moves only: "Heavy Attack Thus Spoke the Blade: To Teach, ...
     // To Save, and ... To Sacrifice deal 50% more DMG" (Qiuyuan's 'to-teach'/
