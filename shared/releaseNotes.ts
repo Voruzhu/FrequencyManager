@@ -14,6 +14,16 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: '1.12.0',
+        date: '2026-08-29',
+        highlights: [
+            'New Wuthering Waves character — Qingxiao (Aero · Sword) — with her full kit, plus the 5★ Glint of Clouds sword and several new echo entries with art.',
+            'The gear optimizer now handles very large searches (millions of combinations) without freezing — it streams across your CPU threads, shows a live progress bar, and can be canceled mid-run.',
+            'Fixed "Fill remaining slots" wrongly reporting "no loadout stays within the cost budget" for valid builds like 4-3-3-1 that just need one more cost-1 echo to reach 12.',
+            'Fixed the optimizer freezing to a blank screen on large searches, and an intermittent crash on launch on Windows.',
+        ],
+    },
+    {
         version: '1.11.3',
         date: '2026-07-31',
         highlights: [
